@@ -19,7 +19,11 @@ if [[ ! -f .env || ! -s secrets/pihole_password ]]; then
 fi
 mkdir -p /var/backups/homeawayfromhome
 chmod 700 /var/backups/homeawayfromhome
-mapfile -t running < <(docker compose --profile monitoring ps --services --status running)
+running_list="$(docker compose --profile monitoring ps --services --status running)"
+running=()
+while IFS= read -r service; do
+  [[ -n "$service" ]] && running+=("$service")
+done <<< "$running_list"
 echo "Stopping ${running[*]:-none} for consistent backup (DNS/VPN may briefly stop)."
 stopped=0
 restart_services() {
