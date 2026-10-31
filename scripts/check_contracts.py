@@ -12,7 +12,7 @@ from validate_config import parse_env
 
 def check(config: dict, ip: str) -> None:
     services = config["services"]
-    assert {"pihole", "wg-easy", "portal", "uptime-kuma"} <= set(services)
+    assert {"pihole", "wg-easy", "portal", "victoria-metrics", "grafana", "telemetry-ingest"} <= set(services)
 
     def published(service: str) -> list[dict]:
         return services[service].get("ports", [])
@@ -39,8 +39,16 @@ def check(config: dict, ip: str) -> None:
     )
     assert len(published("wg-easy")) == 2
     assert exactly("portal", port=8088, internal=8080, proto="tcp", ip_address=ip)
-    assert exactly("uptime-kuma", port=3001, internal=3001, proto="tcp", ip_address=ip)
-    assert "monitoring" in services["uptime-kuma"].get("profiles", [])
+    assert exactly("grafana", port=3000, internal=3000, proto="tcp", ip_address=ip)
+    assert exactly("telemetry-ingest", port=8429, internal=8443, proto="tcp", ip_address=ip)
+    assert not published("victoria-metrics"), "Never publish VictoriaMetrics directly"
+    for name in ("grafana", "telemetry-ingest", "victoria-metrics"):
+        assert "metrics" in services[name].get("profiles", []), name
+    assert len(published("telemetry-ingest")) == 1
+    assert services["telemetry-ingest"].get("read_only") is True
+    assert services["telemetry-ingest"].get("user") in ("65534:65534", None)
+    assert "ALL" in services["telemetry-ingest"].get("cap_drop", [])
+    assert "no-new-privileges:true" in services["telemetry-ingest"].get("security_opt", [])
     assert services["portal"].get("read_only") is True
     assert "ALL" in services["portal"].get("cap_drop", [])
     assert services["portal"].get("privileged", False) is False
@@ -57,6 +65,8 @@ def check(config: dict, ip: str) -> None:
 
     assert len(services["pihole"].get("secrets", [])) == 1
     assert not services["portal"].get("secrets")
+    assert len(services["grafana"].get("secrets", [])) == 1
+    assert services["grafana"]["environment"]["GF_AUTH_ANONYMOUS_ENABLED"] == "false"
     assert ipaddress.ip_address(ip).is_private
     print("PASS: Compose ports, privilege, secrets and admin isolation")
 
@@ -64,7 +74,7 @@ def check(config: dict, ip: str) -> None:
 def main() -> None:
     env = parse_env(Path(".env"))
     completed = subprocess.run(
-        ["docker", "compose", "--profile", "monitoring", "config", "--format", "json"],
+        ["docker", "compose", "--profile", "metrics", "config", "--format", "json"],
         check=True, capture_output=True, text=True,
     )
     check(json.loads(completed.stdout), env["PI_LAN_IP"])
