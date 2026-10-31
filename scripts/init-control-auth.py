@@ -85,8 +85,8 @@ def create_user_hash() -> tuple[str, str]:
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--home", default="homeaway.home.arpa")
-    parser.add_argument("--auth", default="auth.home.arpa")
-    parser.add_argument("--cookie-domain", default="home.arpa")
+    parser.add_argument("--auth", default="auth.homeaway.home.arpa")
+    parser.add_argument("--cookie-domain", default="homeaway.home.arpa")
     parser.add_argument("--user", required=True)
     parser.add_argument("--email", required=True)
     args = parser.parse_args()

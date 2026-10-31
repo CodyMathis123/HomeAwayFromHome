@@ -18,13 +18,13 @@ class AuthContracts(unittest.TestCase):
                 module.safe_domain(invalid)
 
     def test_auth_requires_2fa_and_denies_by_default(self):
-        cfg = module.build_configuration("homeaway.home.arpa", "auth.home.arpa", "home.arpa",
+        cfg = module.build_configuration("homeaway.home.arpa", "auth.homeaway.home.arpa", "homeaway.home.arpa",
                                          "s" * 80, "j" * 80, "e" * 80)
         self.assertIn("default_policy: deny", cfg)
         self.assertIn("policy: two_factor", cfg)
         self.assertIn("resources:", cfg)
         self.assertIn("/control(?:/.*)?", cfg)
-        self.assertIn("https://auth.home.arpa:8443", cfg)
+        self.assertIn("https://auth.homeaway.home.arpa:8443", cfg)
 
     def test_proxy_network_and_no_control_api_host_port(self):
         compose = (ROOT / "compose.control.yaml").read_text()

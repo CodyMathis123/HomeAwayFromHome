@@ -16,8 +16,8 @@ spec.loader.exec_module(bootstrap)
 def main():
     env = {
         "HOMEAWAY_DOMAIN": "homeaway.home.arpa",
-        "HOMEAWAY_AUTH_DOMAIN": "auth.home.arpa",
-        "HOMEAWAY_METRICS_DOMAIN": "metrics.home.arpa",
+        "HOMEAWAY_AUTH_DOMAIN": "auth.homeaway.home.arpa",
+        "HOMEAWAY_METRICS_DOMAIN": "metrics.homeaway.home.arpa",
     }
     print("Checking Caddyfile syntax (pinned image)...", flush=True)
     subprocess.run(["docker", "run", "--rm",
@@ -29,7 +29,7 @@ def main():
     with tempfile.TemporaryDirectory() as root:
         folder = Path(root)
         (folder / "configuration.yml").write_text(
-            bootstrap.build_configuration("homeaway.home.arpa", "auth.home.arpa", "home.arpa",
+            bootstrap.build_configuration("homeaway.home.arpa", "auth.homeaway.home.arpa", "homeaway.home.arpa",
                                           "s" * 80, "j" * 80, "e" * 80))
         (folder / "users_database.yml").write_text(json.dumps({
             "users": {"ci-test": {"disabled": False, "displayname": "CI test",

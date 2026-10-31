@@ -27,7 +27,7 @@ Default Authelia policy demands **two factors** for the `/control` path (local p
 
 - You already have a Pi with the reviewed HomeAway Compose deployment and WireGuard LAN reachability. Do not open port 8443, 3000, 8088, 22 or 53 on your router. Only VPN UDP 51820 is public.
 - Pi LAN IP is reserved by router. Verify Pi's LAN subnet and each Windows PC's wired/wireless interface MAC. Wake-on-LAN may require BIOS/UEFI, NIC/driver and Windows Fast Startup settings; Wi-Fi WOL is device-dependent.
-- Choose private DNS hostnames `homeaway.home.arpa`, `auth.home.arpa`, `metrics.home.arpa`. Add these to Pi-hole Local DNS pointing to **the Pi's actual LAN address**. Make sure VPN clients use this Pi DNS; test hostname resolution on LAN and over VPN. You may use different private hostnames but must update env/bootstrap accordingly.
+- Choose private DNS hostnames `homeaway.home.arpa`, `auth.homeaway.home.arpa`, `metrics.homeaway.home.arpa`. Add these to Pi-hole Local DNS pointing to **the Pi's actual LAN address**. Make sure VPN clients use this Pi DNS; test hostname resolution on LAN and over VPN. You may use different private hostnames but must update env/bootstrap accordingly.
 - Caddy serves internally issued HTTPS certificates. Clients (including iOS) must explicitly **trust Caddy's local root CA**, after verifying it was obtained privately from your own Pi. Accessing an untrusted HTTPS page by clicking through certificate warnings is not an acceptable workaround for the control UI. This is deliberately not a public Let's Encrypt exposure.
 - The existing `work` and `gaming` commands and your iOS Shortcut remain supported. Their original SSH keys/authorized_keys must be backed up before migration.
 - If Windows `pcctl` hardening is already installed and functioning, **do not blindly run its setup script again**. Review and retain that configuration. The Pi host install detects existing wrappers and preserves them unless explicitly told to replace them.
@@ -128,8 +128,8 @@ Use three Pi-private DNS records. On the Pi's existing HomeAway checkout, add th
 
 ```dotenv
 HOMEAWAY_DOMAIN=homeaway.home.arpa
-HOMEAWAY_AUTH_DOMAIN=auth.home.arpa
-HOMEAWAY_METRICS_DOMAIN=metrics.home.arpa
+HOMEAWAY_AUTH_DOMAIN=auth.homeaway.home.arpa
+HOMEAWAY_METRICS_DOMAIN=metrics.homeaway.home.arpa
 PCCTL_GID=REPLACE_WITH_OUTPUT_OF_id_-g_pcctl
 ```
 
@@ -166,7 +166,7 @@ docker compose -f compose.yaml -f compose.control.yaml --profile metrics up -d -
 
 Caddy's local root certificate is stored under `data/control/caddy/pki/authorities/local/root.crt` (or the `caddy/pki` subdirectory depending on volume layout). **Verify its origin on the Pi**, export/install as a trusted CA on each iPhone/PC, and enable full trust in iOS Certificate Trust Settings. This avoids browser warnings and is needed for a reliable authenticated mobile experience. Do not distribute the private CA key.
 
-Open `https://auth.home.arpa:8443` on a device that trusts the CA. Sign in with the generated password and follow Authelia's TOTP enrollment; read the locally generated registration link from `notification.txt`. Then open `https://homeaway.home.arpa:8443/control/`. Subsequent visits reuse an Authelia session until it expires. Sensitive commands are still confirmed in the UI. The browser is **not** asked to authenticate to the Windows machines.
+Open `https://auth.homeaway.home.arpa:8443` on a device that trusts the CA. Sign in with the generated password and follow Authelia's TOTP enrollment; read the locally generated registration link from `notification.txt`. Then open `https://homeaway.home.arpa:8443/control/`. Subsequent visits reuse an Authelia session until it expires. Sensitive commands are still confirmed in the UI. The browser is **not** asked to authenticate to the Windows machines.
 
 ## 5. iOS Shortcut compatibility
 
@@ -222,3 +222,5 @@ To add **any number of additional computers up to the configured 64**, repeat:
 - TOTP enrollment and full end-to-end command effectiveness remain **operator tests**. CI tests logic but cannot certify actual Wake-on-LAN, firmware suspend, Windows privileges, iOS certificate trust, or your Pi runtime.
 
 References: [Authelia/Caddy forward auth](https://www.authelia.com/i/caddy/), [Caddy forward_auth](https://caddyserver.com/docs/caddyfile/directives/forward_auth), [Authelia sessions](https://www.authelia.com/configuration/session/introduction/), [Microsoft OpenSSH](https://learn.microsoft.com/windows-server/administration/openssh/openssh_install_firstuse).
+
+**Cookie-domain note:** Authelia cannot use the public-suffix `home.arpa` directly. Its session cookie is scoped to `homeaway.home.arpa`; the authentication and metrics hosts are subdomains of that domain. All three records must resolve to the same private Pi IP.
