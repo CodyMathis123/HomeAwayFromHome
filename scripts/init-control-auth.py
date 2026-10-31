@@ -76,7 +76,7 @@ def create_user_hash() -> tuple[str, str]:
         capture_output=True, text=True, timeout=120, check=True)
     output = completed.stdout
     digest = re.search(r"\$argon2id\$[^\s'\"]+", output)
-    password = re.search(r"(?im)^\s*password\s*:\s*(\S+)\s*$", output)
+    password = re.search(r"(?im)^\s*(?:random\s+)?password\s*:\s*(\S+)\s*$", output)
     if not digest or not password:
         raise RuntimeError("Could not parse generated password and digest. No account created.")
     return digest.group(0), password.group(1)
