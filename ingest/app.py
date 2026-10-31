@@ -45,6 +45,13 @@ BINDING_LINE = re.compile(
     + rb",kind=" + K + rb" value=[01] " + T + rb"$"
 )
 
+COMPONENT_LINE = re.compile(
+    rb"^sensordash_component_info,host=" + H
+    + rb",system=" + H + rb",component=" + H
+    + rb",system_name=" + N + rb",component_name=" + N
+    + rb",role=" + R + rb" value=[01] " + T + rb"$"
+)
+
 # Derived fan and pump power is archived by the Windows collector under the
 # configuration revision active at the sample timestamp. No remote control.
 POWER_LINE = re.compile(
@@ -52,7 +59,7 @@ POWER_LINE = re.compile(
     + rb",system=" + H + rb",component=" + H
     + rb",source=(?:measured|calibrated|curve|rated)"
     + rb",revision=[0-9a-f]{16}"
-    + rb" value=-?(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)? "
+    + rb" value=(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)? "
     + T + rb"$"
 )
 
@@ -67,7 +74,8 @@ def valid_payload(body: bytes) -> bool:
     rows = body.strip(b"\n").split(b"\n")
     return 0 < len(rows) <= MAX_LINES and all(
         LINE.fullmatch(line) or INFO_LINE.fullmatch(line)
-        or BINDING_LINE.fullmatch(line) or POWER_LINE.fullmatch(line) for line in rows
+        or BINDING_LINE.fullmatch(line) or COMPONENT_LINE.fullmatch(line)
+        or POWER_LINE.fullmatch(line) for line in rows
     )
 
 
