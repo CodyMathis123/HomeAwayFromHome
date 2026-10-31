@@ -79,7 +79,8 @@ Query the Prometheus-compatible series `sensordash_reading_value{host="my-window
 ## Behavior and limitations
 
 - **Fan curves, authorizations and failsafes:** 100% on the Windows collector; Grafana cannot send commands.
-- **Cooling systems and calibration:** still defined in SensorDash. This first version exports raw readings only; logical cooling-system labels and derived power estimates are planned next, after we specify metadata versioning.
+- **Cooling systems and calibration:** authoritative in SensorDash, never duplicated as editable Grafana state. The exporter now sends a bounded read-only sensor catalog and cooling-component bindings. Grafana's `SensorDash · Cooling Systems` dashboard joins historical raw readings with this metadata; see [cooling integration notes](COOLING-GRAFANA.md). Metadata changes are explicitly marked with `value=0` tombstones; the previous acknowledged snapshot is persisted on Windows.
+- **Derived power estimates:** not yet migrated. Measured-vs-estimated provenance, calibration revisions and missing-data rules need parity validation with SensorDash before we export derived wattage.
 - **Existing SensorDash charts:** remain intact during comparison.
 - **Storage:** VictoriaMetrics retains 90 days; Windows local SQLite retention remains configurable independently. Check disk use on the Pi SSD.
 - **Back-pressure:** the exporter reuses local SQLite history and processes at most 384 rows per HTTPS request, never holding a large backlog in memory.
