@@ -34,7 +34,7 @@ if command -v docker >/dev/null; then
   if docker compose version >/dev/null 2>&1; then
     echo "--- Docker Compose config ---"
     docker compose config -q
-    docker compose --profile monitoring config -q
+    docker compose --profile metrics config -q
     echo "OK   Compose configuration valid"
   else
     echo "WARN: Docker Compose plugin not working or missing"
