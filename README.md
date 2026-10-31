@@ -2,7 +2,7 @@
 
 **A small, predictable home-infrastructure stack for one Raspberry Pi 4 (8 GB).**
 
-Pi-hole v6 · WireGuard via wg-easy v15 · built-in responsive read-only status portal · optional Uptime Kuma v2. Everything is self-hosted on the Pi using Docker Compose. No VPS, external dashboard, mandatory account, or ongoing control-plane dependency.
+Pi-hole v6 · WireGuard via wg-easy v15 · built-in responsive read-only status portal · optional Grafana + VictoriaMetrics. Everything is self-hosted on the Pi using Docker Compose. No VPS, external dashboard, mandatory account, or ongoing control-plane dependency.
 
 > **Status:** feature-branch implementation. Configurations and CI tests are complete source artifacts, not a claim that the services have been installed or tested on your actual Pi. Read the [installation runbook](docs/INSTALL.md) before replacing live DNS or VPN.
 
@@ -26,15 +26,15 @@ Pi-hole v6 · WireGuard via wg-easy v15 · built-in responsive read-only status 
   DNS :53            VPN UDP :51820       HTTP :8088 (LAN)
   Web :8080 (LAN)    Admin :51821          Read-only checks
                      localhost ONLY              |
-       |                 |                 Uptime Kuma :3001
-       +------- Pi LAN DNS / RDP / SensorDash ----+ (optional)
+       |                 |                 Grafana :3001
+       +------- Pi LAN DNS / RDP / SensorDash ----+ (optional metrics)
 ```
 
 - **Public router exposure:** UDP 51820 to the Pi only. No published administration UI, SSH, DNS or HTTP WAN forwarding.
 - **WireGuard manager:** bound to the Pi's IPv4 loopback, reachable from an administrator's PC using an SSH port-forward. Admin HTML is HTTP only *inside the SSH tunnel*.
 - **Pi-hole DNS:** bound to the Pi's specified private IPv4 address, TCP and UDP 53; administration on port 8080 is **LAN/VPN-only HTTP with password**. Keep the LAN trustworthy; add HTTPS before extending web-admin access beyond it.
 - **Portal:** `http://PI_IP:8088` on LAN/VPN, zero dependencies beyond Python stdlib, no secrets, no Docker socket, no write API. Checks Pi-hole DNS and wg-easy's admin listener (not an actual VPN handshake).
-- **Optional Uptime Kuma:** `http://PI_IP:3001` with its own login; leave off until needed.
+- **Optional Grafana:** `http://PI_IP:3000` with its own login; leave off until needed.
 
 ## Quick start (new Pi or after imaging)
 
@@ -87,7 +87,7 @@ Full tunnel is optional: use `0.0.0.0/0` for IPv4 AllowedIPs when intentionally 
 | wg-easy | `http://127.0.0.1:51821` | Only via SSH forwarding, then wg-easy login |
 | Uptime Kuma | `http://PI_IP:3001` | Optional, separate account |
 
-Start optional monitoring with `docker compose --profile monitoring up -d uptime-kuma`. Set up DNS, HTTP and TCP monitors in Kuma; **TCP admin health does not prove WireGuard peer connectivity**. Do not add a Docker socket mount to any web-exposed service.
+Start optional Grafana/VictoriaMetrics using the [telemetry guide](docs/TELEMETRY.md), which includes local HTTPS certificate and bearer token bootstrap. Monitoring charts never authorize physical fan control. Do not add a Docker socket to any web service.
 
 ## Operator commands
 
@@ -112,10 +112,15 @@ python3 -m compileall -q portal scripts
 cp .env.example .env
 mkdir -p secrets; printf 'test-only' > secrets/pihole_password
 docker compose config -q
-docker compose --profile monitoring config -q
+docker compose --profile metrics config -q
 python3 scripts/check_contracts.py
 ```
 
 Never commit `.env`, `secrets/`, `data/`, `backups/`, or client profiles/QR codes. CI tests configuration without starting DNS or WireGuard or modifying a router. See [AGENTS.md](AGENTS.md) for AI-assisted change rules.
 
 **References:** [Pi-hole Docker](https://docs.pi-hole.net/docker/) · [Pi-hole v6 config](https://docs.pi-hole.net/docker/configuration/) · [wg-easy 15 setup](https://wg-easy.github.io/wg-easy/v15.2/examples/tutorials/basic-installation/) · [wg-easy admin security warning](https://wg-easy.github.io/wg-easy/latest/examples/tutorials/reverse-proxyless/) · [Uptime Kuma](https://github.com/louislam/uptime-kuma).
+
+
+## SensorDash / Grafana milestone 1
+
+See [docs/TELEMETRY.md](docs/TELEMETRY.md): an optional Grafana 13.3.0 + VictoriaMetrics v1.155.0 profile, write-only authenticated TLS intake, and a provisioned raw-sensor dashboard. SensorDash's exporter remains disabled by default; all existing local control and browser features continue. Do not expose metrics endpoints at the router.
