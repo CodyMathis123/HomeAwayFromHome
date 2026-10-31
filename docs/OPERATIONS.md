@@ -51,10 +51,10 @@ bash scripts/update.sh --apply
 bash scripts/smoke.sh
 ```
 
-The update script only updates core services; monitoring stays opt-in. To update Grafana/VictoriaMetrics after a backup (intake image separately if changed):
+The update script only updates core services; metrics stay opt-in. To update Grafana/VictoriaMetrics after a backup (intake image separately if changed):
 ```bash
-docker compose --profile monitoring pull uptime-kuma
-docker compose --profile monitoring up -d uptime-kuma
+docker compose --profile metrics pull grafana victoria-metrics
+docker compose --profile metrics up -d grafana victoria-metrics
 ```
 
 Avoid blind watchtower updates. Review `docker compose logs --tail=150` and test on a noncritical client before re-enabling household-wide DNS.
