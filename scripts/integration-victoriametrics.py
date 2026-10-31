@@ -114,10 +114,10 @@ def main() -> None:
         assert 200 <= response.status < 300
     def role(role_name: str) -> str:
         return (
-            'max by(host,system) (sensordash_reading_value{host="CI",kind="Temperature"}'
-            ' * on(host,sensor) group_right()'
-            ' (sensordash_cooling_binding_value{host="CI",system="loop",kind="Temperature",role="'
-            + role_name + '"} == 1))'
+            'max by(host,system) ((sensordash_cooling_binding_value{host="CI",system="loop",kind="Temperature",role="'
+            + role_name + '"} == 1)'
+            ' * on(host,sensor) group_left()'
+            ' sensordash_reading_value{host="CI",kind="Temperature"})'
         )
     delta_query = role("coolant-probe") + " - on(host,system) " + role("room-ambient")
     for _ in range(20):
