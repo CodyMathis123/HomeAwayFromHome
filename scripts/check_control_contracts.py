@@ -32,7 +32,7 @@ def check(config: dict, private_ip: str):
     controller = services["pc-control"]
     assert controller["read_only"] is True
     assert controller.get("group_add"), "Socket group is required"
-    mounts = {(v["source"], v["target"], v["read_only"]) for v in controller["volumes"]}
+    mounts = {(v["source"], v["target"], v.get("read_only", False)) for v in controller["volumes"]}
     assert ("/run/homeaway-pcctl", "/run/homeaway-pcctl", True) in mounts
     assert ("/etc/homeaway-pcctl", "/etc/homeaway-pcctl", True) in mounts
     assert not any("/.ssh" in str(v) or "id_ed25519" in str(v) for v in controller["volumes"])
