@@ -54,6 +54,13 @@ def check(config: dict, ip: str) -> None:
     assert services["portal"].get("privileged", False) is False
     assert services["wg-easy"].get("environment", {}).get("INSECURE") == "true"
     assert services["wg-easy"].get("privileged", False) is False
+    # The Pi 4 / kernel 6.18 live deployment needs nftables userspace in
+    # wg-easy's own container; host iptables alternatives are insufficient.
+    assert services["wg-easy"]["image"] == "homeaway-wg-easy-nft:15.5.0"
+    assert services["wg-easy"]["build"]["dockerfile"] == "Dockerfile.wg-easy-nft"
+    dockerfile = Path("Dockerfile.wg-easy-nft").read_text(encoding="utf-8")
+    assert "FROM ghcr.io/wg-easy/wg-easy:15.5.0" in dockerfile
+    assert "iptables-nft" in dockerfile and "ip6tables-nft" in dockerfile
 
     for name, service in services.items():
         assert not service.get("privileged", False), name
