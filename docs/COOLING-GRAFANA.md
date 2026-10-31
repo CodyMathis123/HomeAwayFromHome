@@ -1,6 +1,6 @@
 # Cooling-system metadata in Grafana (milestone 2)
 
-The [Windows exporter branch](https://github.com/CodyMathis123/SensorDash/tree/feature/telemetry-grafana-export) now synchronizes a **read-only catalog** of discovered sensors and each configured Cooling System's component-to-sensor bindings. This is *metadata*, not a second hardware poller, control interface, or cooling configuration database. SensorDash still defines all sensor IDs, names, aliases, cooling system roles, fan/PWM mappings and approvals.
+The [Windows exporter branch](https://github.com/CodyMathis123/SensorDash/tree/feature/telemetry-grafana-export) now synchronizes a **read-only catalog** of discovered sensors and each configured Cooling System's component-to-sensor bindings **including RPM, PWM and power sensor references stored in a component's electrical configuration**. This is *metadata*, not a second hardware poller, control interface, or cooling configuration database. SensorDash still defines all sensor IDs, names, aliases, cooling system roles, fan/PWM mappings and approvals.
 
 ## What gets sent
 
