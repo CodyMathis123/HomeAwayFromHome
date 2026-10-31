@@ -28,11 +28,11 @@ class IngestTests(unittest.TestCase):
             b"sensordash_cooling_binding,host=My_PC,sensor=/cpu/0/temperature/0,system=loop-01,system_name=Walnut_Loop,component=heat-cpu,component_name=CPU_Block,role=heat-source,kind=Temperature value=1 1793450400000",
             b"sensordash_cooling_binding,host=My_PC,sensor=/cpu/0/temperature/0,system=loop-01,system_name=Walnut_Loop,component=heat-cpu,component_name=CPU_Block,role=heat-source,kind=Temperature value=0 1793450460000",
         ]
-        self.assertTrue(valid_payload(b"\\n".join(descriptors) + b"\\n"))
+        self.assertTrue(valid_payload(b"\n".join(descriptors) + b"\n"))
         self.assertFalse(valid_payload(descriptors[0].replace(b"value=1", b"value=2")))
         self.assertFalse(valid_payload(descriptors[1].replace(b"role=heat-source", b"role=heat source")))
         self.assertFalse(valid_payload(descriptors[1].replace(b"component_name=CPU_Block", b"component_name=CPU,Block")))
-        self.assertFalse(valid_payload(descriptors[1] + b"\\nrogue_metric value=1 1793450400000"))
+        self.assertFalse(valid_payload(descriptors[1] + b"\nrogue_metric value=1 1793450400000"))
         self.assertFalse(valid_payload(descriptors[1].replace(b"value=1", b"value=nan")))
 
     def test_reject_injection_and_oversize(self):
@@ -84,7 +84,7 @@ class IngestHttpTests(unittest.TestCase):
     def test_catalog_payload_is_accepted_without_write_authority(self):
         metadata = (
             b"sensordash_sensor_info,host=PC,sensor=/gpu/0/temperature/0,"
-            b"kind=Temperature,name=GPU_Core,alias=GPU_Core,device=Radeon_RX value=1 1793450400000\\n"
+            b"kind=Temperature,name=GPU_Core,alias=GPU_Core,device=Radeon_RX value=1 1793450400000\n"
         )
         with patch("ingest.app.forward", return_value=204) as forward:
             self.assertEqual(self.request("POST", "/ingest", token="a" * 64, body=metadata), 204)
