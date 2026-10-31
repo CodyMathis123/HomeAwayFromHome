@@ -55,7 +55,7 @@ async function doAction(item, action) {
   const confirm = destructive ? window.prompt('Enter computer ID "' + item.id + '" to confirm:') : '';
   if (destructive && confirm !== item.id) return;
   pending.add(item.id);
-  status.textContent = 'Sending ' + action + ' request for ' + item.name + '…';
+  $('last-action').textContent = 'Sending ' + action + ' request for ' + item.name + '…';
   try {
     const response = await fetch('/control/api/actions', {
       method: 'POST', credentials: 'same-origin',
@@ -64,9 +64,9 @@ async function doAction(item, action) {
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || result.detail || 'Request failed');
-    status.textContent = item.name + ': ' + result.detail;
+    $('last-action').textContent = item.name + ': ' + result.detail;
   } catch (error) {
-    status.textContent = item.name + ': ' + error.message;
+    $('last-action').textContent = item.name + ': ' + error.message;
   } finally {
     pending.delete(item.id);
     await refresh();
