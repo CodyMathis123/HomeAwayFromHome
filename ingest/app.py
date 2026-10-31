@@ -28,6 +28,7 @@ LINE = re.compile(
 H = rb"[A-Za-z0-9_.:/-]{1,80}"
 S = rb"[A-Za-z0-9_.:/-]{1,256}"
 K = rb"[A-Za-z0-9_]{1,40}"
+R = rb"[A-Za-z0-9_-]{1,40}"
 N = rb"[A-Za-z0-9_.:/-]{1,96}"
 T = rb"[0-9]{13,20}"
 INFO_LINE = re.compile(
@@ -40,7 +41,7 @@ BINDING_LINE = re.compile(
     rb"^sensordash_cooling_binding,host=" + H
     + rb",sensor=" + S + rb",system=" + H
     + rb",system_name=" + N + rb",component=" + H
-    + rb",component_name=" + N + rb",role=" + K
+    + rb",component_name=" + N + rb",role=" + R
     + rb",kind=" + K + rb" value=[01] " + T + rb"$"
 )
 
