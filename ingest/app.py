@@ -45,6 +45,17 @@ BINDING_LINE = re.compile(
     + rb",kind=" + K + rb" value=[01] " + T + rb"$"
 )
 
+# Derived fan and pump power is archived by the Windows collector under the
+# configuration revision active at the sample timestamp. No remote control.
+POWER_LINE = re.compile(
+    rb"^sensordash_accessory_power,host=" + H
+    + rb",system=" + H + rb",component=" + H
+    + rb",source=(?:measured|calibrated|curve|rated)"
+    + rb",revision=[0-9a-f]{16}"
+    + rb" value=-?(?:[0-9]+(?:\\.[0-9]+)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)? "
+    + T + rb"$"
+)
+
 TOKEN_FILE = Path(os.environ.get("INGEST_TOKEN_FILE", "/run/tls/token"))
 VM_HOST = os.environ.get("VICTORIAMETRICS_HOST", "victoria-metrics")
 VM_PORT = 8428
@@ -56,7 +67,7 @@ def valid_payload(body: bytes) -> bool:
     rows = body.strip(b"\n").split(b"\n")
     return 0 < len(rows) <= MAX_LINES and all(
         LINE.fullmatch(line) or INFO_LINE.fullmatch(line)
-        or BINDING_LINE.fullmatch(line) for line in rows
+        or BINDING_LINE.fullmatch(line) or POWER_LINE.fullmatch(line) for line in rows
     )
 
 
