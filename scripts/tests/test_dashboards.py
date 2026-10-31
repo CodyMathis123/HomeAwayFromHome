@@ -23,27 +23,33 @@ class DashboardContracts(unittest.TestCase):
 
     def test_cooling_panels_use_binding_metadata_not_copied_raw_series(self):
         d = json.loads((PANELS / "cooling-systems.json").read_text(encoding="utf-8"))
-        queries = [t["expr"] for p in d["panels"] for t in p["targets"]]
-        self.assertIn("sensordash_cooling_binding_value", queries[0])
-        self.assertIn("== 1", queries[0])
-        for query in queries[1:]:
+        panels = {p["id"]: p for p in d["panels"]}
+        inventory_query = panels[1]["targets"][0]["expr"]
+        self.assertIn("sensordash_cooling_binding_value", inventory_query)
+        self.assertIn("== 1", inventory_query)
+        for id in range(2, 10):
+            query = panels[id]["targets"][0]["expr"]
             self.assertIn("sensordash_reading_value", query)
             self.assertIn("group_right()", query)
             self.assertIn("sensordash_cooling_binding_value", query)
             self.assertIn("== 1", query)
-        self.assertIn('role=~"fan-group"', "\n".join(queries))
-        self.assertIn('role=~"pump"', "\n".join(queries))
+            self.assertIn("sensordash_sensor_info_value", query)
+            self.assertEqual(panels[id]["targets"][0]["legendFormat"],
+                             "{{component_name}} · {{name}}")
+        self.assertIn('role=~"fan-group"', "\n".join(
+            panels[id]["targets"][0]["expr"] for id in range(2, 10)))
+        self.assertIn('role=~"pump"', "\n".join(
+            panels[id]["targets"][0]["expr"] for id in range(2, 10)))
 
     def test_cooling_metadata_and_legends_are_readable(self):
         d = json.loads((PANELS / "cooling-systems.json").read_text(encoding="utf-8"))
-        inventory = d["panels"][0]
-        self.assertEqual(inventory["title"], "Cooling sensor assignments")
-        self.assertEqual(len(inventory["targets"]), 1)
+        inventory = next(p for p in d["panels"] if p["id"] == 1)
+        self.assertEqual(inventory["title"], "Sensor assignments · reference")
         query = inventory["targets"][0]["expr"]
-        self.assertIn("sensordash_cooling_binding_value", query)
-        self.assertIn("sensordash_sensor_info_value", query)
-        self.assertIn("group_left(name,alias,device)", query)
-        self.assertIn("== 1", query)
+        for required in ("sensordash_cooling_binding_value",
+                         "sensordash_sensor_info_value", "group_left(name,alias,device)",
+                         "label_replace(", "component_name", "system_name", "== 1"):
+            self.assertIn(required, query)
         organize = inventory["transformations"][0]
         self.assertEqual(organize["id"], "organize")
         columns = organize["options"]["renameByName"]
@@ -51,33 +57,27 @@ class DashboardContracts(unittest.TestCase):
         self.assertEqual(columns["component_name"], "Component")
         for key in ("sensor", "component", "system", "__name__", "Time", "Value"):
             self.assertTrue(organize["options"]["excludeByName"].get(key), key)
-        for panel in d["panels"][1:]:
-            target = panel["targets"][0]
-            self.assertIn("sensordash_reading_value", target["expr"])
-            self.assertIn("sensordash_cooling_binding_value", target["expr"])
-            self.assertIn("group_right()", target["expr"])
-            self.assertIn("sensordash_sensor_info_value", target["expr"])
-            self.assertIn("group_left(name,alias,device)", target["expr"])
-            self.assertEqual(target["legendFormat"], "{{component_name}} · {{name}}")
 
     def test_electrical_dashboard_never_conflates_ratings_with_measurements(self):
         d = json.loads((PANELS / "electrical.json").read_text(encoding="utf-8"))
         self.assertIn("Ratings are estimates", d["description"])
-        queries = [t["expr"] for p in d["panels"] for t in p["targets"]]
-        self.assertIn("sensordash_component_info_value", queries[0])
-        for q in queries[1:]:
-            self.assertIn("sensordash_accessory_power_value", q)
-            self.assertIn("on(host,system,component) group_left(", q)
-            self.assertIn("sensordash_component_info_value", q)
-            self.assertIn("== 1", q)
-        self.assertIn('source="measured"', queries[3])
-        self.assertIn('role="pump"', queries[4])
-        self.assertIn('role="fan-group"', queries[2])
-        self.assertTrue(all(p["targets"][0].get("range", True) for p in d["panels"][1:]))
+        panels = {p["id"]: p for p in d["panels"]}
+        self.assertIn("sensordash_component_info_value", panels[1]["targets"][0]["expr"])
+        for id in (2, 3, 4, 5):
+            query = panels[id]["targets"][0]["expr"]
+            self.assertIn("sensordash_accessory_power_value", query)
+            self.assertIn("on(host,system,component) group_left(", query)
+            self.assertIn("sensordash_component_info_value", query)
+            self.assertIn("== 1", query)
+            self.assertTrue(panels[id]["targets"][0].get("range", True))
+        self.assertIn('source="measured"', panels[4]["targets"][0]["expr"])
+        self.assertIn('role="pump"', panels[5]["targets"][0]["expr"])
+        self.assertIn('role="fan-group"', panels[3]["targets"][0]["expr"])
 
     def test_electrical_dashboard_labels_and_inventory_are_readable(self):
         d = json.loads((PANELS / "electrical.json").read_text(encoding="utf-8"))
-        inventory = d["panels"][0]
+        panels = {p["id"]: p for p in d["panels"]}
+        inventory = panels[1]
         self.assertEqual(inventory["title"], "Cooling component inventory")
         self.assertEqual(len(inventory["targets"]), 1)
         organize = inventory["transformations"][0]
@@ -88,9 +88,9 @@ class DashboardContracts(unittest.TestCase):
         hidden = organize["options"]["excludeByName"]
         for field in ("component", "system", "__name__", "Time", "Value"):
             self.assertTrue(hidden.get(field), field)
-        for panel in d["panels"][1:]:
-            target = panel["targets"][0]
-            self.assertIn("label_replace(", target["expr"])
+        self.assertIn("label_replace(", inventory["targets"][0]["expr"])
+        for id in (2, 3, 4, 5):
+            target = panels[id]["targets"][0]
             self.assertIn("revision_short", target["expr"])
             self.assertIn("revision", target["expr"])
             self.assertIn("{{source}}", target["legendFormat"])
@@ -141,12 +141,56 @@ class DashboardContracts(unittest.TestCase):
 
     def test_catalog_is_distinct_from_raw_identity(self):
         d = json.loads((PANELS / "sensordash.json").read_text(encoding="utf-8"))
-        queries = [t["expr"] for p in d["panels"] for t in p["targets"]]
-        self.assertTrue(queries[0].startswith("sensordash_sensor_info_value"))
-        for query in queries[1:]:
+        panels = {p["id"]: p for p in d["panels"]}
+        self.assertIn("sensordash_sensor_info_value", panels[10]["targets"][0]["expr"])
+        self.assertIn("label_replace(", panels[10]["targets"][0]["expr"])
+        for id in (1, 2, 3, 4):
+            query = panels[id]["targets"][0]["expr"]
             self.assertTrue(query.startswith("sensordash_reading_value"))
             self.assertIn('sensor=~"$sensor"', query)
             self.assertNotIn("alias=", query)
+            self.assertIn("sensordash_sensor_info_value", query)
+            self.assertIn("on(host,sensor) group_left(name,alias,device)", query)
+            self.assertEqual(panels[id]["targets"][0]["legendFormat"], "{{name}}")
+
+    def test_dashboard_visual_contract(self):
+        # Native panels only; the CSS/theme belongs to Grafana, not a patched
+        # app image. Display cleanup must not touch stored sensor labels.
+        for filename in ("sensordash.json", "cooling-systems.json",
+                         "electrical.json", "dns-vpn.json"):
+            d = json.loads((PANELS / filename).read_text(encoding="utf-8"))
+            self.assertEqual(d["time"]["from"], "now-1h")
+            headers = [p for p in d["panels"] if p["type"] == "text"]
+            self.assertGreaterEqual(len(headers), 2, filename)
+            self.assertTrue(all(p["options"]["mode"] == "markdown"
+                                and p.get("transparent") is True for p in headers))
+            for p in d["panels"]:
+                a = p["gridPos"]
+                self.assertGreater(a["h"], 0)
+                self.assertGreater(a["w"], 0)
+                self.assertGreaterEqual(a["x"], 0)
+                self.assertLessEqual(a["x"] + a["w"], 24)
+                for q in d["panels"]:
+                    if p["id"] >= q["id"]:
+                        continue
+                    b = q["gridPos"]
+                    collision = (a["x"] < b["x"] + b["w"]
+                                 and a["x"] + a["w"] > b["x"]
+                                 and a["y"] < b["y"] + b["h"]
+                                 and a["y"] + a["h"] > b["y"])
+                    self.assertFalse(collision, (filename, p["id"], q["id"]))
+                if p["type"] == "timeseries":
+                    self.assertEqual(p["fieldConfig"]["defaults"]["color"]["mode"],
+                                     "palette-classic-by-name")
+                    self.assertTrue(any(t["id"] == "renameByRegex"
+                                        and t["options"]["regex"] == "/_/g"
+                                        and t["options"]["renamePattern"] == " "
+                                        for t in p.get("transformations", [])))
+            # Keep required data sources and full IDs in *raw series*;
+            # rename only graph titles or joined display/catalog fields.
+            if filename != "dns-vpn.json":
+                self.assertTrue(any("label_replace(" in t["expr"]
+                                    for p in d["panels"] for t in p["targets"]))
 
 
 

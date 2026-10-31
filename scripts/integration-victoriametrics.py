@@ -104,6 +104,18 @@ def main() -> None:
         assert {x["metric"]["component_name"] for x in named} == {"CPU_Block", "Auxiliary"}, named
         assert {x["metric"]["name"] for x in named} == {"CPU_Package"}, named
         assert {x["metric"]["alias"] for x in named} == {"CPU_Temp"}, named
+    # A query-time display normalization can convert labels with underscores
+    # without changing VictoriaMetrics' original stored series identity.
+    decorated = query(
+        'label_replace(label_replace(' + INFO +
+        ', "name", "$1 $2", "name", "^(.*)_(.*)$"), '
+        '"alias", "$1 $2", "alias", "^(.*)_(.*)$")'
+    )
+    assert len(decorated) == 1, decorated
+    assert decorated[0]["metric"]["name"] == "CPU Package", decorated
+    assert decorated[0]["metric"]["alias"] == "CPU Temp", decorated
+    assert {x["metric"]["name"] for x in query(INFO)} == {"CPU_Package"}
+
         assert {x["metric"]["device"] for x in named} == {"Test_PC"}, named
         assert all(float(x["value"][1]) in (1.0, 50.0) for x in named), named
 
