@@ -10,7 +10,7 @@ import urllib.error
 import urllib.request
 
 BASE = "http://127.0.0.1:13000"
-EXPECTED = {"homeaway-overview", "homeaway-sensordash", "homeaway-cooling", "homeaway-electrical", "homeaway-dns-vpn", "homeaway-storage", "homeaway-events", "homeaway-system"}
+EXPECTED = {"homeaway-overview", "homeaway-sensordash", "homeaway-cooling", "homeaway-electrical", "homeaway-dns-vpn", "homeaway-storage", "homeaway-events", "homeaway-system", "homeaway-portal"}
 AUTH = "Basic " + base64.b64encode(b"admin:ci-only-grafana-password").decode("ascii")
 
 
@@ -48,7 +48,7 @@ def main() -> None:
         assert dashboard["uid"] == uid, uid
         assert dashboard["panels"], uid
         assert dashboard["editable"] is False, uid
-    print("PASS: Grafana boot, authentication and all eight provisioned dashboards")
+    print("PASS: Grafana boot, authentication and all nine provisioned dashboards")
 
 
 if __name__ == "__main__":

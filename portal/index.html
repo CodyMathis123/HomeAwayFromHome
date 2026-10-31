@@ -48,6 +48,16 @@
         <a id="link-monitor" href="#" rel="noreferrer">Open monitors <span aria-hidden="true">↗</span></a>
       </article>
     </div>
+    <section class="section-heading" id="metrics-heading"><div><p class="eyebrow">OBSERVABILITY</p><h2>Live metrics</h2></div><p>Read-only Grafana panels</p></section>
+    <details id="metrics-section" class="metrics-section" open>
+      <summary>HomeAway metrics <span class="metrics-hint">Show / hide</span></summary>
+      <div class="metrics-body">
+        <p id="metrics-description" class="metrics-description" role="status">Checking embedded dashboard configuration…</p>
+        <div id="metrics-frame" class="metrics-frame"></div>
+        <p class="metrics-footer">SensorDash retains hardware and fan control. Grafana displays historical data only.
+          <a id="metrics-open" href="#" target="_blank" rel="noreferrer noopener" hidden>Open read-only view in Grafana ↗</a></p>
+      </div>
+    </details>
     <section class="note"><strong>Security boundary</strong><p>This dashboard cannot change DNS, WireGuard peers, Docker, or fan control. The WireGuard administration UI is intentionally bound to the Pi's loopback address. Expose only your VPN UDP port at the router.</p></section>
     <footer><span>HomeAwayFromHome · Raspberry Pi 4</span><span>No telemetry cloud · No browser admin tokens</span></footer>
   </main>

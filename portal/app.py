@@ -5,7 +5,9 @@ do NOT prove WireGuard client handshakes or end-to-end VPN reachability.
 """
 from __future__ import annotations
 
+import ipaddress
 import json
+import re
 import os
 import secrets
 import socket
@@ -75,6 +77,26 @@ def snapshot() -> dict:
     }
 
 
+
+def shared_embed_url() -> str | None:
+    """Build an iframe URL only for this Pi's private LAN address and a valid token.
+
+    This is a shared-dashboard access token, NOT a Grafana admin credential.
+    The bearer-style link is readable by every visitor to the portal.
+    """
+    token = os.getenv("GRAFANA_PUBLIC_EMBED_TOKEN", "").strip()
+    address = os.getenv("PI_LAN_IP", "").strip()
+    if not re.fullmatch(r"[a-fA-F0-9]{32,128}", token):
+        return None
+    try:
+        ip = ipaddress.IPv4Address(address)
+    except ipaddress.AddressValueError:
+        return None
+    if not ip.is_private:
+        return None
+    return f"http://{ip}:3000/public-dashboards/{token}?theme=dark"
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "HomeAwayPortal/1"
 
@@ -86,15 +108,25 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
         self.send_header("X-Frame-Options", "DENY")
+        embed = shared_embed_url()
+        frame_origin = embed.split("/public-dashboards/")[0] if embed else "'none'"
         self.send_header("Content-Security-Policy",
                          "default-src 'none'; script-src 'self'; style-src 'self'; "
-                         "connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'")
+                         "connect-src 'self'; img-src 'self'; base-uri 'none'; "
+                         "form-action 'none'; frame-src " + frame_origin)
         self.end_headers()
 
     def do_GET(self) -> None:  # noqa: N802
         path = urlsplit(self.path).path
         if path == "/api/status":
             payload = json.dumps(snapshot(), separators=(",", ":")).encode("utf-8")
+            self._headers(200, "application/json; charset=utf-8", len(payload))
+            self.wfile.write(payload)
+            return
+        if path == "/api/embed-config":
+            url = shared_embed_url()
+            payload = json.dumps({"enabled": url is not None, "url": url},
+                                 separators=(",", ":")).encode("utf-8")
             self._headers(200, "application/json; charset=utf-8", len(payload))
             self.wfile.write(payload)
             return

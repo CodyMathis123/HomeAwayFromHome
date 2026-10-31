@@ -1,7 +1,7 @@
 name: Validate Pi infrastructure
 on:
   pull_request:
-    branches: [Production]
+    branches: [Production, feature/pi4-home-infrastructure]
   push:
     branches: [Production]
   workflow_dispatch:

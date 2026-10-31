@@ -73,6 +73,8 @@ services:
     environment:
       PIHOLE_DNS_HOST: pihole
       WG_ADMIN_HOST: wg-easy
+      PI_LAN_IP: ${PI_LAN_IP:?Set PI_LAN_IP in .env}
+      GRAFANA_PUBLIC_EMBED_TOKEN: ${GRAFANA_PUBLIC_EMBED_TOKEN:-}
     ports:
       - "${PI_LAN_IP:?Set PI_LAN_IP in .env}:8088:8080/tcp"
     networks:
@@ -109,6 +111,9 @@ services:
       GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_AUTH_ANONYMOUS_ENABLED: "false"
+      # Only the manually shared, read-only dashboard loads without a login.
+      # Allow iframe rendering on this private LAN/VPN-only Grafana listener.
+      GF_SECURITY_ALLOW_EMBEDDING: "true"
       GF_SERVER_ROOT_URL: "http://${PI_LAN_IP:?Set PI_LAN_IP}:3000"
     secrets:
       - grafana_admin_password

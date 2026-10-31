@@ -142,3 +142,7 @@ The read-only [SensorDash Overview](grafana/dashboards/overview.json) puts featu
 ## Storage and events moved to Grafana
 
 Storage-device activity and temperature, local history-buffer footprint, and historical threshold events are now available in the new read-only [Storage](grafana/dashboards/storage.json) and [Events](grafana/dashboards/events.json) dashboards. Windows remains the sole owner of sensor sampling, alert thresholds, fan control, tray icons and cooling associations. Deploy the Pi ingestion schema before upgrading the Windows exporter.
+
+### Embedded read-only Grafana metrics in HomeAway
+
+The portal supports an opt-in, one-iframe compact Grafana view without an extra login. Keep all browser endpoints LAN/VPN-only; read [the enablement and revocation guide](docs/PORTAL-METRICS-EMBED.md) before sharing. By default no dashboard is shared and no iframe loads. Grafana admin authentication remains enabled.
