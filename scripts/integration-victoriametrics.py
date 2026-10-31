@@ -98,7 +98,36 @@ def main() -> None:
         raise AssertionError("Old cooling binding remained active: " + repr(remaining))
     assert remaining[0]["metric"]["component_name"] == "CPU_Block", remaining
     assert len(query(RAW)) == 1, "Tombstone must never delete original raw sensor"
-    print("PASS: VictoriaMetrics ingestion, one-to-many cooling joins and removal tombstones")
+    # Thermal delta is valid only with measured coolant and room-air probes.
+    therm = [
+        f"sensordash_reading,host=CI,sensor=coolant,kind=Temperature value=31 {stamp + 2000}",
+        f"sensordash_reading,host=CI,sensor=ambient,kind=Temperature value=22 {stamp + 2000}",
+        f"sensordash_cooling_binding,host=CI,sensor=coolant,system=loop,system_name=Lab_Loop,component=cool,component_name=Coolant,role=coolant-probe,kind=Temperature value=1 {stamp + 2000}",
+        f"sensordash_cooling_binding,host=CI,sensor=ambient,system=loop,system_name=Lab_Loop,component=room,component_name=Room_Air,role=room-ambient,kind=Temperature value=1 {stamp + 2000}",
+    ]
+    thermal_write = urllib.request.Request(
+        BASE + "/api/v2/write?precision=ms", method="POST",
+        data=("\n".join(therm) + "\n").encode("ascii"),
+        headers={"Content-Type": "text/plain"},
+    )
+    with urllib.request.urlopen(thermal_write, timeout=10) as response:
+        assert 200 <= response.status < 300
+    def role(role_name: str) -> str:
+        return (
+            'max by(host,system) (sensordash_reading_value{host="CI",kind="Temperature"}'
+            ' * on(host,sensor) group_right()'
+            ' (sensordash_cooling_binding_value{host="CI",system="loop",kind="Temperature",role="'
+            + role_name + '"} == 1))'
+        )
+    delta_query = role("coolant-probe") + " - on(host,system) " + role("room-ambient")
+    for _ in range(20):
+        delta = query(delta_query)
+        if delta and abs(float(delta[0]["value"][1]) - 9.0) < 0.00001:
+            break
+        time.sleep(0.5)
+    else:
+        raise AssertionError("Cooling ΔT join did not equal 31°C - 22°C: " + repr(delta))
+    print("PASS: real VictoriaMetrics joins, tombstones and coolant-to-room delta")
 
 
 if __name__ == "__main__":
