@@ -22,6 +22,8 @@ class AuthContracts(unittest.TestCase):
                                          "s" * 80, "j" * 80, "e" * 80)
         self.assertIn("default_policy: deny", cfg)
         self.assertIn("policy: two_factor", cfg)
+        self.assertIn("group:admins", cfg)
+        self.assertNotIn("policy: bypass", cfg)
         self.assertIn("resources:", cfg)
         self.assertIn("/control(?:/.*)?", cfg)
         self.assertIn("https://auth.homeaway.home.arpa:8443", cfg)

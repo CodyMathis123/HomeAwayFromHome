@@ -21,7 +21,7 @@ HomeAway HTTPS :8443 -> Caddy -> Authelia 2FA -> /control/ -> pc-control |  Pi h
 
 HomeAway's existing HTTP :8088 portal remains read-only. HTTPS :8443 serves the same HomeAway page plus an authenticated `/control/` section. The controller does not run arbitrary commands, store SSH keys, have host-network privileges, mount the Docker socket or expose its own TCP port. The Pi's socket-activated agent executes only `status`, `wake`, `sleep`, `restart`, `shutdown`, for IDs in a validated JSON inventory. All changes are explicit POST requests, protected by Authelia forward-auth, exact Origin checks, a non-simple custom header, and confirmations for restart/shutdown. Calls are logged to a bounded local audit file.
 
-Default Authelia policy demands **two factors** for the `/control` path (local password plus enrolled TOTP). The rest of HomeAway's read-only portal does not require a login. Signed-in session cookies are handled by Authelia, never by custom portal JavaScript. Status checks only test an SSH TCP listener; a command response means *requested*, not proven completed.
+Default Authelia policy denies access, while only **admins-group** accounts may authenticate with **two factors** for the `/control` path (local password plus enrolled TOTP). The rest of HomeAway's read-only portal does not require a login. Signed-in session cookies are handled by Authelia, never by custom portal JavaScript. Status checks only test an SSH TCP listener; a command response means *requested*, not proven completed.
 
 ## 0. Prerequisites / decisions
 
