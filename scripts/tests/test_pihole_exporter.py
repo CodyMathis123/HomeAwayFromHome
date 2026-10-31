@@ -29,7 +29,7 @@ class FakeResponse:
 
 class ExporterTests(unittest.TestCase):
     def test_metrics_are_aggregated_without_query_logs(self):
-        result = render_metrics(SUMMARY, {"blocking": True})
+        result = render_metrics(SUMMARY, {"blocking": "enabled", "timer": None})
         self.assertIn("homeaway_pihole_queries_window 100", result)
         self.assertIn("homeaway_pihole_blocked_percent 23.0", result)
         self.assertIn('homeaway_pihole_query_type_window{type="AAAA"} 30', result)
@@ -44,8 +44,18 @@ class ExporterTests(unittest.TestCase):
             sample["queries"] = dict(SUMMARY["queries"], total=value)
             with self.assertRaises(ValueError):
                 render_metrics(sample, {"blocking": True})
-        with self.assertRaises(ValueError):
-            render_metrics(SUMMARY, {"blocking": "enabled"})
+        for bad in (True, False, "failed", "unknown", "ENABLED", None):
+            with self.subTest(blocking=bad), self.assertRaises(ValueError):
+                render_metrics(SUMMARY, {"blocking": bad})
+
+    def test_v6_blocking_state_strings(self):
+        # The real GET /api/dns/blocking response is a string; it must never
+        # be confused with the boolean accepted when POSTing a state change.
+        for state, expected in (("enabled", 1), ("disabled", 0)):
+            with self.subTest(state=state):
+                output = render_metrics(SUMMARY, {"blocking": state, "timer": None, "took": 0.00004})
+                self.assertIn(f"homeaway_pihole_blocking_enabled {expected}\\n", output)
+                self.assertIn("homeaway_pihole_queries_window 100", output)
 
     def test_app_session_reauth_and_no_secret_in_metrics(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -68,7 +78,7 @@ class ExporterTests(unittest.TestCase):
                         raise urllib.error.HTTPError(req.full_url, 401, "Unauthorized", None, None)
                     return FakeResponse(SUMMARY)
                 if path == "/api/dns/blocking":
-                    return FakeResponse({"blocking": True})
+                    return FakeResponse({"blocking": "enabled", "timer": None})
                 self.fail("Unexpected API endpoint: " + path)
             client = PiHoleV6Client("http://pihole", pw, opener=opener)
             text = client.snapshot()

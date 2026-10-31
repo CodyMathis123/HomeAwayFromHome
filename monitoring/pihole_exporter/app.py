@@ -47,13 +47,16 @@ def render_metrics(summary: dict, blocking: dict) -> str:
         for key in path:
             value = value[key]
         rows.extend((f"# HELP {name} {help_text}", f"# TYPE {name} gauge", f"{name} {number(value)}"))
+    # Pi-hole v6 GET /api/dns/blocking returns "enabled" or "disabled",
+    # not the boolean accepted by its POST request. Unknown/failed must not
+    # masquerade as "blocking off": fail this scrape instead.
     status = blocking["blocking"]
-    if not isinstance(status, bool):
-        raise ValueError("Unrecognized Pi-hole blocking state")
+    if status not in ("enabled", "disabled"):
+        raise ValueError("Unrecognized Pi-hole v6 blocking state")
     rows += (
         "# HELP homeaway_pihole_blocking_enabled DNS filtering enabled (1/0)",
         "# TYPE homeaway_pihole_blocking_enabled gauge",
-        f"homeaway_pihole_blocking_enabled {1 if status else 0}",
+        f"homeaway_pihole_blocking_enabled {1 if status == 'enabled' else 0}",
     )
     types = summary.get("queries", {}).get("types", {})
     if isinstance(types, dict):
@@ -132,9 +135,13 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(404, b"Not found\n")
         try:
             content = self.client.snapshot().encode("ascii")
-        except (OSError, ValueError, KeyError, TypeError, urllib.error.URLError, RuntimeError):
-            # Scrape failure becomes up=0 in VictoriaMetrics. Don't leak
-            # response bodies, cookies, session IDs or credentials to logs.
+        except (OSError, ValueError, KeyError, TypeError, urllib.error.URLError, RuntimeError) as exc:
+            # Scrape failure becomes up=0 in VictoriaMetrics. Only emit a
+            # safe class/HTTP status, never request headers, session IDs,
+            # password files, API response bodies, or exception messages.
+            import sys
+            detail = f"HTTP {exc.code}" if isinstance(exc, urllib.error.HTTPError) else type(exc).__name__
+            print(f"Pi-hole exporter scrape failed: {detail}", file=sys.stderr, flush=True)
             return self.reply(503, b"Pi-hole API unavailable\n")
         self.reply(200, content, "text/plain; version=0.0.4; charset=utf-8")
 
