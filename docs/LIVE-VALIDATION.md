@@ -1,0 +1,159 @@
+# First real deployment and side-by-side validation
+
+This is the **operator handoff** after repository CI. Nothing in this document is executed by GitHub Actions on your actual Pi or Windows computer. Keep both PRs in draft and the existing PC fan-control application installed until tests pass.
+
+The steps are ordered to avoid interrupting household DNS or the radiator fans. **Do not wipe the existing Pi or install the SensorDash preview MSI without checking current backups first.** When the fan-control service stops/restarts, the firmware-default fan behavior should be confirmed ahead of time.
+
+## Stage 0 — What to have available
+
+- Raspberry Pi 4, 8 GB, Ethernet, 64-bit Raspberry Pi OS Lite and preferably a USB SSD; access from an admin desktop using SSH.
+- Raspberry Pi address **reserved in the router**, the home subnet in CIDR notation, and a VPN hostname you control that resolves to your WAN IP. Decide whether your ISP connection allows inbound UDP 51820 (CGNAT can prevent it).
+- A backup of the existing Pi and SensorDash settings, ideally on a different disk.
+- The current Windows SensorDash MSI/branch remains installed and active until you explicitly choose a maintenance window. No credentials should go into GitHub.
+
+## Stage 1 — Prepare Pi OS and Docker
+
+1. Image a spare SSD or card with **Raspberry Pi OS Lite 64-bit** using Raspberry Pi Imager. Set a named user, SSH key and Ethernet. Keep the old Pi storage unplugged and available as rollback until validation.
+2. Boot the Pi and determine its real IPv4 address using `hostname -I`; confirm `uname -m` reports `aarch64`. Reserve that IPv4 in the router. Update packages and reboot.
+3. Install Docker Engine and Compose plugin from the official [Docker installation guide for Debian](https://docs.docker.com/engine/install/debian/). Confirm `docker info` and `docker compose version`.
+4. Clone the **feature branch**:
+
+   ```bash
+   git clone --branch feature/pi4-home-infrastructure \
+     https://github.com/CodyMathis123/HomeAwayFromHome.git
+   cd HomeAwayFromHome
+   bash scripts/init.sh
+   nano .env
+   ```
+
+5. Set `PI_LAN_IP` to the Pi's real reserved LAN IPv4; `LAN_CIDR` to the home subnet; `VPN_ENDPOINT` to your real public DNS hostname and confirm `VPN_CIDR` does not overlap the LAN or `10.42.42.0/24`. The example `192.168.1.10` is **not** assumed to be your address. Run:
+
+   ```bash
+   bash scripts/doctor.sh
+   docker compose config -q
+   ```
+
+   Fix all conflicts with port 53 before starting Pi-hole. If another service owns it, identify that service first rather than disabling it blindly.
+
+## Stage 2 — Bring up only DNS, VPN and portal
+
+```bash
+docker compose up -d --build pihole wg-easy portal
+docker compose ps
+bash scripts/smoke.sh
+```
+
+From another LAN computer, verify a DNS query directly against the Pi:
+
+```bash
+nslookup example.com PI_LAN_IP
+```
+
+Log in to `http://PI_LAN_IP:8080/admin/` using the **secret from** `secrets/pihole_password` (read only on the Pi; do not share it). Pi-hole must show the query. The read-only portal is at `http://PI_LAN_IP:8088/`.
+
+**Keep the router's household DNS unchanged** until direct LAN DNS works.
+
+## Stage 3 — Configure WireGuard privately
+
+From a separate admin desktop terminal:
+
+```bash
+ssh -L 51821:127.0.0.1:51821 PI_USER@PI_LAN_IP
+```
+
+Open `http://127.0.0.1:51821` locally, complete wg-easy's v15 wizard with a unique admin login, 2FA where available, the public `VPN_ENDPOINT` and external UDP port 51820. Set DNS to the Pi's LAN IPv4 and create an iPhone peer. Review its AllowedIPs for split-tunnel home-LAN access. **Never publicly forward 51821, Pi-hole ports, Grafana or telemetry intake.**
+
+Forward only router UDP **51820** to the Pi. With the iPhone on cellular and WireGuard enabled, verify an actual peer handshake using:
+
+```bash
+bash scripts/inspect-vpn.sh
+```
+
+Then test access to the Pi web interface and Windows RDP using their private LAN addresses. A VPN icon or responding wg-easy UI does not prove that LAN routing and DNS work.
+
+## Stage 4 — Install optional Grafana stack on Pi
+
+```bash
+sudo bash scripts/init-telemetry.sh
+sudo mkdir -p data/grafana data/victoria-metrics
+sudo chown -R 472:472 data/grafana
+docker compose --profile metrics up -d --build grafana telemetry-ingest
+docker compose --profile metrics ps
+```
+
+At `http://PI_LAN_IP:3000`, log in as `admin` with the generated `secrets/grafana_admin_password` value. Check the **HomeAway Metrics** datasource and the **SensorDash · Hardware Telemetry**, **SensorDash · Cooling Systems**, and **SensorDash · Fan & Pump Electricity** dashboards. Initially, the charts are correctly empty.
+
+Run `bash scripts/verify-telemetry.sh` now: it should check Grafana and TLS intake but report **no recent Windows data** (nonzero exit), as the exporter isn't enabled yet.
+
+## Stage 5 — Safely configure Windows exporter
+
+**First**, back up `C:\ProgramData\SensorDash\settings.json`, the existing SQLite database and your current installer. Ensure your fan hardware falls back to firmware defaults if the collector restarts. Use an approved SensorDash build from the separate [draft telemetry exporter PR](https://github.com/CodyMathis123/SensorDash/pull/13); do not merge either repository automatically.
+
+To transfer the Pi-issued **CA public certificate and private write token without pasting them into chat**, create a temporary SSH-accessible directory on the Pi:
+
+```bash
+mkdir -p "$HOME/homeaway-transfer"
+chmod 700 "$HOME/homeaway-transfer"
+sudo install -o "$USER" -g "$(id -gn)" -m 600 \
+  secrets/telemetry/ca.crt "$HOME/homeaway-transfer/telemetry-ca.crt"
+sudo install -o "$USER" -g "$(id -gn)" -m 600 \
+  secrets/telemetry/token "$HOME/homeaway-transfer/telemetry-token.txt"
+```
+
+From an **elevated Windows PowerShell**, replacing the two placeholders:
+
+```powershell
+$pi = "PI_USER@PI_LAN_IP"
+$dir = "C:\ProgramData\SensorDash"
+New-Item -ItemType Directory -Force -Path $dir | Out-Null
+scp "${pi}:homeaway-transfer/telemetry-ca.crt" "$dir\telemetry-ca.crt"
+scp "${pi}:homeaway-transfer/telemetry-token.txt" "$dir\telemetry-token.txt"
+icacls "$dir\telemetry-token.txt" /inheritance:r /grant:r "SYSTEM:F" "Administrators:F"
+```
+
+Immediately on Pi, run `rm -rf "$HOME/homeaway-transfer"`. Restrict the token file further as needed for the account running SensorDashCollector. Do not copy the Pi's private CA signing key.
+
+Create `C:\ProgramData\SensorDash\telemetry-export.json`, with real Pi IPv4 and persistent host label:
+
+```json
+{
+  "enabled": true,
+  "endpoint": "https://PI_LAN_IP:8429/ingest",
+  "tokenFile": "C:\\ProgramData\\SensorDash\\telemetry-token.txt",
+  "caCertificateFile": "C:\\ProgramData\\SensorDash\\telemetry-ca.crt",
+  "hostLabel": "walnut-desktop"
+}
+```
+
+Restart SensorDashCollector only when you're prepared to verify fan behavior. Record the pre/post restart RPM, PWM, GPU and CPU temperatures; don't leave the system unattended if fan behavior is unexpected.
+
+## Stage 6 — Prove PC → Pi data flow
+
+From the Pi project directory:
+
+```bash
+bash scripts/verify-telemetry.sh walnut-desktop
+```
+
+It must report recent `sensordash_reading_value` samples. If cooling systems are configured, expect `sensordash_component_info_value` and `sensordash_cooling_binding_value`. If valid electrical instrumentation or calibration exists, expect `sensordash_accessory_power_value`.
+
+Compare the same **30-minute interval** in local SensorDash and Grafana: raw CPU/GPU temperatures, true peak, radiator RPM, PWM, and fan/pump wattage source. Test an alias rename and a component sensor reassignment; old labels should become inactive without losing original raw history. Then briefly **stop only the telemetry receiver**, not SensorDash, to check queued delivery after reconnect. Hardware fan control must remain safe throughout.
+
+Do **not** remove SensorDash's old charts or change household DHCP DNS during this proof-of-concept. Keep both applications running for at least one ordinary gaming and sleep/resume cycle so gaps and peak differences can be evaluated.
+
+## Stage 7 — DNS cutover and rollback
+
+Only after LAN DNS and VPN tests pass, change your router's DHCP DNS from its current value to the Pi LAN IPv4. Renew one client lease, test Pi-hole query logs, then test the household. Note that if the Pi goes offline, DNS may fail; public secondary DNS can preserve connectivity but may bypass filtering.
+
+To roll back DNS, restore the router's previous DHCP DNS. To roll back SensorDash telemetry only, change `enabled` to `false` and restart the service during a safe fan-control maintenance window; the current local dashboard and SQLite history remain.
+
+### Definition of done
+
+- Pi DNS and WireGuard proven from both LAN and iPhone cellular.
+- Grafana login and internal VictoriaMetrics datasource functional.
+- End-to-end HTTPS Windows → Pi telemetry with real sensor data.
+- Fan curves/pump behavior unchanged during network outage, Pi reboot and Windows sleep/resume.
+- No secret leaks, public management ports or unexpected data gaps.
+- Storage retention and disk usage understood after a day or two of normal operation.
+
+**If those tests pass**, future iterations can compare existing historical energy calculations with the new archived derived-power samples and consider phasing out duplicate Windows charts. Until then, do not merge or delete the old visualization code.
