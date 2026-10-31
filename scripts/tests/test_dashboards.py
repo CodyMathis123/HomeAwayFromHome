@@ -34,6 +34,32 @@ class DashboardContracts(unittest.TestCase):
         self.assertIn('role=~"fan-group"', "\n".join(queries))
         self.assertIn('role=~"pump"', "\n".join(queries))
 
+    def test_cooling_metadata_and_legends_are_readable(self):
+        d = json.loads((PANELS / "cooling-systems.json").read_text(encoding="utf-8"))
+        inventory = d["panels"][0]
+        self.assertEqual(inventory["title"], "Cooling sensor assignments")
+        self.assertEqual(len(inventory["targets"]), 1)
+        query = inventory["targets"][0]["expr"]
+        self.assertIn("sensordash_cooling_binding_value", query)
+        self.assertIn("sensordash_sensor_info_value", query)
+        self.assertIn("group_left(name,alias,device)", query)
+        self.assertIn("== 1", query)
+        organize = inventory["transformations"][0]
+        self.assertEqual(organize["id"], "organize")
+        columns = organize["options"]["renameByName"]
+        self.assertEqual(columns["name"], "Sensor")
+        self.assertEqual(columns["component_name"], "Component")
+        for key in ("sensor", "component", "system", "__name__", "Time", "Value"):
+            self.assertTrue(organize["options"]["excludeByName"].get(key), key)
+        for panel in d["panels"][1:]:
+            target = panel["targets"][0]
+            self.assertIn("sensordash_reading_value", target["expr"])
+            self.assertIn("sensordash_cooling_binding_value", target["expr"])
+            self.assertIn("group_right()", target["expr"])
+            self.assertIn("sensordash_sensor_info_value", target["expr"])
+            self.assertIn("group_left(name,alias,device)", target["expr"])
+            self.assertEqual(target["legendFormat"], "{{component_name}} · {{name}}")
+
     def test_electrical_dashboard_never_conflates_ratings_with_measurements(self):
         d = json.loads((PANELS / "electrical.json").read_text(encoding="utf-8"))
         self.assertIn("Ratings are estimates", d["description"])
