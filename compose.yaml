@@ -31,7 +31,12 @@ services:
     # No DHCP capability, privileged mode, or host-network exposure.
 
   wg-easy:
-    image: ghcr.io/wg-easy/wg-easy:15.5.0
+    # Pi 4 / kernel 6.18 needs nft-compatible iptables tools inside the image.
+    # See Dockerfile.wg-easy-nft and docs/EXISTING-PI-MIGRATION.md.
+    image: homeaway-wg-easy-nft:15.5.0
+    build:
+      context: .
+      dockerfile: Dockerfile.wg-easy-nft
     restart: unless-stopped
     logging: *logrotation
     environment:
