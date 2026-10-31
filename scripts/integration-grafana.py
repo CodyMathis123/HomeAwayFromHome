@@ -27,7 +27,7 @@ def main() -> None:
             response = read("/api/health", authorized=False)
             if response.get("database") == "ok":
                 break
-        except (urllib.error.URLError, TimeoutError, ValueError):
+        except (urllib.error.URLError, TimeoutError, ValueError, OSError):
             pass
         time.sleep(1)
     else:
