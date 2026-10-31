@@ -17,7 +17,7 @@ sensordash_sensor_info,host=main-desktop,sensor=/amdcpu/0/temperature/0,kind=Tem
 sensordash_cooling_binding,host=main-desktop,sensor=/amdcpu/0/temperature/0,system=loop1,system_name=Walnut_Loop,component=cpu,component_name=CPU_Block,role=heat-source,kind=Temperature value=1 1793450400000
 ```
 
-For security, the ingest gateway allows these two exact metric schemas (and the raw-reading schema) but **no arbitrary user-supplied measurement names or control commands**. Aliases/names are represented in sanitized readable ASCII labels (spaces become underscores) with explicit size limits. Raw metric identity remains only `host, sensor, kind`, so changing an alias does not fragment long-term temperature history.
+For security, the ingest gateway allows only the five explicitly enumerated metric schemas (raw readings, sensor catalog, cooling sensor bindings, component descriptions, and provenance-tagged accessory watts) and **no arbitrary measurement names or control commands**. Aliases/names are represented in sanitized readable ASCII labels (spaces become underscores) with explicit size limits. Raw metric identity remains only `host, sensor, kind`, so changing an alias does not fragment long-term temperature history.
 
 Removed associations and renamed labels are marked with `value=0` **tombstones** on the previous tag set, before/alongside new active (`value=1`) entries. Queries filter on `== 1` so deleted sensors/old aliases aren't returned as active. A successful complete snapshot is persisted in Windows ProgramData and reused to compute deletions after service restarts. Failed metadata delivery is retried independently of numeric samples; a failed catalog update must never affect fan control or prevent raw samples being exported.
 
