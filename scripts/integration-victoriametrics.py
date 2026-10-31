@@ -19,6 +19,17 @@ JOIN = (
     ' * on(host,sensor) group_right()'
     ' (sensordash_cooling_binding_value{host="CI",system="loop",kind="Temperature"} == 1)'
 )
+# Readable Grafana labels are joined at query time, not copied into raw IDs.
+# The same sensor may be assigned to several cooling components.
+NAMED_JOIN = (
+    '(' + JOIN + ') * on(host,sensor) group_left(name,alias,device) '
+    '(sensordash_sensor_info_value{host="CI"} == 1)'
+)
+NAMED_BINDINGS = (
+    '(sensordash_cooling_binding_value{host="CI",system="loop"} == 1) '
+    '* on(host,sensor) group_left(name,alias,device) '
+    '(sensordash_sensor_info_value{host="CI"} == 1)'
+)
 POWER = 'sensordash_accessory_power_value{host="CI",system="loop",component="fans"}'
 COMP = 'sensordash_component_info_value{host="CI",system="loop",component="fans"} == 1'
 POWER_JOIN = (
@@ -85,6 +96,17 @@ def main() -> None:
     assert {p["metric"]["system"] for p in joined} == {"loop"}, joined
     assert {p["metric"]["component_name"] for p in joined} == {"CPU_Block", "Auxiliary"}, joined
 
+    # Both assignments for this single sensor retain friendly catalog names.
+    # The read-only association table and series legends use these labels.
+    for expression in (NAMED_BINDINGS, NAMED_JOIN):
+        named = query(expression)
+        assert len(named) == 2, named
+        assert {x["metric"]["component_name"] for x in named} == {"CPU_Block", "Auxiliary"}, named
+        assert {x["metric"]["name"] for x in named} == {"CPU_Package"}, named
+        assert {x["metric"]["alias"] for x in named} == {"CPU_Temp"}, named
+        assert {x["metric"]["device"] for x in named} == {"Test_PC"}, named
+        assert all(float(x["value"][1]) in (1.0, 50.0) for x in named), named
+
     # A removed assignment receives the same label set with value=0. The
     # no-bool comparison filters it out, while preserving the single raw series.
     removed = (
@@ -106,6 +128,8 @@ def main() -> None:
     else:
         raise AssertionError("Old cooling binding remained active: " + repr(remaining))
     assert remaining[0]["metric"]["component_name"] == "CPU_Block", remaining
+    assert len(query(NAMED_JOIN)) == 1, "Deleted association must disappear from friendly labels"
+    assert len(query(NAMED_BINDINGS)) == 1, "Deleted assignment must disappear from inventory"
     assert len(query(RAW)) == 1, "Tombstone must never delete original raw sensor"
     for _ in range(20):
         values = [query(POWER), query(COMP), query(POWER_JOIN)]
