@@ -26,7 +26,7 @@ No individual DNS queries, DNS domains, client IPs, client names, WireGuard priv
 
        sudo bash scripts/init-service-monitoring.sh
 
-   Enter the Pi-hole app password. The script also generates an independent random wg-easy Prometheus bearer. It will not overwrite either existing nonempty credential. The root-only secrets directory keeps both files off normal user access, while file permissions allow the separate non-root Docker processes to read their read-only bind mounts.
+   Enter the Pi-hole app password. The script also generates an independent random wg-easy Prometheus bearer. It will not overwrite either existing nonempty credential. The existing secrets directory remains owner-only (mode 0700, without changing its original owner). These new files have container-readable permissions because Docker Compose mounts local files read-only without remapping them; other host accounts cannot traverse the parent directory. The deployment user can read the secrets, as with the existing Pi-hole and Grafana credentials.
 
 4. Privately display the wg-easy bearer on the Pi:
 
