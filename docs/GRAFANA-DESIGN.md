@@ -33,3 +33,13 @@ After CI succeeds, check the existing feature-branch Git status, then pull its l
 The Grafana file provider rescans the mounted dashboards roughly every 30 seconds. Refresh Grafana; no Docker container restart or Windows fan-control interruption should be necessary. A time range already chosen in your browser can stay selected until you change it.
 
 Review Hardware, Cooling, Electricity and DNS/VPN. SensorDash still owns fan controls, mappings, calibrated wattages and authoritative raw hardware samples. Empty coolant, flow and ambient panels are expected until real probes are installed and assigned.
+
+## SensorDash-inspired unified Overview
+
+A new read-only **SensorDash · Overview** recreates the shape of the Windows Overview: four featured sensor cards with current-history sparklines (CPU/GPU temperature, optional storage temperature and radiator fan RPM), recorded CPU/GPU temperature peaks over the selected range, separately reported CPU/GPU power, trend charts, source-and-revision-aware fan/pump electrical estimates, and a live hardware catalog.
+
+CPU/GPU cards show their **highest available exported sensor reading**; they intentionally do not label that value package/core/hotspot unless a specific sensor is assigned. Power cards show the highest channel, never the sum of potentially overlapping rails. The storage card remains empty when the collector does not export a matching sensor.
+
+Fan/pump electricity remains labeled by measured/calibrated/curve/rated source and configuration revision. No guessed aggregate wattage is presented when revisions overlap, and no watt-hours are extrapolated during sleep gaps. Windows SensorDash remains the owner of fan control, alias editing, energy integration and local sensor retention.
+
+The Overview is an additional Grafana dashboard, not a replacement for the detailed Hardware/Cooling/Electricity views. It appears in the Other HomeAway views menu automatically.

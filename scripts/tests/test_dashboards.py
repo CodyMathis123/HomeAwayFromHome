@@ -11,9 +11,9 @@ class DashboardContracts(unittest.TestCase):
     def test_both_dashboards_are_provisioned(self):
         dashboards = {
             name: json.loads((PANELS / name).read_text(encoding="utf-8"))
-            for name in ("sensordash.json", "cooling-systems.json", "electrical.json", "dns-vpn.json")
+            for name in ("overview.json", "sensordash.json", "cooling-systems.json", "electrical.json", "dns-vpn.json")
         }
-        self.assertEqual(len({d["uid"] for d in dashboards.values()}), 4)
+        self.assertEqual(len({d["uid"] for d in dashboards.values()}), 5)
         for name, d in dashboards.items():
             self.assertFalse(d["editable"], name)
             self.assertIn("read-only", d["tags"], name)
@@ -157,10 +157,43 @@ class DashboardContracts(unittest.TestCase):
             self.assertIn("on(host,sensor) group_left(name,alias,device)", query)
             self.assertEqual(panels[id]["targets"][0]["legendFormat"], "{{name}}")
 
+    def test_sensordash_style_overview_is_read_only_and_gap_safe(self):
+        d = json.loads((PANELS / "overview.json").read_text(encoding="utf-8"))
+        self.assertEqual(d["uid"], "homeaway-overview")
+        self.assertIn("read-only", d["tags"])
+        self.assertFalse(d["editable"])
+        panels = {p["id"]: p for p in d["panels"]}
+        self.assertGreaterEqual(sum(p["type"] == "stat" for p in d["panels"]), 8)
+        for id in (4, 9, 10):
+            self.assertEqual(panels[id]["fieldConfig"]["defaults"]["unit"], "rotrpm")
+        for id in (5, 6):
+            self.assertIn("max_over_time(", panels[id]["targets"][0]["expr"])
+            self.assertIn("[$__range]", panels[id]["targets"][0]["expr"])
+        for id in (7, 8):
+            query = panels[id]["targets"][0]["expr"]
+            self.assertIn('kind="Power"', query)
+            self.assertTrue(query.startswith("max("), query)
+            self.assertNotIn("sum(", query)
+        wattage = panels[202]["targets"][0]["expr"]
+        self.assertIn("sensordash_accessory_power_value", wattage)
+        self.assertIn("sensordash_component_info_value", wattage)
+        self.assertIn("{{source}}", panels[202]["targets"][0]["legendFormat"])
+        self.assertIn("{{revision_short}}", panels[202]["targets"][0]["legendFormat"])
+        self.assertNotIn("sum(", wattage)
+        self.assertEqual(panels[300]["type"], "bargauge")
+        self.assertIn("sensordash_sensor_info_value", panels[300]["targets"][0]["expr"])
+        self.assertIn("sensordash_reading_value", panels[301]["targets"][0]["expr"])
+        self.assertIn("group_left(name,alias,device)", panels[301]["targets"][0]["expr"])
+        for panel in d["panels"]:
+            if panel["type"] == "timeseries":
+                self.assertFalse(panel["fieldConfig"]["defaults"]["custom"]["spanNulls"])
+        self.assertIn('kind="Temperature"', panels[3]["targets"][0]["expr"])
+        self.assertNotIn("vector(0)", panels[3]["targets"][0]["expr"])
+
     def test_rotational_speed_uses_revolutions_per_minute(self):
         # Grafana "rpm" is Reads per minute (rd/m), not tachometer RPM.
         # Fan and pump charts must use the rotational-speed unit "rotrpm".
-        for filename in ("sensordash.json", "cooling-systems.json",
+        for filename in ("overview.json", "sensordash.json", "cooling-systems.json",
                          "electrical.json", "dns-vpn.json"):
             d = json.loads((PANELS / filename).read_text(encoding="utf-8"))
             for panel in d["panels"]:
@@ -168,7 +201,9 @@ class DashboardContracts(unittest.TestCase):
                 self.assertNotEqual(unit, "rpm", (filename, panel["title"]))
         raw = json.loads((PANELS / "sensordash.json").read_text(encoding="utf-8"))
         cooling = json.loads((PANELS / "cooling-systems.json").read_text(encoding="utf-8"))
-        for d, ids in ((raw, (2,)), (cooling, (4, 5, 110, 111))):
+        overview = json.loads((PANELS / "overview.json").read_text(encoding="utf-8"))
+        for d, ids in ((raw, (2,)), (cooling, (4, 5, 110, 111)),
+                       (overview, (4, 9, 10))):
             panels = {p["id"]: p for p in d["panels"]}
             for pid in ids:
                 self.assertEqual(panels[pid]["fieldConfig"]["defaults"]["unit"], "rotrpm")
@@ -176,7 +211,7 @@ class DashboardContracts(unittest.TestCase):
     def test_dashboard_visual_contract(self):
         # Native panels only; the CSS/theme belongs to Grafana, not a patched
         # app image. Display cleanup must not touch stored sensor labels.
-        for filename in ("sensordash.json", "cooling-systems.json",
+        for filename in ("overview.json", "sensordash.json", "cooling-systems.json",
                          "electrical.json", "dns-vpn.json"):
             d = json.loads((PANELS / filename).read_text(encoding="utf-8"))
             self.assertEqual(d["time"]["from"], "now-1h")
