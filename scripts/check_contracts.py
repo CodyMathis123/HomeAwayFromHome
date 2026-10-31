@@ -63,6 +63,9 @@ def check(config: dict, ip: str) -> None:
         if image:
             assert ":" in image and not image.endswith(":latest"), name
 
+    assert services["pihole"]["environment"].get("WEBPASSWORD_FILE") == "pihole_password", (
+        "Pi-hole v6 expects Docker's secret name; it constructs /run/secrets/<name> itself"
+    )
     assert len(services["pihole"].get("secrets", [])) == 1
     assert not services["portal"].get("secrets")
     assert len(services["grafana"].get("secrets", [])) == 1
