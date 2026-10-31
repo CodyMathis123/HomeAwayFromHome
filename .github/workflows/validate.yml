@@ -46,6 +46,8 @@ jobs:
             'iptables --version | grep -q nf_tables && ip6tables --version | grep -q nf_tables'
       - name: Enforce security and deployment contracts
         run: python3 scripts/check_contracts.py
+      - name: Validate resolved PC control network and container isolation
+        run: python3 scripts/check_control_contracts.py
       - name: Verify optional Caddy and Authelia gateway configuration
         run: python3 scripts/integration-control-gateway.py
       - name: Verify real VictoriaMetrics ingestion and cooling join
