@@ -188,6 +188,21 @@ def main() -> None:
     assert {x["metric"]["file"] for x in spool} == {"database", "wal", "shm"}, spool
     samples = query('sum(count_over_time(sensordash_event_value{host="CI"}[10m]))')
     assert len(samples) == 1 and float(samples[0]["value"][1]) == 2, samples
+    # The System Health dashboard reports observed freshness, not an
+    # inferred Windows or collector state. Test the actual 24h lookback
+    # operator against VictoriaMetrics' PromQL-compatible API.
+    freshness = query(
+        'time() - max(timestamp(last_over_time('
+        'sensordash_reading_value{host="CI"}[24h])))'
+    )
+    assert len(freshness) == 1, freshness
+    age_seconds = float(freshness[0]["value"][1])
+    assert 0 <= age_seconds <= 120, freshness
+    observed_rate = query(
+        'sum(count_over_time(sensordash_reading_value{host="CI"}[5m])) / 5'
+    )
+    assert len(observed_rate) == 1, observed_rate
+    assert float(observed_rate[0]["value"][1]) == 0.4, observed_rate
     print("PASS: VictoriaMetrics raw + derived watts, metadata, threshold events,"
           " spool footprint, storage joins and removal tombstones")
 
