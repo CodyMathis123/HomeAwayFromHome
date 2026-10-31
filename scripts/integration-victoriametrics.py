@@ -136,6 +136,18 @@ def main() -> None:
                 "ambient_raw": query('sensordash_reading_value{host="CI",sensor="ambient"}'),
                 "coolant_bind": query('sensordash_cooling_binding_value{host="CI",role="coolant-probe"}'),
                 "ambient_bind": query('sensordash_cooling_binding_value{host="CI",role="room-ambient"}'),
+                "coolant_join_without_aggregate": query(
+                    'sensordash_reading_value{host="CI",sensor="coolant",kind="Temperature"}'
+                    ' * on(host,sensor) group_right()'
+                    ' (sensordash_cooling_binding_value{host="CI",role="coolant-probe"} == 1)'
+                ),
+                "ambient_join_without_aggregate": query(
+                    'sensordash_reading_value{host="CI",sensor="ambient",kind="Temperature"}'
+                    ' * on(host,sensor) group_right()'
+                    ' (sensordash_cooling_binding_value{host="CI",role="room-ambient"} == 1)'
+                ),
+                "coolant_expr": role("coolant-probe"),
+                "ambient_expr": role("room-ambient"),
             })
         )
     print("PASS: real VictoriaMetrics joins, tombstones and coolant-to-room delta")
