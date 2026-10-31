@@ -66,3 +66,7 @@ On cellular with WireGuard enabled:
 ## Not in scope
 
 The configuration never flashes the Pi, installs packages, edits the router, changes household DHCP, opens host firewall rules, or imports VPN peer keys automatically. Those are operator-controlled steps. For public web services and custom-domain HTTPS, design an authenticated reverse-proxy boundary separately.
+
+## Optional Grafana telemetry
+
+The metrics stack is completely separate from DNS and WireGuard and is not started by the core deployment. See [TELEMETRY.md](TELEMETRY.md) for the dedicated TLS bootstrap, Grafana login and opt-in Windows exporter. Never forward its HTTP/HTTPS administration or ingest ports from the router.
