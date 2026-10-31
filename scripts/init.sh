@@ -27,5 +27,6 @@ if [[ ! -s secrets/grafana_admin_password ]]; then
   chmod 600 secrets/grafana_admin_password
   echo "Generated Grafana administrator password at secrets/grafana_admin_password."
 fi
-echo "Metrics are opt-in. When ready: sudo bash scripts/init-telemetry.sh"
+echo "Metrics are opt-in. For SensorDash: sudo bash scripts/init-telemetry.sh"
+echo "For DNS/VPN monitoring: sudo bash scripts/init-service-monitoring.sh"
 echo "Next: edit .env, run ./scripts/doctor.sh and review README.md."

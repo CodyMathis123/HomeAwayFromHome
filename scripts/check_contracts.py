@@ -12,7 +12,7 @@ from validate_config import parse_env
 
 def check(config: dict, ip: str) -> None:
     services = config["services"]
-    assert {"pihole", "wg-easy", "portal", "victoria-metrics", "grafana", "telemetry-ingest"} <= set(services)
+    assert {"pihole", "wg-easy", "portal", "victoria-metrics", "grafana", "telemetry-ingest", "pihole-exporter"} <= set(services)
 
     def published(service: str) -> list[dict]:
         return services[service].get("ports", [])
@@ -42,9 +42,26 @@ def check(config: dict, ip: str) -> None:
     assert exactly("grafana", port=3000, internal=3000, proto="tcp", ip_address=ip)
     assert exactly("telemetry-ingest", port=8429, internal=8443, proto="tcp", ip_address=ip)
     assert not published("victoria-metrics"), "Never publish VictoriaMetrics directly"
-    for name in ("grafana", "telemetry-ingest", "victoria-metrics"):
+    for name in ("grafana", "telemetry-ingest", "victoria-metrics", "pihole-exporter"):
         assert "metrics" in services[name].get("profiles", []), name
     assert len(published("telemetry-ingest")) == 1
+    assert not published("pihole-exporter"), "Pi-hole exporter must be bridge-only"
+    assert services["pihole-exporter"].get("read_only") is True
+    assert services["pihole-exporter"].get("user") == "65534:65534"
+    assert "ALL" in services["pihole-exporter"].get("cap_drop", [])
+    assert "no-new-privileges:true" in services["pihole-exporter"].get("security_opt", [])
+    assert services["pihole-exporter"].get("secrets") == ["pihole_monitor_password"]
+    assert services["pihole-exporter"]["environment"]["PIHOLE_API_BASE"] == "http://pihole"
+    assert services["victoria-metrics"].get("secrets") == ["wg_metrics_bearer"]
+    vm = services["victoria-metrics"]
+    assert any("-promscrape.config=/etc/victoria-metrics/prometheus.yml" == arg
+               for arg in vm.get("command", []))
+    assert not any("wg_metrics_bearer" in str(v) for v in services["grafana"].get("volumes", []))
+    scrape = Path("monitoring/scrape.yml").read_text(encoding="utf-8")
+    assert 'wg-easy:51821' in scrape and '/metrics/prometheus' in scrape
+    assert 'pihole-exporter:9187' in scrape
+    assert 'credentials_file: /run/secrets/wg_metrics_bearer' in scrape
+    assert 'wireguard_peer_endpoint_info' in scrape and 'action: drop' in scrape
     assert services["telemetry-ingest"].get("read_only") is True
     assert services["telemetry-ingest"].get("user") in ("65534:65534", None)
     assert "ALL" in services["telemetry-ingest"].get("cap_drop", [])

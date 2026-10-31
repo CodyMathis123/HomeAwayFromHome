@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate Python code and unit tests
         run: |
-          python3 -m compileall -q portal ingest scripts/tests
+          python3 -m compileall -q portal ingest monitoring scripts/tests
           python3 -m unittest discover -s scripts/tests -v
       - name: Validate Bash script syntax
         run: |
@@ -28,13 +28,15 @@ jobs:
           mkdir -p secrets
           printf '%s\n' 'non-production-test-password' > secrets/pihole_password
           printf '%s\n' 'ci-only-dummy-password' > secrets/grafana_admin_password
+          printf '%s\n' 'ci-pihole-app-password' > secrets/pihole_monitor_password
+          printf '%s\n' 'ci-wg-metrics-bearer' > secrets/wg_metrics_bearer
           mkdir -p secrets/telemetry
           docker compose config -q
           docker compose --profile metrics config -q
       - name: Build application and wg-easy images without starting VPN
         run: |
           docker compose build portal wg-easy
-          docker compose --profile metrics build telemetry-ingest
+          docker compose --profile metrics build telemetry-ingest pihole-exporter
           docker compose run --rm --no-deps --entrypoint sh wg-easy -c \
             'iptables --version | grep -q nf_tables && ip6tables --version | grep -q nf_tables'
       - name: Enforce security and deployment contracts

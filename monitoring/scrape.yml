@@ -1,0 +1,23 @@
+# VictoriaMetrics native Prometheus scraper. No second Prometheus database.
+# All targets are on the internal Docker bridge. Do not publish :51821 or :9187.
+global:
+  scrape_interval: 30s
+  scrape_timeout: 10s
+scrape_configs:
+  - job_name: wg-easy
+    metrics_path: /metrics/prometheus
+    static_configs:
+      - targets: ["wg-easy:51821"]
+    authorization:
+      type: Bearer
+      credentials_file: /run/secrets/wg_metrics_bearer
+    # Don't retain cellular-client public IP:port endpoint labels in TSDB.
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: wireguard_peer_endpoint_info
+        action: drop
+
+  - job_name: pihole
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["pihole-exporter:9187"]

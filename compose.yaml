@@ -87,8 +87,12 @@ services:
       - "-storageDataPath=/victoria-metrics-data"
       - "-retentionPeriod=90d"
       - "-dedup.minScrapeInterval=1ms"
+      - "-promscrape.config=/etc/victoria-metrics/prometheus.yml"
     volumes:
       - ./data/victoria-metrics:/victoria-metrics-data
+      - ./monitoring/scrape.yml:/etc/victoria-metrics/prometheus.yml:ro
+    secrets:
+      - wg_metrics_bearer
     networks:
       - infra
     # Intentionally no published port; Grafana and intake reach it internally.
@@ -138,11 +142,34 @@ services:
     networks:
       - infra
 
+  pihole-exporter:
+    profiles: [metrics]
+    build:
+      context: ./monitoring/pihole_exporter
+    restart: unless-stopped
+    logging: *logrotation
+    read_only: true
+    user: "65534:65534"
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      PIHOLE_API_BASE: http://pihole
+    secrets:
+      - pihole_monitor_password
+    networks:
+      - infra
+    # No published host port. Only VictoriaMetrics can scrape its bridge endpoint.
+
 secrets:
   pihole_password:
     file: ./secrets/pihole_password
   grafana_admin_password:
     file: ./secrets/grafana_admin_password
+  pihole_monitor_password:
+    file: ./secrets/pihole_monitor_password
+  wg_metrics_bearer:
+    file: ./secrets/wg_metrics_bearer
 
 networks:
   infra:
