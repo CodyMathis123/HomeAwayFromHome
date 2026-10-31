@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate Python code and unit tests
         run: |
-          python3 -m compileall -q portal scripts/tests
+          python3 -m compileall -q portal ingest scripts/tests
           python3 -m unittest discover -s scripts/tests -v
       - name: Validate Bash script syntax
         run: |
@@ -27,9 +27,13 @@ jobs:
           cp .env.example .env
           mkdir -p secrets
           printf '%s\n' 'non-production-test-password' > secrets/pihole_password
+          printf '%s\n' 'ci-only-dummy-password' > secrets/grafana_admin_password
+          mkdir -p secrets/telemetry
           docker compose config -q
-          docker compose --profile monitoring config -q
+          docker compose --profile metrics config -q
       - name: Build lightweight portal image without running it
-        run: docker compose build portal
+        run: |
+          docker compose build portal
+          docker compose --profile metrics build telemetry-ingest
       - name: Enforce security and deployment contracts
         run: python3 scripts/check_contracts.py
