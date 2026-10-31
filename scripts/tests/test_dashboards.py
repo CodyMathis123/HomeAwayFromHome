@@ -49,6 +49,42 @@ class DashboardContracts(unittest.TestCase):
         self.assertIn('role="fan-group"', queries[2])
         self.assertTrue(all(p["targets"][0].get("range", True) for p in d["panels"][1:]))
 
+    def test_electrical_dashboard_labels_and_inventory_are_readable(self):
+        d = json.loads((PANELS / "electrical.json").read_text(encoding="utf-8"))
+        inventory = d["panels"][0]
+        self.assertEqual(inventory["title"], "Cooling component inventory")
+        self.assertEqual(len(inventory["targets"]), 1)
+        organize = inventory["transformations"][0]
+        self.assertEqual(organize["id"], "organize")
+        visible = organize["options"]["renameByName"]
+        for field in ("component_name", "system_name", "role", "host"):
+            self.assertIn(field, visible)
+        hidden = organize["options"]["excludeByName"]
+        for field in ("component", "system", "__name__", "Time", "Value"):
+            self.assertTrue(hidden.get(field), field)
+        for panel in d["panels"][1:]:
+            target = panel["targets"][0]
+            # Truncate only the displayed revision; full revision and the
+            # recorded wattage remain in VictoriaMetrics as original labels.
+            self.assertIn('label_replace((', target["expr"])
+            self.assertIn('"revision_short", "$1", "revision"', target["expr"])
+            self.assertIn('^([0-9a-f]{6})[0-9a-f]{10}
+        d = json.loads((PANELS / "sensordash.json").read_text(encoding="utf-8"))
+        queries = [t["expr"] for p in d["panels"] for t in p["targets"]]
+        self.assertTrue(queries[0].startswith("sensordash_sensor_info_value"))
+        for query in queries[1:]:
+            self.assertTrue(query.startswith("sensordash_reading_value"))
+            self.assertIn('sensor=~"$sensor"', query)
+            self.assertNotIn("alias=", query)
+
+
+if __name__ == "__main__":
+    unittest.main()
+, target["expr"])
+            self.assertIn("{{source}}", target["legendFormat"])
+            self.assertIn("{{revision_short}}", target["legendFormat"])
+            self.assertNotIn("{{revision}}", target["legendFormat"])
+
     def test_catalog_is_distinct_from_raw_identity(self):
         d = json.loads((PANELS / "sensordash.json").read_text(encoding="utf-8"))
         queries = [t["expr"] for p in d["panels"] for t in p["targets"]]
