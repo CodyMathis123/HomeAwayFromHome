@@ -50,6 +50,21 @@ class IngestTests(unittest.TestCase):
         self.assertFalse(valid_payload(valid.replace(b"role=fan-group", b"role=fan group")))
         self.assertFalse(valid_payload(valid.replace(b"sensordash_accessory_power", b"fan_control_command")))
 
+    def test_storage_event_and_spool_schema_is_strict(self):
+        lines = [
+            b"sensordash_sensor_info,host=main-desktop,sensor=/hdd/0/temperature/0,kind=Temperature,name=Composite,alias=Drive_Temp,device=FireCuda,device_type=Storage value=1 1793450400000",
+            b"sensordash_spool,host=main-desktop,file=database value=123456 1793450400000",
+            b"sensordash_spool,host=main-desktop,file=wal value=4096 1793450400000",
+            b"sensordash_event,host=main-desktop,sensor=/hdd/0/temperature/0,severity=warning,event=raised value=1 1793450400000",
+            b"sensordash_event,host=main-desktop,sensor=/hdd/0/temperature/0,severity=info,event=cleared value=1 1793450410000",
+        ]
+        self.assertTrue(valid_payload(b"\n".join(lines) + b"\n"))
+        self.assertFalse(valid_payload(lines[0].replace(b"device_type=Storage", b"device_type=Storage,secret=1")))
+        self.assertFalse(valid_payload(lines[2].replace(b"file=wal", b"file=/ProgramData/telemetry.db")))
+        self.assertFalse(valid_payload(lines[3].replace(b"event=raised", b"event=fan-control")))
+        self.assertFalse(valid_payload(lines[3].replace(b"value=1", b"value=0")))
+        self.assertFalse(valid_payload(lines[3] + b",message=Computer_off"))
+
     def test_reject_injection_and_oversize(self):
         self.assertFalse(valid_payload(b"other,host=PC value=1 1793450400000"))
         self.assertFalse(valid_payload(

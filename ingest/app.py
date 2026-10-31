@@ -34,7 +34,7 @@ T = rb"[0-9]{13,20}"
 INFO_LINE = re.compile(
     rb"^sensordash_sensor_info,host=" + H
     + rb",sensor=" + S + rb",kind=" + K
-    + rb",name=" + N + rb",alias=" + N + rb",device=" + N
+    + rb",name=" + N + rb",alias=" + N + rb",device=" + N + rb"(?:,device_type=" + K + rb")?"
     + rb" value=[01] " + T + rb"$"
 )
 BINDING_LINE = re.compile(
@@ -63,6 +63,19 @@ POWER_LINE = re.compile(
     + T + rb"$"
 )
 
+# Timestamped threshold transitions. Free-form messages and client IPs stay
+# local to Windows; no remote command or writable cooling setting is accepted.
+EVENT_LINE = re.compile(
+    rb"^sensordash_event,host=" + H + rb",sensor=" + S
+    + rb",severity=(?:warning|info),event=(?:raised|cleared)"
+    + rb" value=1 " + T + rb"$"
+)
+# Local SQLite is a bounded retry spool; export only aggregate file sizes.
+SPOOL_LINE = re.compile(
+    rb"^sensordash_spool,host=" + H
+    + rb",file=(?:database|wal|shm) value=[0-9]+ " + T + rb"$"
+)
+
 TOKEN_FILE = Path(os.environ.get("INGEST_TOKEN_FILE", "/run/tls/token"))
 VM_HOST = os.environ.get("VICTORIAMETRICS_HOST", "victoria-metrics")
 VM_PORT = 8428
@@ -75,7 +88,8 @@ def valid_payload(body: bytes) -> bool:
     return 0 < len(rows) <= MAX_LINES and all(
         LINE.fullmatch(line) or INFO_LINE.fullmatch(line)
         or BINDING_LINE.fullmatch(line) or COMPONENT_LINE.fullmatch(line)
-        or POWER_LINE.fullmatch(line) for line in rows
+        or POWER_LINE.fullmatch(line) or EVENT_LINE.fullmatch(line)
+        or SPOOL_LINE.fullmatch(line) for line in rows
     )
 
 
