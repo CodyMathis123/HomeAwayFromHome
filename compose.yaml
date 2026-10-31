@@ -68,27 +68,76 @@ services:
     environment:
       PIHOLE_DNS_HOST: pihole
       WG_ADMIN_HOST: wg-easy
-      KUMA_HOST: uptime-kuma
     ports:
       - "${PI_LAN_IP:?Set PI_LAN_IP in .env}:8088:8080/tcp"
     networks:
       - infra
 
-  uptime-kuma:
-    profiles: [monitoring]
-    image: louislam/uptime-kuma:2
+  victoria-metrics:
+    profiles: [metrics]
+    image: victoriametrics/victoria-metrics:v1.155.0
     restart: unless-stopped
     logging: *logrotation
+    command:
+      - "-storageDataPath=/victoria-metrics-data"
+      - "-retentionPeriod=90d"
+      - "-dedup.minScrapeInterval=1ms"
     volumes:
-      - ./data/uptime-kuma:/app/data
+      - ./data/victoria-metrics:/victoria-metrics-data
+    networks:
+      - infra
+    # Intentionally no published port; Grafana and intake reach it internally.
+
+  grafana:
+    profiles: [metrics]
+    image: grafana/grafana:13.3.0
+    restart: unless-stopped
+    logging: *logrotation
+    depends_on:
+      - victoria-metrics
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_SERVER_ROOT_URL: "http://${PI_LAN_IP:?Set PI_LAN_IP}:3000"
+    secrets:
+      - grafana_admin_password
     ports:
-      - "${PI_LAN_IP:?Set PI_LAN_IP in .env}:3001:3001/tcp"
+      - "${PI_LAN_IP:?Set PI_LAN_IP}:3000:3000/tcp"
+    volumes:
+      - ./data/grafana:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/etc/grafana/dashboards:ro
+    networks:
+      - infra
+
+  telemetry-ingest:
+    profiles: [metrics]
+    build:
+      context: ./ingest
+    restart: unless-stopped
+    logging: *logrotation
+    depends_on:
+      - victoria-metrics
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      VICTORIAMETRICS_HOST: victoria-metrics
+    ports:
+      - "${PI_LAN_IP:?Set PI_LAN_IP}:8429:8443/tcp"
+    volumes:
+      - ./secrets/telemetry:/run/tls:ro
     networks:
       - infra
 
 secrets:
   pihole_password:
     file: ./secrets/pihole_password
+  grafana_admin_password:
+    file: ./secrets/grafana_admin_password
 
 networks:
   infra:
