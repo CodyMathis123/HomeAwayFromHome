@@ -161,6 +161,41 @@ services:
       - infra
     # No published host port. Only VictoriaMetrics can scrape its bridge endpoint.
 
+  pi-node-exporter:
+    profiles: [metrics]
+    # Standard upstream host metrics; no duplicate database or custom probe.
+    image: quay.io/prometheus/node-exporter:v1.12.1
+    restart: unless-stopped
+    logging: *logrotation
+    read_only: true
+    user: "65534:65534"
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    command:
+      - "--web.listen-address=:9100"
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      # Constrain to real host CPU, memory, thermal and disk activity.
+      # No filesystem collector: VictoriaMetrics reports its actual data
+      # volume free bytes without exposing the entire host root to a container.
+      - "--collector.disable-defaults"
+      - "--collector.cpu"
+      - "--collector.meminfo"
+      - "--collector.loadavg"
+      - "--collector.stat"
+      - "--collector.thermal_zone"
+      - "--collector.diskstats"
+      - "--collector.uname"
+      - "--collector.time"
+      - "--collector.vmstat"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+    networks:
+      - infra
+    # Internal-only metrics on :9100; never publish to LAN or WAN.
+
 secrets:
   pihole_password:
     file: ./secrets/pihole_password

@@ -11,9 +11,9 @@ class DashboardContracts(unittest.TestCase):
     def test_both_dashboards_are_provisioned(self):
         dashboards = {
             name: json.loads((PANELS / name).read_text(encoding="utf-8"))
-            for name in ("overview.json", "sensordash.json", "cooling-systems.json", "electrical.json", "dns-vpn.json", "storage.json", "events.json")
+            for name in ("overview.json", "sensordash.json", "cooling-systems.json", "electrical.json", "dns-vpn.json", "storage.json", "events.json", "system-health.json")
         }
-        self.assertEqual(len({d["uid"] for d in dashboards.values()}), 7)
+        self.assertEqual(len({d["uid"] for d in dashboards.values()}), 8)
         for name, d in dashboards.items():
             self.assertFalse(d["editable"], name)
             self.assertIn("read-only", d["tags"], name)
@@ -239,7 +239,7 @@ class DashboardContracts(unittest.TestCase):
         # Grafana "rpm" is Reads per minute (rd/m), not tachometer RPM.
         # Fan and pump charts must use the rotational-speed unit "rotrpm".
         for filename in ("overview.json", "sensordash.json", "cooling-systems.json",
-                         "electrical.json", "dns-vpn.json", "storage.json", "events.json"):
+                         "electrical.json", "dns-vpn.json", "storage.json", "events.json", "system-health.json"):
             d = json.loads((PANELS / filename).read_text(encoding="utf-8"))
             for panel in d["panels"]:
                 unit = panel.get("fieldConfig", {}).get("defaults", {}).get("unit")
@@ -257,9 +257,9 @@ class DashboardContracts(unittest.TestCase):
         # Native panels only; the CSS/theme belongs to Grafana, not a patched
         # app image. Display cleanup must not touch stored sensor labels.
         for filename in ("overview.json", "sensordash.json", "cooling-systems.json",
-                         "electrical.json", "dns-vpn.json", "storage.json", "events.json"):
+                         "electrical.json", "dns-vpn.json", "storage.json", "events.json", "system-health.json"):
             d = json.loads((PANELS / filename).read_text(encoding="utf-8"))
-            self.assertEqual(d["time"]["from"], "now-24h" if filename in ("storage.json", "events.json") else "now-1h")
+            self.assertEqual(d["time"]["from"], "now-24h" if filename in ("storage.json", "events.json", "system-health.json") else "now-1h")
             self.assertEqual(len(d["links"]), 1)
             nav = d["links"][0]
             self.assertEqual(nav["type"], "dashboards")

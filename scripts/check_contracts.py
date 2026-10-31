@@ -12,7 +12,7 @@ from validate_config import parse_env
 
 def check(config: dict, ip: str) -> None:
     services = config["services"]
-    assert {"pihole", "wg-easy", "portal", "victoria-metrics", "grafana", "telemetry-ingest", "pihole-exporter"} <= set(services)
+    assert {"pihole", "wg-easy", "portal", "victoria-metrics", "grafana", "telemetry-ingest", "pihole-exporter", "pi-node-exporter"} <= set(services)
 
     def published(service: str) -> list[dict]:
         return services[service].get("ports", [])
@@ -42,10 +42,29 @@ def check(config: dict, ip: str) -> None:
     assert exactly("grafana", port=3000, internal=3000, proto="tcp", ip_address=ip)
     assert exactly("telemetry-ingest", port=8429, internal=8443, proto="tcp", ip_address=ip)
     assert not published("victoria-metrics"), "Never publish VictoriaMetrics directly"
-    for name in ("grafana", "telemetry-ingest", "victoria-metrics", "pihole-exporter"):
+    for name in ("grafana", "telemetry-ingest", "victoria-metrics", "pihole-exporter", "pi-node-exporter"):
         assert "metrics" in services[name].get("profiles", []), name
     assert len(published("telemetry-ingest")) == 1
     assert not published("pihole-exporter"), "Pi-hole exporter must be bridge-only"
+    assert not published("pi-node-exporter"), "Pi system exporter must be bridge-only"
+    host = services["pi-node-exporter"]
+    assert host["image"] == "quay.io/prometheus/node-exporter:v1.12.1"
+    assert host.get("read_only") is True
+    assert host.get("user") == "65534:65534"
+    assert "ALL" in host.get("cap_drop", [])
+    assert "no-new-privileges:true" in host.get("security_opt", [])
+    assert not host.get("privileged", False)
+    assert host.get("network_mode", "") != "host"
+    assert host.get("pid", "") != "host"
+    assert not host.get("secrets"), "Host metrics exporter must not access credentials"
+    volumes = host.get("volumes", [])
+    assert len(volumes) == 2
+    assert {(v["source"], v["target"], v.get("read_only", False)) for v in volumes} == {
+        ("/proc", "/host/proc", True), ("/sys", "/host/sys", True)
+    }, "Exporter can read only host proc/sys, never root or Docker socket"
+    assert "--collector.disable-defaults" in host["command"]
+    assert not any("--collector.filesystem" in flag for flag in host["command"])
+
     assert services["pihole-exporter"].get("read_only") is True
     assert services["pihole-exporter"].get("user") == "65534:65534"
     assert "ALL" in services["pihole-exporter"].get("cap_drop", [])
@@ -60,6 +79,7 @@ def check(config: dict, ip: str) -> None:
     scrape = Path("monitoring/scrape.yml").read_text(encoding="utf-8")
     assert 'wg-easy:51821' in scrape and '/metrics/prometheus' in scrape
     assert 'pihole-exporter:9187' in scrape
+    assert 'job_name: pi-node' in scrape and 'pi-node-exporter:9100' in scrape
     assert 'victoria-metrics:8428' in scrape and 'job_name: victoria-metrics' in scrape
     assert 'credentials_file: /run/secrets/wg_metrics_bearer' in scrape
     assert 'wireguard_peer_endpoint_info' in scrape and 'action: drop' in scrape

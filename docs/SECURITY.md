@@ -33,3 +33,14 @@ Do not enable Watchtower or unattended container upgrades for DNS/VPN. Review ad
 - Only one Pi: hardware, power, SSD, OS or DNS outages are possible. Router DNS rollback should be practiced.
 
 No unattended AI operation is authorized. Any agent modifying configuration should propose a PR, review diff/CI, and require operator approval for actual deployment, router changes, credential use and peer revocation.
+
+## Pi host exporter boundary
+
+`pi-node-exporter` reads `/proc` and `/sys` **read-only** and exposes
+Prometheus metrics only on the private Docker `infra` bridge. It does not
+mount the host root, join the host network/PID namespace, read secrets, inspect
+Docker's Unix socket, accept remote commands or publish port 9100.
+As a tradeoff, container-network statistics are intentionally excluded,
+and Pi OS root filesystem free space is not inferred from container overlays.
+VictoriaMetrics provides reliable free bytes for the filesystem holding its
+data directory; a real thermal zone may not exist on every kernel.

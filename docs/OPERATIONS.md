@@ -71,3 +71,38 @@ Avoid blind watchtower updates. Review `docker compose logs --tail=150` and test
 ## Extensibility
 
 This repo is an infrastructure contract, not a monolithic platform. Add service profiles and tests, keep attack surface small, require separate least-privilege authentication for any web-admin automation, and use existing native APIs carefully. The portal can grow read-only metrics without access to Docker or VPN private keys.
+
+## Pi host and Windows telemetry freshness (optional monitoring profile)
+
+The metrics profile includes a pinned **Node Exporter v1.12.1**, scraping the Pi's read-only
+`/proc` and `/sys` from the Docker bridge. It is deliberately **not** in the host
+network or PID namespace, has no LAN port, no Docker socket, no secrets and no
+read-only mount of the host root. It exposes CPU activity, load, memory, kernel
+thermal zones and disk activity. The actual filesystem containing VictoriaMetrics
+is monitored separately using `vm_free_disk_space_bytes`. Its free bytes may
+describe an attached SSD rather than the Pi OS microSD; never call it whole-Pi
+free space.
+
+Enable this exporter on an already-running Pi:
+
+```bash
+cd ~/HomeAwayFromHome
+git status --short
+git pull --ff-only origin feature/pi4-home-infrastructure
+sudo docker compose --profile metrics up -d pi-node-exporter
+sudo docker compose --profile metrics up -d --no-deps --force-recreate victoria-metrics
+sudo bash scripts/verify-pi-health.sh main-desktop
+```
+
+The VictoriaMetrics recreation reloads its scraper configuration but preserves
+its existing bind-mounted history. It does not recreate Pi-hole, wg-easy or
+the Windows collector. The new **HomeAway · System Health** dashboard is
+provisioned from `grafana/dashboards/system-health.json`; the Grafana file
+provider refreshes its dashboard files automatically.
+
+The Windows *last observed sample age* is only available if there has been
+at least one reading within the past 24 hours. A stale sample proves no newer
+reading reached VictoriaMetrics, **not** that Windows crashed. Sleep, power off,
+LAN outage, exporter authentication and collector failure require separate checks.
+
+No remote alerting/notification policy is configured by this addition.
