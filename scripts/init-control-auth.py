@@ -10,7 +10,7 @@ import subprocess
 from pathlib import Path
 
 IMAGE = "authelia/authelia:4.39.28"
-HOSTNAME_RE = re.compile(r"^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,}$")
+HOSTNAME_RE = re.compile(r"^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$")
 USER_RE = re.compile(r"^[a-z][a-z0-9_-]{1,30}$")
 ROOT = Path(__file__).resolve().parents[1]
 DEST = ROOT / "data/control/authelia"
@@ -76,7 +76,7 @@ def create_user_hash() -> tuple[str, str]:
         capture_output=True, text=True, timeout=120, check=True)
     output = completed.stdout
     digest = re.search(r"\\$argon2id\\$[^\\s'\"]+", output)
-    password = re.search(r"(?im)^\\s*password\\s*:\\s*(\\S+)\\s*$", output)
+    password = re.search(r"(?im)^\s*password\s*:\s*(\S+)\s*$", output)
     if not digest or not password:
         raise RuntimeError("Could not parse generated password and digest. No account created.")
     return digest.group(0), password.group(1)
@@ -92,7 +92,7 @@ def main():
     args = parser.parse_args()
     for candidate in (args.home, args.auth, args.cookie_domain):
         safe_domain(candidate)
-    if not USER_RE.fullmatch(args.user) or not re.fullmatch(r"[^\\s@]+@[^\\s@]+\\.[^\\s@]+", args.email):
+    if not USER_RE.fullmatch(args.user) or not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", args.email):
         parser.error("Invalid user/email")
     DEST.mkdir(parents=True, exist_ok=True)
     config_file, users_file = DEST / "configuration.yml", DEST / "users_database.yml"
