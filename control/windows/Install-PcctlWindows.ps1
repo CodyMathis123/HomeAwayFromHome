@@ -2,7 +2,7 @@
 # Requires an administrator PowerShell session. Read the runbook before executing.
 [CmdletBinding(SupportsShouldProcess=$true, ConfirmImpact='High')]
 param(
-  [Parameter(Mandatory=$true)][ValidateScript({[ipaddress]::TryParse($_,[ref]([ipaddress]::None))})][string]$PiAddress,
+  [Parameter(Mandatory=$true)][ValidateScript({try { [ipaddress]::Parse($_).AddressFamily -eq [Net.Sockets.AddressFamily]::InterNetwork } catch { $false }})][string]$PiAddress,
   [Parameter(Mandatory=$true)][ValidateScript({Test-Path -LiteralPath $_ -PathType Leaf})][string]$PiPublicKeyFile
 )
 $ErrorActionPreference = 'Stop'
