@@ -12,7 +12,7 @@ permissions:
 jobs:
   config:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - name: Validate Python code and unit tests
@@ -37,3 +37,9 @@ jobs:
           docker compose --profile metrics build telemetry-ingest
       - name: Enforce security and deployment contracts
         run: python3 scripts/check_contracts.py
+      - name: Verify real VictoriaMetrics ingestion and cooling join
+        run: |
+          docker run --rm -d --name homeaway-vm-ci -p 127.0.0.1:18428:8428 victoriametrics/victoria-metrics:v1.155.0 -retentionPeriod=1d
+          trap 'docker rm -f homeaway-vm-ci >/dev/null 2>&1 || true' EXIT
+          python3 scripts/integration-victoriametrics.py
+
