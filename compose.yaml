@@ -2,10 +2,17 @@
 # No router, firewall, DNS-client or OS changes are made by Compose itself.
 name: homeawayfromhome
 
+x-log-rotation: &logrotation
+  driver: local
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   pihole:
     image: pihole/pihole:2026.10.0
     restart: unless-stopped
+    logging: *logrotation
     environment:
       TZ: ${TZ:-America/Detroit}
       FTLCONF_dns_listeningMode: ALL
@@ -26,6 +33,7 @@ services:
   wg-easy:
     image: ghcr.io/wg-easy/wg-easy:15.5.0
     restart: unless-stopped
+    logging: *logrotation
     environment:
       # HTTP is permissible ONLY inside an SSH tunnel. UI not on LAN/WAN.
       INSECURE: "true"
@@ -51,6 +59,7 @@ services:
     build:
       context: ./portal
     restart: unless-stopped
+    logging: *logrotation
     read_only: true
     cap_drop:
       - ALL
@@ -69,6 +78,7 @@ services:
     profiles: [monitoring]
     image: louislam/uptime-kuma:2
     restart: unless-stopped
+    logging: *logrotation
     volumes:
       - ./data/uptime-kuma:/app/data
     ports:
