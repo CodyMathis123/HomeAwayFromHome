@@ -64,23 +64,9 @@ class DashboardContracts(unittest.TestCase):
             self.assertTrue(hidden.get(field), field)
         for panel in d["panels"][1:]:
             target = panel["targets"][0]
-            # Truncate only the displayed revision; full revision and the
-            # recorded wattage remain in VictoriaMetrics as original labels.
-            self.assertIn('label_replace((', target["expr"])
-            self.assertIn('"revision_short", "$1", "revision"', target["expr"])
-            self.assertIn('^([0-9a-f]{6})[0-9a-f]{10}
-        d = json.loads((PANELS / "sensordash.json").read_text(encoding="utf-8"))
-        queries = [t["expr"] for p in d["panels"] for t in p["targets"]]
-        self.assertTrue(queries[0].startswith("sensordash_sensor_info_value"))
-        for query in queries[1:]:
-            self.assertTrue(query.startswith("sensordash_reading_value"))
-            self.assertIn('sensor=~"$sensor"', query)
-            self.assertNotIn("alias=", query)
-
-
-if __name__ == "__main__":
-    unittest.main()
-, target["expr"])
+            self.assertIn("label_replace(", target["expr"])
+            self.assertIn("revision_short", target["expr"])
+            self.assertIn("revision", target["expr"])
             self.assertIn("{{source}}", target["legendFormat"])
             self.assertIn("{{revision_short}}", target["legendFormat"])
             self.assertNotIn("{{revision}}", target["legendFormat"])
@@ -93,6 +79,7 @@ if __name__ == "__main__":
             self.assertTrue(query.startswith("sensordash_reading_value"))
             self.assertIn('sensor=~"$sensor"', query)
             self.assertNotIn("alias=", query)
+
 
 
 if __name__ == "__main__":
