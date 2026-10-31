@@ -6,7 +6,7 @@ The current Windows UI owns Cooling Systems, Fan Control, Tray Readouts, Sensor 
 
 The Pi ingress now accepts extra canonical sensor device_type metadata, narrow event raised/cleared impulses, and three local SQLite file-size gauges. Full Windows event messages and all control/alias configuration remain on the PC; Grafana cannot change fan curves or component associations.
 
-Configure the outbound telemetry URL, stable computer label and optionally the receiver bearer token/public CA through **SensorDash → Settings → Pi telemetry export**. Credentials are accepted only by the local Windows service and are never returned by the browser API. Saving doesn't restart the service; apply changes during a supervised collector restart when fan-control fallback is understood. Upgrade order: **deploy the Pi schema first, then install the new SensorDash MSI**. See [SensorDash ADR 0008](https://github.com/CodyMathis123/SensorDash/blob/feature/telemetry-grafana-export/docs/adr/0008-local-control-observability.md).
+Configure the outbound telemetry URL, stable computer label and optionally the receiver bearer token/public CA through **SensorDash → Settings → Pi telemetry export**. Credentials are accepted only by the local Windows service and are never returned by the browser API. Saving exporter settings does not restart the Windows service: the current SensorDash feature branch detects configuration/token/CA changes and reloads only its outbound HTTPS sender. The MSI upgrade itself still restarts the Windows collector, so plan that separately with a fan-control safety check. Upgrade order: **deploy the Pi schema first, then install the new SensorDash MSI**. See [SensorDash ADR 0008](https://github.com/CodyMathis123/SensorDash/blob/feature/telemetry-grafana-export/docs/adr/0008-local-control-observability.md).
 
 ---
 
@@ -23,7 +23,7 @@ Windows collector -> local SQLite samples -> opt-in outbound exporter
 
 The VictoriaMetrics API has **no published host port**. The gateway accepts only `POST /ingest`, checks a long bearer token using constant-time comparison, enforces a 256 KiB payload cap and one whitelisted SensorDash metric schema, then forwards to VictoriaMetrics. The gateway is the *only* LAN-published ingest service, bound to `PI_LAN_IP` and running with dropped capabilities and a read-only root filesystem. Router forwards must still expose **only WireGuard UDP**, not port 8429, 3000 or 8088.
 
-Transport uses a dedicated private CA rather than changing the Windows system trust store. A 365-day server certificate is generated with a SAN bound to `PI_LAN_IP`; changing the Pi IP or expiry requires regenerating the TLS identity, updating Windows' CA copy and restarting the Windows collector. Never disable Windows certificate verification or publish the CA private key.
+Transport uses a dedicated private CA rather than changing the Windows system trust store. A 365-day server certificate is generated with a SAN bound to `PI_LAN_IP`; changing the Pi IP or expiry requires regenerating the TLS server identity (and the dedicated CA if needed) and updating the configured Windows exporter endpoint/CA; the exporter reconnects automatically, without restarting the hardware collector. Never disable Windows certificate verification or publish the CA private key.
 
 Grafana has its own login, with a generated initial password. HTTP port 3000 is LAN/VPN-only and does not carry fan-control authority. Add an HTTPS reverse proxy before administering Grafana over an untrusted LAN; WireGuard already encrypts VPN clients.
 
@@ -74,7 +74,7 @@ As administrator, create under `%ProgramData%\SensorDash`:
 }
 ```
 
-**Replace the example IP with your actual Pi IP.** The exporter starts only after a service restart and only if `enabled=true`. An absent configuration leaves the existing application completely unchanged. The host label is a persistent display identifier; changing it creates a different time series identity.
+**Replace the example IP with your actual Pi IP.** With the current feature-branch exporter, enablement and credential changes are detected without a Windows service restart. An absent or disabled configuration leaves the fan-control service and hardware behavior unchanged. The host label is a persistent display identifier; changing it creates a different time series identity.
 
 The exporter **does not read hardware a second time**. It reads the collector's existing SQLite `samples` table in small batches, emits original sample timestamps in Influx line protocol and persists a resume cursor after successful HTTPS delivery. On network failures it retries without affecting fan control. It uses the existing history retention policy, so unsent samples older than the local retention window can be lost. The first activation starts at the latest already-archived sample, so it does **not** replay an entire prior month unexpectedly. Historical import will be a separate explicit migration.
 
