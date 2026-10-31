@@ -52,7 +52,7 @@ POWER_LINE = re.compile(
     + rb",system=" + H + rb",component=" + H
     + rb",source=(?:measured|calibrated|curve|rated)"
     + rb",revision=[0-9a-f]{16}"
-    + rb" value=-?(?:[0-9]+(?:\\.[0-9]+)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)? "
+    + rb" value=-?(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)? "
     + T + rb"$"
 )
 
