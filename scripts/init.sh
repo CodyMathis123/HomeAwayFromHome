@@ -9,7 +9,7 @@ if [[ ! -f .env ]]; then
 else
   echo ".env already exists; left untouched."
 fi
-mkdir -p secrets data/pihole data/wireguard
+mkdir -p secrets data/pihole data/wireguard data/victoria-metrics data/grafana
 chmod 700 secrets
 if [[ ! -s secrets/pihole_password ]]; then
   if ! command -v openssl >/dev/null; then
@@ -22,4 +22,10 @@ if [[ ! -s secrets/pihole_password ]]; then
 else
   echo "Pi-hole secret exists; left unchanged."
 fi
+if [[ ! -s secrets/grafana_admin_password ]]; then
+  openssl rand -hex 24 > secrets/grafana_admin_password
+  chmod 600 secrets/grafana_admin_password
+  echo "Generated Grafana administrator password at secrets/grafana_admin_password."
+fi
+echo "Metrics are opt-in. When ready: sudo bash scripts/init-telemetry.sh"
 echo "Next: edit .env, run ./scripts/doctor.sh and review README.md."
