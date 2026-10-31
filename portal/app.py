@@ -59,7 +59,7 @@ def tcp_probe(host: str, port: int, timeout: float = TIMEOUT) -> tuple[bool, str
 def snapshot() -> dict:
     dns_ok, dns_message = dns_probe(os.getenv("PIHOLE_DNS_HOST", "pihole"))
     wg_ok, wg_message = tcp_probe(os.getenv("WG_ADMIN_HOST", "wg-easy"), 51821)
-    kuma_ok, kuma_message = tcp_probe(os.getenv("KUMA_HOST", "uptime-kuma"), 3001)
+    kuma_ok, kuma_message = tcp_probe(os.getenv("GRAFANA_HOST", "grafana"), 3000)
     return {
         "checkedAt": datetime.now(timezone.utc).isoformat(),
         "checks": [
@@ -68,8 +68,8 @@ def snapshot() -> dict:
             {"id": "wireguard", "ok": wg_ok, "label": "WireGuard manager",
              "detail": wg_message if not wg_ok else "Admin listener reachable; tunnel not verified",
              "scope": "Admin listener only"},
-            {"id": "monitor", "ok": kuma_ok, "label": "Uptime Kuma",
-             "detail": kuma_message if kuma_ok else "Optional monitoring may be disabled",
+            {"id": "monitor", "ok": kuma_ok, "label": "Grafana",
+             "detail": kuma_message if kuma_ok else "Optional Grafana metrics profile may be disabled",
              "scope": "Optional HTTP service"},
         ],
     }
