@@ -1,10 +1,10 @@
 # Security model
 
-This is a **home-network appliance**, not a hardened public multi-tenant service.
+This is a **home-network appliance**, not a hardened public multi-tenant service. The optional VictoriaMetrics API is internal-only; the opt-in ingest gateway is HTTPS-only with a private CA, a strong bearer token and strict schema validation.
 
 ## Internet surface
 
-Only **UDP 51820** should be forwarded from the router to the Pi. DNS (TCP/UDP 53), SSH, Pi-hole (8080), HomeAway portal (8088), Uptime Kuma (3001), and wg-easy admin (51821) must NOT be forwarded. Published LAN web ports are bound to PI_LAN_IP, not wildcard. Docker-published ports can bypass some host firewall rules; verify router and IPv6 exposure separately. Keep Docker and host packages updated.
+Only **UDP 51820** should be forwarded from the router to the Pi. DNS (TCP/UDP 53), SSH, Pi-hole (8080), HomeAway portal (8088), Grafana (3000), TLS telemetry ingest (8429), and wg-easy admin (51821) must NOT be forwarded. Published LAN web ports are bound to PI_LAN_IP, not wildcard. Docker-published ports can bypass some host firewall rules; verify router and IPv6 exposure separately. Keep Docker and host packages updated.
 
 ## Administration
 
