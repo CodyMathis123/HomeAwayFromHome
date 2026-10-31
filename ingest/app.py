@@ -22,6 +22,28 @@ LINE = re.compile(
     rb"kind=[A-Za-z0-9_]{1,40}"
     rb" value=-?(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)? [0-9]{13,20}$"
 )
+# Catalog and binding gauges describe Windows-owned configuration.
+# They are never accepted as control commands. All labels are restricted to
+# the same escape-free ASCII alphabet as raw sensor IDs.
+H = rb"[A-Za-z0-9_.:/-]{1,80}"
+S = rb"[A-Za-z0-9_.:/-]{1,256}"
+K = rb"[A-Za-z0-9_]{1,40}"
+N = rb"[A-Za-z0-9_.:/-]{1,96}"
+T = rb"[0-9]{13,20}"
+INFO_LINE = re.compile(
+    rb"^sensordash_sensor_info,host=" + H
+    + rb",sensor=" + S + rb",kind=" + K
+    + rb",name=" + N + rb",alias=" + N + rb",device=" + N
+    + rb" value=[01] " + T + rb"$"
+)
+BINDING_LINE = re.compile(
+    rb"^sensordash_cooling_binding,host=" + H
+    + rb",sensor=" + S + rb",system=" + H
+    + rb",system_name=" + N + rb",component=" + H
+    + rb",component_name=" + N + rb",role=" + K
+    + rb",kind=" + K + rb" value=[01] " + T + rb"$"
+)
+
 TOKEN_FILE = Path(os.environ.get("INGEST_TOKEN_FILE", "/run/tls/token"))
 VM_HOST = os.environ.get("VICTORIAMETRICS_HOST", "victoria-metrics")
 VM_PORT = 8428
@@ -31,7 +53,10 @@ def valid_payload(body: bytes) -> bool:
     if not body or len(body) > MAX_BODY or b"\r" in body:
         return False
     rows = body.strip(b"\n").split(b"\n")
-    return 0 < len(rows) <= MAX_LINES and all(LINE.fullmatch(line) for line in rows)
+    return 0 < len(rows) <= MAX_LINES and all(
+        LINE.fullmatch(line) or INFO_LINE.fullmatch(line)
+        or BINDING_LINE.fullmatch(line) for line in rows
+    )
 
 
 def token_ok(header: str | None, expected: str) -> bool:
