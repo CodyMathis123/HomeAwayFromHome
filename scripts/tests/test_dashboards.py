@@ -168,6 +168,11 @@ class DashboardContracts(unittest.TestCase):
         self.assertIn("sensordash_spool_value", s)
         self.assertIn("sensordash_sensor_info_value", s)
         self.assertIn("sensordash_reading_value", s)
+        for metric in ("vm_data_size_bytes", "vm_free_disk_space_bytes",
+                       "vm_rows_added_to_storage_total"):
+            self.assertIn(metric, s)
+        self.assertIn("topk(25, count_over_time(", s)
+
         self.assertIn("sensordash_event_value", e)
         self.assertIn("count_over_time(", e)
         self.assertNotIn("message=", e)

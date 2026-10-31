@@ -60,6 +60,7 @@ def check(config: dict, ip: str) -> None:
     scrape = Path("monitoring/scrape.yml").read_text(encoding="utf-8")
     assert 'wg-easy:51821' in scrape and '/metrics/prometheus' in scrape
     assert 'pihole-exporter:9187' in scrape
+    assert 'victoria-metrics:8428' in scrape and 'job_name: victoria-metrics' in scrape
     assert 'credentials_file: /run/secrets/wg_metrics_bearer' in scrape
     assert 'wireguard_peer_endpoint_info' in scrape and 'action: drop' in scrape
     assert services["telemetry-ingest"].get("read_only") is True
