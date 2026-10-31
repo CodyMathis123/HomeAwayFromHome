@@ -14,7 +14,7 @@ The dashboards use **native Grafana 13.3 panels**, not custom CSS injection, a t
 
 SensorDash's TelemetryLineProtocol.Label serializes an ASCII-restricted metric-label alphabet. Spaces and other unsupported characters become underscores. Stable raw sensor IDs and historical series cannot be renamed casually without breaking joins and comparisons.
 
-Grafana's built-in renameByRegex transformation replaces underscores globally in the **visible chart series names**. Reference tables use query-time label_replace on human-facing name, alias, device, component_name and system_name labels; stable sensor, system, host and component IDs are never modified. This is best-effort formatting: a literal underscore cannot be distinguished from a former space. A future display-string transport can preserve exact original names independently of stable IDs.
+Charts now additionally normalize the *human-facing label values* using query-time label_replace before Grafana interpolates the series legend; this avoids relying on display-name transformation behavior alone. Grafana's built-in renameByRegex transformation also replaces underscores globally in any remaining visible chart-series names. Reference tables use query-time label_replace on human-facing name, alias, device, component_name and system_name labels; stable sensor, system, host and component IDs are never modified. This is best-effort formatting: a literal underscore cannot be distinguished from a former space. A future display-string transport can preserve exact original names independently of stable IDs.
 
 ## Themes and branding
 

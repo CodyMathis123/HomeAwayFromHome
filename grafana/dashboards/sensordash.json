@@ -9,7 +9,7 @@
   ],
   "timezone": "browser",
   "schemaVersion": 40,
-  "version": 3,
+  "version": 4,
   "time": {
     "from": "now-1h",
     "to": "now"
@@ -213,7 +213,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "sensordash_reading_value{host=~\"$host\",sensor=~\"$sensor\",kind=\"Temperature\"} * on(host,sensor) group_left(name,alias,device) (sensordash_sensor_info_value{host=~\"$host\"} == 1)",
+          "expr": "label_replace(label_replace(label_replace(label_replace(sensordash_reading_value{host=~\"$host\",sensor=~\"$sensor\",kind=\"Temperature\"} * on(host,sensor) group_left(name,alias,device) (sensordash_sensor_info_value{host=~\"$host\"} == 1), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
           "legendFormat": "{{name}}",
           "range": true
         }
@@ -226,7 +226,8 @@
             "renamePattern": " "
           }
         }
-      ]
+      ],
+      "description": " Visible name labels are normalized at query time; the stored series and join identity labels are unchanged."
     },
     {
       "id": 2,
@@ -282,7 +283,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "sensordash_reading_value{host=~\"$host\",sensor=~\"$sensor\",kind=\"Fan\"} * on(host,sensor) group_left(name,alias,device) (sensordash_sensor_info_value{host=~\"$host\"} == 1)",
+          "expr": "label_replace(label_replace(label_replace(label_replace(sensordash_reading_value{host=~\"$host\",sensor=~\"$sensor\",kind=\"Fan\"} * on(host,sensor) group_left(name,alias,device) (sensordash_sensor_info_value{host=~\"$host\"} == 1), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
           "legendFormat": "{{name}}",
           "range": true
         }
@@ -295,7 +296,8 @@
             "renamePattern": " "
           }
         }
-      ]
+      ],
+      "description": " Visible name labels are normalized at query time; the stored series and join identity labels are unchanged."
     },
     {
       "id": 3,
@@ -351,7 +353,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "sensordash_reading_value{host=~\"$host\",sensor=~\"$sensor\",kind=\"Power\"} * on(host,sensor) group_left(name,alias,device) (sensordash_sensor_info_value{host=~\"$host\"} == 1)",
+          "expr": "label_replace(label_replace(label_replace(label_replace(sensordash_reading_value{host=~\"$host\",sensor=~\"$sensor\",kind=\"Power\"} * on(host,sensor) group_left(name,alias,device) (sensordash_sensor_info_value{host=~\"$host\"} == 1), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
           "legendFormat": "{{name}}",
           "range": true
         }
@@ -364,7 +366,8 @@
             "renamePattern": " "
           }
         }
-      ]
+      ],
+      "description": " Visible name labels are normalized at query time; the stored series and join identity labels are unchanged."
     },
     {
       "id": 4,
@@ -421,7 +424,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "sensordash_reading_value{host=~\"$host\",sensor=~\"$sensor\",kind=\"Control\"} * on(host,sensor) group_left(name,alias,device) (sensordash_sensor_info_value{host=~\"$host\"} == 1)",
+          "expr": "label_replace(label_replace(label_replace(label_replace(sensordash_reading_value{host=~\"$host\",sensor=~\"$sensor\",kind=\"Control\"} * on(host,sensor) group_left(name,alias,device) (sensordash_sensor_info_value{host=~\"$host\"} == 1), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
           "legendFormat": "{{name}}",
           "range": true
         }
@@ -434,7 +437,8 @@
             "renamePattern": " "
           }
         }
-      ]
+      ],
+      "description": " Visible name labels are normalized at query time; the stored series and join identity labels are unchanged."
     },
     {
       "id": 110,

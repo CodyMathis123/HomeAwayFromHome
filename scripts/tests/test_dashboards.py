@@ -36,6 +36,8 @@ class DashboardContracts(unittest.TestCase):
             self.assertIn("sensordash_sensor_info_value", query)
             self.assertEqual(panels[id]["targets"][0]["legendFormat"],
                              "{{component_name}} · {{name}}")
+            self.assertIn('"component_name", "$1 $2", "component_name"', query)
+            self.assertIn('"name", "$1 $2", "name"', query)
         self.assertIn('role=~"fan-group"', "\n".join(
             panels[id]["targets"][0]["expr"] for id in range(2, 10)))
         self.assertIn('role=~"pump"', "\n".join(
@@ -146,7 +148,9 @@ class DashboardContracts(unittest.TestCase):
         self.assertIn("label_replace(", panels[10]["targets"][0]["expr"])
         for id in (1, 2, 3, 4):
             query = panels[id]["targets"][0]["expr"]
-            self.assertTrue(query.startswith("sensordash_reading_value"))
+            self.assertIn("sensordash_reading_value", query)
+            self.assertIn("label_replace(", query)
+            self.assertIn('"name", "$1 $2", "name"', query)
             self.assertIn('sensor=~"$sensor"', query)
             self.assertNotIn("alias=", query)
             self.assertIn("sensordash_sensor_info_value", query)
