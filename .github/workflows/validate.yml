@@ -19,6 +19,9 @@ jobs:
         run: |
           python3 -m compileall -q portal scripts/tests
           python3 -m unittest discover -s scripts/tests -v
+      - name: Validate Bash script syntax
+        run: |
+          for script in scripts/*.sh; do bash -n "$script"; done
       - name: Validate Compose without starting privileged containers
         run: |
           cp .env.example .env
@@ -26,5 +29,7 @@ jobs:
           printf '%s\n' 'non-production-test-password' > secrets/pihole_password
           docker compose config -q
           docker compose --profile monitoring config -q
+      - name: Build lightweight portal image without running it
+        run: docker compose build portal
       - name: Enforce security and deployment contracts
         run: python3 scripts/check_contracts.py
