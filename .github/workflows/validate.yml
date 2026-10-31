@@ -1,0 +1,30 @@
+name: Validate Pi infrastructure
+on:
+  pull_request:
+    branches: [Production]
+  push:
+    branches: [Production]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  config:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Python code and unit tests
+        run: |
+          python3 -m compileall -q portal scripts/tests
+          python3 -m unittest discover -s scripts/tests -v
+      - name: Validate Compose without starting privileged containers
+        run: |
+          cp .env.example .env
+          mkdir -p secrets
+          printf '%s\n' 'non-production-test-password' > secrets/pihole_password
+          docker compose config -q
+          docker compose --profile monitoring config -q
+      - name: Enforce security and deployment contracts
+        run: python3 scripts/check_contracts.py
