@@ -9,16 +9,16 @@
     "read-only"
   ],
   "schemaVersion": 40,
-  "version": 2,
+  "version": 3,
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
   "refresh": "15s",
   "time": {
-    "from": "now-24h",
+    "from": "now-1h",
     "to": "now"
   },
-  "description": "Fan-group and pump watts recorded by SensorDash from its local electrical model. Ratings are estimates, not actual measurements; no data is filled across sleep or power-off gaps. Does not include CPU/GPU heat-source power.",
+  "description": "Fan-group and pump watts recorded by SensorDash from its local electrical model. Ratings are estimates, not actual measurements; no data is filled across sleep or power-off gaps. Does not include CPU/GPU heat-source power. Dashboard formatting is presentation-only; calibrated watts and revision history are retained exactly.",
   "templating": {
     "list": [
       {
@@ -92,11 +92,11 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 0,
+        "y": 34,
         "w": 24,
         "h": 7
       },
-      "description": "Active components defined in Windows SensorDash. This inventory includes heat sources even when they have no fan/pump electrical estimate; only the charts below report watts. Source, calibration revision, and all electrical model configuration live in SensorDash.",
+      "description": "Active components defined in Windows SensorDash. This inventory includes heat sources even when they have no fan/pump electrical estimate; only the charts below report watts. Source, calibration revision, and all electrical model configuration live in SensorDash. Only component and system *names* are display-normalized, not stable component IDs.",
       "fieldConfig": {
         "defaults": {},
         "overrides": []
@@ -112,7 +112,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "sensordash_component_info_value{host=~\"$host\",system=~\"$system\"} == 1",
+          "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(sensordash_component_info_value{host=~\"$host\",system=~\"$system\"} == 1, \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"system_name\", \"$1 $2\", \"system_name\", \"^(.*)_(.*)$\"), \"system_name\", \"$1 $2\", \"system_name\", \"^(.*)_(.*)$\"), \"system_name\", \"$1 $2\", \"system_name\", \"^(.*)_(.*)$\"), \"system_name\", \"$1 $2\", \"system_name\", \"^(.*)_(.*)$\"), \"system_name\", \"$1 $2\", \"system_name\", \"^(.*)_(.*)$\"), \"system_name\", \"$1 $2\", \"system_name\", \"^(.*)_(.*)$\")",
           "format": "table",
           "instant": true
         }
@@ -155,7 +155,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 7,
+        "y": 15,
         "w": 12,
         "h": 9
       },
@@ -166,9 +166,16 @@
           "custom": {
             "drawStyle": "line",
             "spanNulls": false,
-            "lineInterpolation": "linear",
-            "showPoints": "never"
-          }
+            "lineInterpolation": "smooth",
+            "showPoints": "never",
+            "lineWidth": 2,
+            "fillOpacity": 14,
+            "axisBorderShow": false
+          },
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "min": 0
         },
         "overrides": []
       },
@@ -197,6 +204,15 @@
           "legendFormat": "{{component_name}} · {{source}} · rev {{revision_short}}",
           "range": true
         }
+      ],
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
       ]
     },
     {
@@ -209,7 +225,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 7,
+        "y": 15,
         "w": 12,
         "h": 9
       },
@@ -220,9 +236,16 @@
           "custom": {
             "drawStyle": "line",
             "spanNulls": false,
-            "lineInterpolation": "linear",
-            "showPoints": "never"
-          }
+            "lineInterpolation": "smooth",
+            "showPoints": "never",
+            "lineWidth": 2,
+            "fillOpacity": 14,
+            "axisBorderShow": false
+          },
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "min": 0
         },
         "overrides": []
       },
@@ -251,11 +274,20 @@
           "legendFormat": "{{component_name}} · {{source}} · rev {{revision_short}}",
           "range": true
         }
+      ],
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
       ]
     },
     {
       "id": 4,
-      "title": "Directly measured watts (requires power sensor)",
+      "title": "Measured electrical watts · requires sensor",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -263,7 +295,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 16,
+        "y": 24,
         "w": 12,
         "h": 9
       },
@@ -274,9 +306,16 @@
           "custom": {
             "drawStyle": "line",
             "spanNulls": false,
-            "lineInterpolation": "linear",
-            "showPoints": "never"
-          }
+            "lineInterpolation": "smooth",
+            "showPoints": "never",
+            "lineWidth": 2,
+            "fillOpacity": 14,
+            "axisBorderShow": false
+          },
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "min": 0
         },
         "overrides": []
       },
@@ -305,6 +344,15 @@
           "legendFormat": "{{component_name}} · {{source}} · rev {{revision_short}}",
           "range": true
         }
+      ],
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
       ]
     },
     {
@@ -317,7 +365,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 16,
+        "y": 24,
         "w": 12,
         "h": 9
       },
@@ -328,9 +376,16 @@
           "custom": {
             "drawStyle": "line",
             "spanNulls": false,
-            "lineInterpolation": "linear",
-            "showPoints": "never"
-          }
+            "lineInterpolation": "smooth",
+            "showPoints": "never",
+            "lineWidth": 2,
+            "fillOpacity": 14,
+            "axisBorderShow": false
+          },
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "min": 0
         },
         "overrides": []
       },
@@ -359,7 +414,259 @@
           "legendFormat": "{{component_name}} · {{source}} · rev {{revision_short}}",
           "range": true
         }
+      ],
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
       ]
+    },
+    {
+      "id": 110,
+      "title": "Cooling components",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Current cooling topology components; does not mean each has a wattage sensor.",
+      "gridPos": {
+        "x": 0,
+        "y": 3,
+        "w": 8,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#52B6FF"
+          },
+          "noValue": "—",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "count(sensordash_component_info_value{host=~\"$host\",system=~\"$system\"} == 1)",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 111,
+      "title": "Power-model components",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Components reporting an estimated or measured accessory wattage series; independent of revision count.",
+      "gridPos": {
+        "x": 8,
+        "y": 3,
+        "w": 8,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#A78BFA"
+          },
+          "noValue": "—",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "count(count by(host,system,component)(sensordash_accessory_power_value{host=~\"$host\",system=~\"$system\",source=~\"$source\"}))",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 112,
+      "title": "Measured power sources",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Physical measurements, not rated or curve-calculated watts. Zero means no measured series currently.",
+      "gridPos": {
+        "x": 16,
+        "y": 3,
+        "w": 8,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#58D4BD"
+          },
+          "noValue": "—",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "count(sensordash_accessory_power_value{host=~\"$host\",system=~\"$system\",source=\"measured\"}) or vector(0)",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 100,
+      "title": "",
+      "type": "text",
+      "transparent": true,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "targets": [],
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 3
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### ELECTRICAL OVERVIEW\nCurve and rated wattage are **estimates** · no fabricated watt-hour totals across sleep gaps"
+      }
+    },
+    {
+      "id": 101,
+      "title": "",
+      "type": "text",
+      "transparent": true,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "targets": [],
+      "gridPos": {
+        "x": 0,
+        "y": 7,
+        "w": 24,
+        "h": 3
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### FAN & PUMP POWER\nSource and short calibration revision are shown; historical model revisions remain distinct"
+      }
+    },
+    {
+      "id": 102,
+      "title": "",
+      "type": "text",
+      "transparent": true,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "targets": [],
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "w": 24,
+        "h": 3
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### COMPONENT REFERENCE\nCalibration and electricity models are owned by Windows SensorDash"
+      }
     }
   ]
 }
