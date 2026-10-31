@@ -68,6 +68,13 @@ def main() -> None:
         f"sensordash_component_info,host=CI,system=loop,component=fans,system_name=Lab_Loop,component_name=Radiator_Bank,role=fan-group value=1 {stamp}",
         f"sensordash_accessory_power,host=CI,system=loop,component=fans,source=measured,revision=1111111111111111 value=12.25 {stamp}",
         f"sensordash_accessory_power,host=CI,system=loop,component=fans,source=calibrated,revision=2222222222222222 value=8.5 {stamp + 1500}",
+        f"sensordash_reading,host=CI,sensor=/hdd/0/temperature/0,kind=Temperature value=38 {stamp}",
+        f"sensordash_sensor_info,host=CI,sensor=/hdd/0/temperature/0,kind=Temperature,name=NVMe_Temp,alias=Primary_Drive,device=FireCuda,device_type=Storage value=1 {stamp}",
+        f"sensordash_event,host=CI,sensor=cpu_temp,severity=warning,event=raised value=1 {stamp}",
+        f"sensordash_event,host=CI,sensor=cpu_temp,severity=info,event=cleared value=1 {stamp + 1500}",
+        f"sensordash_spool,host=CI,file=database value=1048576 {stamp}",
+        f"sensordash_spool,host=CI,file=wal value=4096 {stamp}",
+        f"sensordash_spool,host=CI,file=shm value=32768 {stamp}",
     ]
     req = urllib.request.Request(
         BASE + "/api/v2/write?precision=ms",
@@ -154,7 +161,35 @@ def main() -> None:
     assert {x["metric"]["source"] for x in with_labels} == {"measured", "calibrated"}, with_labels
     assert {x["metric"]["revision"] for x in with_labels} == {"1111111111111111", "2222222222222222"}, with_labels
     assert {float(x["value"][1]) for x in with_labels} == {12.25, 8.5}, with_labels
-    print("PASS: VictoriaMetrics raw + derived watts, provenance, component join and removal tombstones")
+    # Storage/threshold-event integration uses real VictoriaMetrics operators,
+    # not just dashboard JSON import. No historical detail or fan commands.
+    storage_match = (
+        'sensordash_reading_value{host="CI",kind="Temperature"}'
+        ' * on(host,sensor) group_left(name,device,device_type)'
+        ' (sensordash_sensor_info_value{host="CI",device_type="Storage"} == 1)'
+    )
+    for _ in range(20):
+        storage = query(storage_match)
+        event = query('sensordash_event_value{host="CI"}')
+        spool = query('sensordash_spool_value{host="CI"}')
+        if len(storage) == 1 and len(event) == 2 and len(spool) == 3:
+            break
+        time.sleep(0.5)
+    else:
+        raise AssertionError(
+            "Storage metadata/events/spool series missing: "
+            + repr([storage, event, spool])
+        )
+    assert storage[0]["metric"]["device_type"] == "Storage", storage
+    assert storage[0]["metric"]["sensor"] == "/hdd/0/temperature/0", storage
+    assert float(storage[0]["value"][1]) == 38.0, storage
+    assert {x["metric"]["severity"] for x in event} == {"info", "warning"}, event
+    assert {x["metric"]["event"] for x in event} == {"raised", "cleared"}, event
+    assert {x["metric"]["file"] for x in spool} == {"database", "wal", "shm"}, spool
+    samples = query('sum(count_over_time(sensordash_event_value{host="CI"}[10m]))')
+    assert len(samples) == 1 and float(samples[0]["value"][1]) == 2, samples
+    print("PASS: VictoriaMetrics raw + derived watts, metadata, threshold events,"
+          " spool footprint, storage joins and removal tombstones")
 
 
 if __name__ == "__main__":
