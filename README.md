@@ -123,4 +123,8 @@ Never commit `.env`, `secrets/`, `data/`, `backups/`, or client profiles/QR code
 
 ## SensorDash / Grafana milestone 1
 
-See [docs/TELEMETRY.md](docs/TELEMETRY.md) and [cooling dashboard contract](docs/COOLING-GRAFANA.md): an optional Grafana 13.3.0 + VictoriaMetrics v1.155.0 profile, write-only authenticated TLS intake, a raw-sensor dashboard and a metadata-driven cooling-system dashboard. SensorDash's exporter remains disabled by default; all existing local control and browser features continue. Do not expose metrics endpoints at the router.
+See [docs/TELEMETRY.md](docs/TELEMETRY.md) and [cooling dashboard contract](docs/COOLING-GRAFANA.md): an optional Grafana 13.3.0 + VictoriaMetrics v1.155.0 profile, write-only authenticated TLS intake, a raw-sensor dashboard, a metadata-driven cooling-system dashboard, and a provenance-labeled fan/pump electrical dashboard. SensorDash's exporter remains disabled by default; all existing local control and browser features continue. Do not expose metrics endpoints at the router.
+
+## Real hardware validation
+
+After CI passes, follow [First Pi/Windows rollout and side-by-side verification](docs/LIVE-VALIDATION.md). It describes the staged Pi-hole/DNS cutover, WireGuard test from iPhone cellular, private CA/token transfer to Windows, and the read-only `scripts/verify-telemetry.sh` checker. **Do not merge or delete the original SensorDash dashboard until that comparison passes.**
