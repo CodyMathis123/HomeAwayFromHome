@@ -31,7 +31,7 @@ For example:
 
 ```promql
 sensordash_reading_value{kind="Temperature",host=~"$host"}
-* on(host,sensor) group_right(system,system_name,component,component_name,role)
+* on(host,sensor) group_right()
 (sensordash_cooling_binding_value{system=~"$system",kind="Temperature"} == 1)
 ```
 
