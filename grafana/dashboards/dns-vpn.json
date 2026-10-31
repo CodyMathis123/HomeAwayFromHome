@@ -9,20 +9,20 @@
     "read-only"
   ],
   "schemaVersion": 40,
-  "version": 1,
+  "version": 2,
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
   "refresh": "30s",
   "time": {
-    "from": "now-6h",
+    "from": "now-1h",
     "to": "now"
   },
   "description": "Read-only internal monitoring: Pi-hole v6 summary-window gauges and wg-easy v15 Prometheus metrics, scraped by existing VictoriaMetrics. No DNS query logs, client public endpoints or administrative capabilities are collected.",
   "panels": [
     {
       "id": 1,
-      "title": "Pi-hole filtering",
+      "title": "DNS filtering",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
@@ -88,7 +88,7 @@
     },
     {
       "id": 2,
-      "title": "DNS queries (window)",
+      "title": "DNS queries · window",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
@@ -141,7 +141,7 @@
     },
     {
       "id": 3,
-      "title": "DNS blocked",
+      "title": "Blocked DNS (%)",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
@@ -194,7 +194,7 @@
     },
     {
       "id": 4,
-      "title": "Active DNS clients",
+      "title": "Active clients",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
@@ -247,7 +247,7 @@
     },
     {
       "id": 5,
-      "title": "Cached queries",
+      "title": "Cached DNS queries",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
@@ -300,7 +300,7 @@
     },
     {
       "id": 6,
-      "title": "Gravity domains",
+      "title": "Gravity blocklist",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
@@ -353,13 +353,13 @@
     },
     {
       "id": 7,
-      "title": "DNS query frequency",
+      "title": "Live DNS query rate",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Queries/s reported by Pi-hole; not derived from the summary-window counts.",
+      "description": "Pi-hole's current queries/second gauge. It may show zero when DNS is quiet even while the rolling reporting window contains previous queries.",
       "gridPos": {
         "x": 0,
         "y": 5,
@@ -407,13 +407,13 @@
     },
     {
       "id": 8,
-      "title": "DNS window totals",
+      "title": "DNS counts · reporting window",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Window totals may decrease as older queries fall out of the summary period.",
+      "description": "Current aggregate summary-window counts, not monotonic lifetime counters. Series may go down as the window advances; do not use rate() or increase() on these values.",
       "gridPos": {
         "x": 12,
         "y": 5,
@@ -453,8 +453,38 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "{__name__=~\"homeaway_pihole_queries_window|homeaway_pihole_blocked_window|homeaway_pihole_forwarded_window|homeaway_pihole_cached_window\"}",
-          "legendFormat": "{{__name__}}",
+          "expr": "homeaway_pihole_queries_window",
+          "legendFormat": "All queries",
+          "range": true
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "homeaway_pihole_cached_window",
+          "legendFormat": "Cached",
+          "range": true
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "homeaway_pihole_forwarded_window",
+          "legendFormat": "Forwarded",
+          "range": true
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "homeaway_pihole_blocked_window",
+          "legendFormat": "Blocked",
           "range": true
         }
       ]
@@ -515,13 +545,13 @@
     },
     {
       "id": 10,
-      "title": "Pi-hole exporter scrape",
+      "title": "Pi-hole metrics",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "1 means the internal Prometheus scrape succeeded; 0 means it failed.",
+      "description": "Internal VictoriaMetrics target health: UP means HTTP metrics scraping succeeded; it does not prove that VPN traffic or client DNS resolution works.",
       "gridPos": {
         "x": 12,
         "y": 13,
@@ -539,7 +569,20 @@
                 "value": null
               }
             ]
-          }
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "DOWN"
+                },
+                "1": {
+                  "text": "UP"
+                }
+              }
+            }
+          ]
         },
         "overrides": []
       },
@@ -568,13 +611,13 @@
     },
     {
       "id": 11,
-      "title": "wg-easy scrape",
+      "title": "WireGuard metrics",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "1 means the wg-easy metrics scrape succeeded; enable Prometheus and matching bearer in Admin Panel.",
+      "description": "Internal VictoriaMetrics target health: UP means HTTP metrics scraping succeeded; it does not prove that VPN traffic or client DNS resolution works.",
       "gridPos": {
         "x": 18,
         "y": 13,
@@ -592,7 +635,20 @@
                 "value": null
               }
             ]
-          }
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "DOWN"
+                },
+                "1": {
+                  "text": "UP"
+                }
+              }
+            }
+          ]
         },
         "overrides": []
       },
@@ -621,7 +677,7 @@
     },
     {
       "id": 12,
-      "title": "VPN peers connected",
+      "title": "VPN connected peers",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
@@ -674,7 +730,7 @@
     },
     {
       "id": 13,
-      "title": "VPN peers enabled",
+      "title": "VPN enabled peers",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
@@ -727,7 +783,7 @@
     },
     {
       "id": 14,
-      "title": "VPN peers configured",
+      "title": "VPN configured peers",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
@@ -780,13 +836,13 @@
     },
     {
       "id": 15,
-      "title": "Pi-hole query rate",
+      "title": "VPN transferred data",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "DNS queries/s from Pi-hole's own summary.",
+      "description": "Total bytes counted across peer transfer counters as reported by wg-easy. May reset after WireGuard restarts; not an all-time counter.",
       "gridPos": {
         "x": 18,
         "y": 21,
@@ -795,7 +851,7 @@
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "reqps",
+          "unit": "bytes",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -826,14 +882,14 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "homeaway_pihole_query_frequency",
+          "expr": "sum(wireguard_received_bytes) + sum(wireguard_sent_bytes)",
           "instant": true
         }
       ]
     },
     {
       "id": 16,
-      "title": "Total VPN traffic",
+      "title": "Aggregate VPN throughput",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -897,7 +953,7 @@
     },
     {
       "id": 17,
-      "title": "Peer handshake age",
+      "title": "Last-handshake age",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -951,7 +1007,7 @@
     },
     {
       "id": 18,
-      "title": "Peer inbound throughput",
+      "title": "Peer receive throughput",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -1005,7 +1061,7 @@
     },
     {
       "id": 19,
-      "title": "Peer outbound throughput",
+      "title": "Peer send throughput",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
