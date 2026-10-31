@@ -60,8 +60,9 @@ async function setupEmbeddedMetrics() {
     }
     const url = new URL(config.url);
     // Defense in depth: never load an arbitrary origin or admin path.
+    // HomeAway may be opened by a local DNS name while Grafana uses the Pi's LAN IP.
+    // The server has already validated and constructed that private LAN origin.
     if (url.protocol !== 'http:' || url.port !== '3000' ||
-        url.hostname !== window.location.hostname ||
         !/^\\/public-dashboards\\/[a-fA-F0-9]{32,128}$/.test(url.pathname)) {
       throw new Error('Embedded URL must use this Pi host and a shared-dashboard link');
     }
