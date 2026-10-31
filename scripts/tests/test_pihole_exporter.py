@@ -54,7 +54,7 @@ class ExporterTests(unittest.TestCase):
         for state, expected in (("enabled", 1), ("disabled", 0)):
             with self.subTest(state=state):
                 output = render_metrics(SUMMARY, {"blocking": state, "timer": None, "took": 0.00004})
-                self.assertIn(f"homeaway_pihole_blocking_enabled {expected}\\n", output)
+                self.assertIn(f"homeaway_pihole_blocking_enabled {expected}", output.splitlines())
                 self.assertIn("homeaway_pihole_queries_window 100", output)
 
     def test_app_session_reauth_and_no_secret_in_metrics(self):
