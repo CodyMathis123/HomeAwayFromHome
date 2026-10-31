@@ -12,19 +12,16 @@ bash scripts/doctor.sh
 
 Portal: `http://PI_LAN_IP:8088`. Pi-hole: `http://PI_LAN_IP:8080/admin/`. WireGuard UI through SSH: `ssh -L 51821:127.0.0.1:51821 user@PI_LAN_IP`, then open `http://127.0.0.1:51821`.
 
-## Optional Uptime Kuma
+## Optional Grafana and VictoriaMetrics
+
+See [telemetry guide](TELEMETRY.md). Provisioning config and dashboards are version controlled. TLS certificates and tokens are generated locally and are not stored in Git. The metrics profile is opt-in:
 
 ```bash
-docker compose --profile monitoring up -d uptime-kuma
+sudo bash scripts/init-telemetry.sh  # only the first time; credentials never overwritten
+docker compose --profile metrics up -d --build grafana telemetry-ingest
 ```
 
-First visit `http://PI_LAN_IP:3001` and create a strong administrator password. Good initial monitors:
-- DNS Record monitor querying Pi-hole on port 53 (verify using a client on the same Docker network).
-- HTTP portal `http://portal:8080/healthz` (only proves portal process).
-- HTTP Pi-hole `http://pihole:80/admin/` (UI reachable, not full DNS).
-- TCP `wg-easy:51821` (admin listener reachable, **not a VPN handshake**).
-
-For actual VPN availability, also periodically verify a real peer handshake and LAN reachability from cellular. Do not add a Docker socket to Uptime Kuma by default.
+Grafana is LAN/VPN-only at `http://PI_LAN_IP:3000`. VictoriaMetrics never publishes its HTTP API, and SensorDash writes through the authenticated HTTPS receiver on `https://PI_LAN_IP:8429/ingest`. The private server certificate expires after 365 days and must be rotated, alongside updated Windows collector trust if the CA changes.
 
 ## Backup and restore
 
@@ -54,7 +51,7 @@ bash scripts/update.sh --apply
 bash scripts/smoke.sh
 ```
 
-The update script only updates core services; monitoring stays opt-in. To update Uptime Kuma after a backup:
+The update script only updates core services; monitoring stays opt-in. To update Grafana/VictoriaMetrics after a backup (intake image separately if changed):
 ```bash
 docker compose --profile monitoring pull uptime-kuma
 docker compose --profile monitoring up -d uptime-kuma
