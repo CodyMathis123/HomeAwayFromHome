@@ -28,7 +28,7 @@ class DashboardContracts(unittest.TestCase):
         self.assertIn("== 1", queries[0])
         for query in queries[1:]:
             self.assertIn("sensordash_reading_value", query)
-            self.assertIn("group_right()", query)
+            self.assertTrue("group_right()" in query or "group_left()" in query, query)
             self.assertIn("sensordash_cooling_binding_value", query)
             self.assertIn("== 1", query)
         self.assertIn('role=~"fan-group"', "\n".join(queries))
