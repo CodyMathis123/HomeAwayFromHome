@@ -1,0 +1,44 @@
+{
+  auto_https disable_redirects
+}
+
+# Internal CA: trust the Caddy root cert on each client before enabling controls.
+# No direct public Internet access; all three names resolve only to Pi LAN IP.
+{$HOMEAWAY_AUTH_DOMAIN}:8443 {
+  tls internal
+  reverse_proxy authelia:9091
+}
+
+{$HOMEAWAY_DOMAIN}:8443 {
+  tls internal
+
+  @control path /control /control/*
+  handle @control {
+    # Remove all caller-provided identities before Authelia verification.
+    request_header -Remote-User
+    request_header -Remote-Groups
+    request_header -Remote-Name
+    request_header -Remote-Email
+    request_header -X-HomeAway-User
+
+    forward_auth authelia:9091 {
+      uri /api/authz/forward-auth
+      copy_headers Remote-User
+    }
+
+    reverse_proxy pc-control:8081 {
+      header_up X-HomeAway-User {http.request.header.Remote-User}
+      header_up -Remote-User
+    }
+  }
+
+  # Existing read-only portal stays available over HTTP :8088 as before.
+  handle {
+    reverse_proxy portal:8080
+  }
+}
+
+{$HOMEAWAY_METRICS_DOMAIN}:8443 {
+  tls internal
+  reverse_proxy grafana:3000
+}

@@ -1,0 +1,68 @@
+# Optional HomeAway control stack. Always combine with compose.yaml.
+# No router-facing ports. HTTPS :8443 is bound to private PI_LAN_IP only.
+services:
+  gateway:
+    profiles: [control]
+    image: caddy:2.10.2
+    restart: unless-stopped
+    ports:
+      - "${PI_LAN_IP:?Set PI_LAN_IP in .env}:8443:8443/tcp"
+    environment:
+      HOMEAWAY_DOMAIN: ${HOMEAWAY_DOMAIN:?Set HOMEAWAY_DOMAIN in .env}
+      HOMEAWAY_AUTH_DOMAIN: ${HOMEAWAY_AUTH_DOMAIN:?Set HOMEAWAY_AUTH_DOMAIN in .env}
+      HOMEAWAY_METRICS_DOMAIN: ${HOMEAWAY_METRICS_DOMAIN:?Set HOMEAWAY_METRICS_DOMAIN in .env}
+    volumes:
+      - ./control/gateway/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./data/control/caddy:/data
+      - ./data/control/caddy-config:/config
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks: [infra, pc-control]
+
+  authelia:
+    profiles: [control]
+    image: authelia/authelia:4.39.28
+    restart: unless-stopped
+    user: "65534:65534"
+    environment:
+      AUTHELIA_CONFIG: /config/configuration.yml
+    volumes:
+      - ./data/control/authelia:/config
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks: [pc-control]
+    # Intentionally no host ports. Only Caddy can reach its web UI.
+
+  pc-control:
+    profiles: [control]
+    build:
+      context: ./control/api
+    restart: unless-stopped
+    user: "65534:65534"
+    group_add:
+      - "${PCCTL_GID:?Set PCCTL_GID after installing the Pi agent}"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    environment:
+      HOMEAWAY_CONTROL_ORIGIN: "https://${HOMEAWAY_DOMAIN}:8443"
+    volumes:
+      - /etc/homeaway-pcctl:/etc/homeaway-pcctl:ro
+      - /run/homeaway-pcctl:/run/homeaway-pcctl:ro
+      - ./data/control/audit:/data
+    networks: [pc-control]
+    # Never add published ports, privileged, SSH key mounts, or Docker socket.
+
+  portal:
+    environment:
+      HOMEAWAY_CONTROL_URL: "https://${HOMEAWAY_DOMAIN}:8443/control/"
+      HOMEAWAY_METRICS_ORIGIN: "https://${HOMEAWAY_METRICS_DOMAIN}:8443"
+
+  grafana:
+    environment:
+      GF_SERVER_ROOT_URL: "https://${HOMEAWAY_METRICS_DOMAIN}:8443"
+
+networks:
+  pc-control:
+    driver: bridge
+    internal: true
