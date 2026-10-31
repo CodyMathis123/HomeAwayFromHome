@@ -46,3 +46,11 @@ Metadata exists only **from its first successful synchronization forward**; it c
 - **Historical raw peak/energy/correlation:** not yet audited for Grafana parity. Keep existing SensorDash UI/history until comparison is complete.
 
 Access Grafana over private LAN or WireGuard; never port-forward its management UI or the restricted telemetry receiver. See [TELEMETRY.md](TELEMETRY.md) for setup and TLS bootstrap.
+
+## Provenance-aware electrical readings
+
+The **SensorDash · Fan & Pump Electricity** dashboard is backed by the separate `sensordash_accessory_power_value` metric (archive-time watts, not browser estimates). Every row contains stable system/component identifiers, an explicitly labeled source (`measured`, `calibrated`, `curve`, or `rated`), and a deterministic 16-hex revision for the electrical configuration at the moment of sampling. The component display name and role are joined from the independent `sensordash_component_info_value == 1` gauge; this remains available even if the pump has no assigned tachometer.
+
+**Measured** means the input came from an actual power sensor. **Calibrated** means interpolation between entered whole-group measurements. **Curve** means a per-unit RPM or duty interpolation scaled by quantity. **Rated** means nameplate power gated by an observed running/stopped tachometer and is **not a direct measurement**. Unknown or stale measurements produce no wattage point, not a false zero. A calibration change starts a new revision label rather than rewriting old values.
+
+Watt-hours and complete system power totals are intentionally excluded until missing-data and gap-aware integration match SensorDash's existing local historical statistics on real PC data. The charts must not bridge holes from sleep or shutdown.
