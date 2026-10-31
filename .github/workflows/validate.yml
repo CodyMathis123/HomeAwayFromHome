@@ -31,10 +31,12 @@ jobs:
           mkdir -p secrets/telemetry
           docker compose config -q
           docker compose --profile metrics config -q
-      - name: Build lightweight portal image without running it
+      - name: Build application and wg-easy images without starting VPN
         run: |
-          docker compose build portal
+          docker compose build portal wg-easy
           docker compose --profile metrics build telemetry-ingest
+          docker compose run --rm --no-deps --entrypoint sh wg-easy -c \
+            'iptables --version | grep -q nf_tables && ip6tables --version | grep -q nf_tables'
       - name: Enforce security and deployment contracts
         run: python3 scripts/check_contracts.py
       - name: Verify real VictoriaMetrics ingestion and cooling join
