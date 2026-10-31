@@ -10,7 +10,7 @@
   ],
   "description": "A SensorDash-inspired, read-only front page with featured sensor cards, sample-based peaks, CPU/GPU power, cooling electrical estimates, temperature history, and catalog summaries. Actual fan control, aliases, configured probes, energy integrals and retention remain authoritative on the Windows collector.",
   "schemaVersion": 40,
-  "version": 1,
+  "version": 2,
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
@@ -91,7 +91,7 @@
     },
     {
       "id": 1,
-      "title": "CPU · warmest assigned sensor",
+      "title": "CPU · warmest reported",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
@@ -151,7 +151,7 @@
     },
     {
       "id": 2,
-      "title": "GPU · warmest assigned sensor",
+      "title": "GPU · warmest reported",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
@@ -831,7 +831,7 @@
         "x": 15,
         "y": 29,
         "w": 9,
-        "h": 5
+        "h": 4
       },
       "targets": [
         {
@@ -889,9 +889,9 @@
       "description": "The non-PWM DDC pump is monitored only; the graph never commands its speed.",
       "gridPos": {
         "x": 15,
-        "y": 34,
+        "y": 33,
         "w": 9,
-        "h": 5
+        "h": 4
       },
       "targets": [
         {
@@ -1071,6 +1071,66 @@
           }
         }
       ]
+    },
+    {
+      "id": 11,
+      "title": "Radiator PWM duty",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Read-only radiator PWM feedback exported from Windows. This is a monitoring reading, not a control command.",
+      "gridPos": {
+        "x": 15,
+        "y": 37,
+        "w": 9,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "max((sensordash_reading_value{host=~\"$host\",kind=\"Control\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",role=\"fan-group\",kind=\"Control\"} == 1)))",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "noValue": "—",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#f2bd6d"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area"
+      }
     }
   ]
 }
