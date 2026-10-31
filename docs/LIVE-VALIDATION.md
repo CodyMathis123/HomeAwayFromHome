@@ -85,47 +85,15 @@ At `http://PI_LAN_IP:3000`, log in as `admin` with the generated `secrets/grafan
 
 Run `bash scripts/verify-telemetry.sh` now: it should check Grafana and TLS intake but report **no recent Windows data** (nonzero exit), as the exporter isn't enabled yet.
 
-## Stage 5 — Safely configure Windows exporter
+## Stage 5 — Safely configure the new Windows exporter
 
-**First**, back up `C:\ProgramData\SensorDash\settings.json`, the existing SQLite database and your current installer. Ensure your fan hardware falls back to firmware defaults if the collector restarts. Use an approved SensorDash build from the separate [draft telemetry exporter PR](https://github.com/CodyMathis123/SensorDash/pull/13); do not merge either repository automatically.
+First deploy the Pi ingestion updates from HomeAwayFromHome, including the new Storage and Events dashboard schemas. Do not install the new Windows MSI before that step.
 
-To transfer the Pi-issued **CA public certificate and private write token without pasting them into chat**, create a temporary SSH-accessible directory on the Pi:
+Make a backup of the current C:\\ProgramData\\SensorDash directory (settings, SQLite, approved profiles, and exporter cursors), keep a known-good installer, and check how radiator fans behave if the Windows service is stopped. The Pi never controls those fans.
 
-```bash
-mkdir -p "$HOME/homeaway-transfer"
-chmod 700 "$HOME/homeaway-transfer"
-sudo install -o "$USER" -g "$(id -gn)" -m 600 \
-  secrets/telemetry/ca.crt "$HOME/homeaway-transfer/telemetry-ca.crt"
-sudo install -o "$USER" -g "$(id -gn)" -m 600 \
-  secrets/telemetry/token "$HOME/homeaway-transfer/telemetry-token.txt"
-```
+From the *existing* local SensorDash web UI, open **Settings → Pi telemetry export**. Enter the HTTPS Pi receiver URL (for this installation: https://192.168.1.43:8429/ingest), the stable host label main-desktop, and enable export. Enter the Pi-issued bearer token and public telemetry CA PEM if they are not already installed. These sensitive values are written to Windows by the collector but never returned by a GET; do not post either the token or CA signing private key in chat. Leave both credential fields empty to preserve already installed values.
 
-From an **elevated Windows PowerShell**, replacing the two placeholders:
-
-```powershell
-$pi = "PI_USER@PI_LAN_IP"
-$dir = "C:\ProgramData\SensorDash"
-New-Item -ItemType Directory -Force -Path $dir | Out-Null
-scp "${pi}:homeaway-transfer/telemetry-ca.crt" "$dir\telemetry-ca.crt"
-scp "${pi}:homeaway-transfer/telemetry-token.txt" "$dir\telemetry-token.txt"
-icacls "$dir\telemetry-token.txt" /inheritance:r /grant:r "SYSTEM:F" "Administrators:F"
-```
-
-Immediately on Pi, run `rm -rf "$HOME/homeaway-transfer"`. Restrict the token file further as needed for the account running SensorDashCollector. Do not copy the Pi's private CA signing key.
-
-Create `C:\ProgramData\SensorDash\telemetry-export.json`, with real Pi IPv4 and persistent host label:
-
-```json
-{
-  "enabled": true,
-  "endpoint": "https://PI_LAN_IP:8429/ingest",
-  "tokenFile": "C:\\ProgramData\\SensorDash\\telemetry-token.txt",
-  "caCertificateFile": "C:\\ProgramData\\SensorDash\\telemetry-ca.crt",
-  "hostLabel": "walnut-desktop"
-}
-```
-
-Restart SensorDashCollector only when you're prepared to verify fan behavior. Record the pre/post restart RPM, PWM, GPU and CPU temperatures; don't leave the system unattended if fan behavior is unexpected.
+Save. The form reports whether the token and CA are installed. A controlled restart of SensorDashCollector is currently required to apply a changed export configuration; the form deliberately cannot restart a privileged fan-controlling service. Confirm the old approved fan profile is present, observe real radiator PWM and RPM and the fixed DDC pump tach before/after the supervised restart.
 
 ## Stage 6 — Prove PC → Pi data flow
 
@@ -139,13 +107,13 @@ It must report recent `sensordash_reading_value` samples. If cooling systems are
 
 Compare the same **30-minute interval** in local SensorDash and Grafana: raw CPU/GPU temperatures, true peak, radiator RPM, PWM, and fan/pump wattage source. Test an alias rename and a component sensor reassignment; old labels should become inactive without losing original raw history. Then briefly **stop only the telemetry receiver**, not SensorDash, to check queued delivery after reconnect. Hardware fan control must remain safe throughout.
 
-Do **not** remove SensorDash's old charts or change household DHCP DNS during this proof-of-concept. Keep both applications running for at least one ordinary gaming and sleep/resume cycle so gaps and peak differences can be evaluated.
+Do not change household DHCP DNS during this validation. Leave SensorDash hardware control and the Pi viewer operating through at least one ordinary gaming session and one sleep/resume cycle, and compare current readings and gaps in Grafana to Sensor Explorer and hardware feedback.
 
 ## Stage 7 — DNS cutover and rollback
 
 Only after LAN DNS and VPN tests pass, change your router's DHCP DNS from its current value to the Pi LAN IPv4. Renew one client lease, test Pi-hole query logs, then test the household. Note that if the Pi goes offline, DNS may fail; public secondary DNS can preserve connectivity but may bypass filtering.
 
-To roll back DNS, restore the router's previous DHCP DNS. To roll back SensorDash telemetry only, change `enabled` to `false` and restart the service during a safe fan-control maintenance window; the current local dashboard and SQLite history remain.
+To roll back DNS, restore the router's previous DHCP DNS. To roll back SensorDash telemetry only, disable Pi export in SensorDash Settings and restart the collector during a safe window during a safe fan-control maintenance window; the current local dashboard and SQLite history remain.
 
 ### Definition of done
 

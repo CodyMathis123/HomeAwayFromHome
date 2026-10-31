@@ -38,6 +38,8 @@ names = (
     "sensordash_component_info_value",
     "sensordash_cooling_binding_value",
     "sensordash_accessory_power_value",
+    "sensordash_spool_value",
+    "sensordash_event_value",
 )
 counts = {}
 for name in names:
@@ -54,6 +56,10 @@ if counts["sensordash_sensor_info_value"] == 0:
     print("WARN: no fresh catalog metadata. Review Windows exporter logs.", file=sys.stderr)
 if counts["sensordash_accessory_power_value"] == 0:
     print("INFO: no recent fan/pump wattage samples. Configure actual electrical sensors/calibration.", file=sys.stderr)
+if counts["sensordash_spool_value"] == 0:
+    print("INFO: no Windows retry-spool footprint series yet (new collector build required).")
+if counts["sensordash_event_value"] == 0:
+    print("INFO: no threshold-event impulses in the current lookback; this may be normal.")
 print("PASS: VictoriaMetrics is receiving recent Windows sensor measurements")
 PY
 echo "Note: Active series counts exclude history older than instant-query lookback."

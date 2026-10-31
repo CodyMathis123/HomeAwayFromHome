@@ -1,5 +1,15 @@
 # SensorDash -> HomeAway telemetry proof of concept
 
+## Milestone 4 — SensorDash local-control / Grafana monitoring split
+
+The current Windows UI owns Cooling Systems, Fan Control, Tray Readouts, Sensor Explorer, Events and Settings. Legacy local Overview, custom Dashboards, Virtual Sensors and Storage pages are retired. SensorDash's SQLite archive remains necessary as a bounded retry spool, but Grafana on the Pi owns historical visualization, SSD/NVMe dashboards, local buffer-size trends and threshold event timelines.
+
+The Pi ingress now accepts extra canonical sensor device_type metadata, narrow event raised/cleared impulses, and three local SQLite file-size gauges. Full Windows event messages and all control/alias configuration remain on the PC; Grafana cannot change fan curves or component associations.
+
+Configure the outbound telemetry URL, stable computer label and optionally the receiver bearer token/public CA through **SensorDash → Settings → Pi telemetry export**. Credentials are accepted only by the local Windows service and are never returned by the browser API. Saving doesn't restart the service; apply changes during a supervised collector restart when fan-control fallback is understood. Upgrade order: **deploy the Pi schema first, then install the new SensorDash MSI**. See [SensorDash ADR 0008](https://github.com/CodyMathis123/SensorDash/blob/feature/telemetry-grafana-export/docs/adr/0008-local-control-observability.md).
+
+---
+
 **Stage:** opt-in; keeps all current Windows fan control, tray, cooling configuration, SQLite history and browser UI. Nothing is enabled automatically. Grafana replaces no local UI in this PR.
 
 ## Data flow and security
@@ -81,14 +91,14 @@ Query the Prometheus-compatible series `sensordash_reading_value{host="my-window
 - **Fan curves, authorizations and failsafes:** 100% on the Windows collector; Grafana cannot send commands.
 - **Cooling systems and calibration:** authoritative in SensorDash, never duplicated as editable Grafana state. The exporter now sends a bounded read-only sensor catalog and cooling-component bindings. Grafana's `SensorDash · Cooling Systems` dashboard joins historical raw readings with this metadata; see [cooling integration notes](COOLING-GRAFANA.md). Metadata changes are explicitly marked with `value=0` tombstones; the previous acknowledged snapshot is persisted on Windows.
 - **Derived fan/pump power:** now archived by the Windows collector in its existing SQLite file, with original sample timestamps, measured/calibrated/curve/rated provenance and a deterministic electrical-configuration revision. It is exported using a separate durable cursor so outages don't cause replay under new calibration. Grafana's third dashboard, **SensorDash · Fan & Pump Electricity**, visualizes this without gaining hardware control. **Gap-aware watt-hours and observation coverage remain deliberately unimplemented pending real parity checks**.
-- **Existing SensorDash charts:** remain intact during comparison.
+- **Windows historical charts:** have been retired from the active desktop UI; long-term history is queried in Grafana. Windows keeps a minimal archive buffer for delivery/retry.
 - **Storage:** VictoriaMetrics retains 90 days; Windows local SQLite retention remains configurable independently. Check disk use on the Pi SSD.
 - **Back-pressure:** the exporter reuses local SQLite history and processes at most 384 rows per HTTPS request, never holding a large backlog in memory.
 - **Authorization:** one token gates write-only ingress. It does not allow reads of VictoriaMetrics, access to Grafana, fan control, or system administration.
 - **TLS:** Windows verifies both the endpoint hostname/IP and chain against the configured dedicated CA. Do not use `http://` or disable validation.
 - **Remote iPhone:** Grafana via the LAN or WireGuard, not port-forwarded to the public internet.
 
-## Next milestone
+## Earlier milestone notes (historical)
 
 The sensor catalog, cooling association metadata and first cooling dashboard are implemented. Next: export derived electrical power with explicit measurement provenance/revisions and compare gap handling, historical peaks and paired-sample correlations with SensorDash's local UI. The Pi's **VictoriaMetrics query compatibility is now exercised in CI against a real container**, without touching the actual Pi.
 
