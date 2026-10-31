@@ -63,7 +63,7 @@ def execute(host: dict, action: str) -> dict:
         except OSError:
             return {"ok": True, "state": "offline", "detail": "SSH port not reachable; power state unknown"}
     if action == "wake":
-        magic = b"\\xff" * 6 + bytes.fromhex(host["mac"].replace(":", "")) * 16
+        magic = b"\xff" * 6 + bytes.fromhex(host["mac"].replace(":", "")) * 16
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
             sock.settimeout(3)
