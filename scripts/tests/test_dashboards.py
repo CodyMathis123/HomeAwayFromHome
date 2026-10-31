@@ -11,9 +11,9 @@ class DashboardContracts(unittest.TestCase):
     def test_both_dashboards_are_provisioned(self):
         dashboards = {
             name: json.loads((PANELS / name).read_text(encoding="utf-8"))
-            for name in ("sensordash.json", "cooling-systems.json", "electrical.json")
+            for name in ("sensordash.json", "cooling-systems.json", "electrical.json", "dns-vpn.json")
         }
-        self.assertEqual(len({d["uid"] for d in dashboards.values()}), 3)
+        self.assertEqual(len({d["uid"] for d in dashboards.values()}), 4)
         for name, d in dashboards.items():
             self.assertFalse(d["editable"], name)
             self.assertIn("read-only", d["tags"], name)
@@ -96,6 +96,24 @@ class DashboardContracts(unittest.TestCase):
             self.assertIn("{{source}}", target["legendFormat"])
             self.assertIn("{{revision_short}}", target["legendFormat"])
             self.assertNotIn("{{revision}}", target["legendFormat"])
+
+    def test_dns_vpn_dashboard_uses_aggregate_observations(self):
+        d = json.loads((PANELS / "dns-vpn.json").read_text(encoding="utf-8"))
+        self.assertFalse(d["editable"])
+        self.assertEqual(d["uid"], "homeaway-dns-vpn")
+        expressions = "\n".join(t["expr"] for p in d["panels"] for t in p["targets"])
+        for metric in ("homeaway_pihole_queries_window", "homeaway_pihole_blocked_percent",
+                       "homeaway_pihole_blocking_enabled", "homeaway_pihole_clients_active",
+                       "wireguard_connected_peers", "wireguard_enabled_peers",
+                       "wireguard_configured_peers", "wireguard_latest_handshake_seconds",
+                       "wireguard_received_bytes", "wireguard_sent_bytes",
+                       'up{job="pihole"}', 'up{job="wg-easy"}'):
+            self.assertIn(metric, expressions)
+        self.assertNotIn("wireguard_peer_endpoint_info", expressions)
+        self.assertNotIn("top_domains", expressions)
+        self.assertNotIn("top_clients", expressions)
+        self.assertNotIn("rate(homeaway_pihole_queries_window", expressions)
+        self.assertEqual(len({p["id"] for p in d["panels"]}), len(d["panels"]))
 
     def test_catalog_is_distinct_from_raw_identity(self):
         d = json.loads((PANELS / "sensordash.json").read_text(encoding="utf-8"))
