@@ -1,0 +1,540 @@
+{
+  "id": null,
+  "uid": "homeaway-cooling",
+  "title": "SensorDash · Cooling Systems",
+  "schemaVersion": 40,
+  "version": 1,
+  "editable": false,
+  "timezone": "browser",
+  "graphTooltip": 1,
+  "description": "Windows-owned cooling system mappings, visualized in Grafana. Associations only exist after metadata synchronization begins; no remote hardware control.",
+  "tags": [
+    "homeaway",
+    "sensordash",
+    "cooling",
+    "read-only"
+  ],
+  "refresh": "15s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "host",
+        "label": "Windows PC",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "homeaway-vm"
+        },
+        "query": {
+          "query": "label_values(sensordash_reading_value,host)",
+          "refId": "A"
+        },
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": []
+      },
+      {
+        "name": "system",
+        "label": "Cooling system ID",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "homeaway-vm"
+        },
+        "query": {
+          "query": "label_values(sensordash_cooling_binding_value{host=~\"$host\"},system)",
+          "refId": "A"
+        },
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": []
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Assigned sensors and roles",
+      "type": "table",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Only active bindings (value=1). Historical component assignments are not a substitute for live data freshness.",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\"} == 1",
+          "instant": true,
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Assigned temperatures",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 9
+      },
+      "description": "Measurements are recorded on Windows; cooling assignments remain controlled by SensorDash. Gaps are not filled.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_right(system,system_name,component,component_name,role) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\"} == 1)",
+          "legendFormat": "{{component_name}} · {{sensor}}",
+          "range": true
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "CPU / GPU heat-source power",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 9
+      },
+      "description": "Measurements are recorded on Windows; cooling assignments remain controlled by SensorDash. Gaps are not filled.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Power\"} * on(host,sensor) group_right(system,system_name,component,component_name,role) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Power\",role=~\"heat-source\"} == 1)",
+          "legendFormat": "{{component_name}} · {{sensor}}",
+          "range": true
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Radiator fan-group RPM",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 17,
+        "w": 12,
+        "h": 9
+      },
+      "description": "Measurements are recorded on Windows; cooling assignments remain controlled by SensorDash. Gaps are not filled.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "rpm",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Fan\"} * on(host,sensor) group_right(system,system_name,component,component_name,role) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Fan\",role=~\"fan-group\"} == 1)",
+          "legendFormat": "{{component_name}} · {{sensor}}",
+          "range": true
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Pump tachometer RPM",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 17,
+        "w": 12,
+        "h": 9
+      },
+      "description": "Measurements are recorded on Windows; cooling assignments remain controlled by SensorDash. Gaps are not filled.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "rpm",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Fan\"} * on(host,sensor) group_right(system,system_name,component,component_name,role) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Fan\",role=~\"pump\"} == 1)",
+          "legendFormat": "{{component_name}} · {{sensor}}",
+          "range": true
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Fan control duty feedback",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 26,
+        "w": 12,
+        "h": 9
+      },
+      "description": "Measurements are recorded on Windows; cooling assignments remain controlled by SensorDash. Gaps are not filled.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Control\"} * on(host,sensor) group_right(system,system_name,component,component_name,role) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Control\",role=~\"fan-group\"} == 1)",
+          "legendFormat": "{{component_name}} · {{sensor}}",
+          "range": true
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Coolant temperature (when measured)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 26,
+        "w": 12,
+        "h": 9
+      },
+      "description": "Measurements are recorded on Windows; cooling assignments remain controlled by SensorDash. Gaps are not filled.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_right(system,system_name,component,component_name,role) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=~\"coolant-probe\"} == 1)",
+          "legendFormat": "{{component_name}} · {{sensor}}",
+          "range": true
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Flow rate (when measured)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 35,
+        "w": 12,
+        "h": 9
+      },
+      "description": "Measurements are recorded on Windows; cooling assignments remain controlled by SensorDash. Gaps are not filled.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "flowlpm",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Flow\"} * on(host,sensor) group_right(system,system_name,component,component_name,role) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Flow\",role=~\"flow-meter\"} == 1)",
+          "legendFormat": "{{component_name}} · {{sensor}}",
+          "range": true
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Room ambient temperature (when measured)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 35,
+        "w": 12,
+        "h": 9
+      },
+      "description": "Measurements are recorded on Windows; cooling assignments remain controlled by SensorDash. Gaps are not filled.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_right(system,system_name,component,component_name,role) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=~\"room-ambient\"} == 1)",
+          "legendFormat": "{{component_name}} · {{sensor}}",
+          "range": true
+        }
+      ]
+    }
+  ]
+}
