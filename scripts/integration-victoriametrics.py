@@ -19,6 +19,12 @@ JOIN = (
     ' * on(host,sensor) group_right()'
     ' (sensordash_cooling_binding_value{host="CI",system="loop",kind="Temperature"} == 1)'
 )
+POWER = 'sensordash_accessory_power_value{host="CI",system="loop",component="fans"}'
+COMP = 'sensordash_component_info_value{host="CI",system="loop",component="fans"} == 1'
+POWER_JOIN = (
+    POWER + ' * on(host,system,component) group_left(component_name,system_name,role)'
+    ' (sensordash_component_info_value{host="CI"} == 1)'
+)
 
 
 def query(expression: str) -> list:
@@ -48,6 +54,9 @@ def main() -> None:
         f"sensordash_sensor_info,host=CI,sensor=cpu_temp,kind=Temperature,name=CPU_Package,alias=CPU_Temp,device=Test_PC value=1 {stamp}",
         f"sensordash_cooling_binding,host=CI,sensor=cpu_temp,system=loop,system_name=Lab_Loop,component=cpu,component_name=CPU_Block,role=heat-source,kind=Temperature value=1 {stamp}",
         f"sensordash_cooling_binding,host=CI,sensor=cpu_temp,system=loop,system_name=Lab_Loop,component=aux,component_name=Auxiliary,role=other,kind=Temperature value=1 {stamp}",
+        f"sensordash_component_info,host=CI,system=loop,component=fans,system_name=Lab_Loop,component_name=Radiator_Bank,role=fan-group value=1 {stamp}",
+        f"sensordash_accessory_power,host=CI,system=loop,component=fans,source=measured,revision=1111111111111111 value=12.25 {stamp}",
+        f"sensordash_accessory_power,host=CI,system=loop,component=fans,source=calibrated,revision=2222222222222222 value=8.5 {stamp + 1500}",
     ]
     req = urllib.request.Request(
         BASE + "/api/v2/write?precision=ms",
@@ -98,7 +107,19 @@ def main() -> None:
         raise AssertionError("Old cooling binding remained active: " + repr(remaining))
     assert remaining[0]["metric"]["component_name"] == "CPU_Block", remaining
     assert len(query(RAW)) == 1, "Tombstone must never delete original raw sensor"
-    print("PASS: VictoriaMetrics ingestion, one-to-many cooling joins and removal tombstones")
+    for _ in range(20):
+        values = [query(POWER), query(COMP), query(POWER_JOIN)]
+        if len(values[0]) == 2 and len(values[1]) == 1 and len(values[2]) == 2:
+            break
+        time.sleep(0.5)
+    else:
+        raise AssertionError("Derived power or component metadata missing: " + repr(values))
+    with_labels = values[2]
+    assert {x["metric"]["component_name"] for x in with_labels} == {"Radiator_Bank"}, with_labels
+    assert {x["metric"]["source"] for x in with_labels} == {"measured", "calibrated"}, with_labels
+    assert {x["metric"]["revision"] for x in with_labels} == {"1111111111111111", "2222222222222222"}, with_labels
+    assert {float(x["value"][1]) for x in with_labels} == {12.25, 8.5}, with_labels
+    print("PASS: VictoriaMetrics raw + derived watts, provenance, component join and removal tombstones")
 
 
 if __name__ == "__main__":
