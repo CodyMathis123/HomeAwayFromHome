@@ -8,7 +8,10 @@ if [[ "$EUID" -ne 0 ]]; then
   exit 1
 fi
 command -v openssl >/dev/null || { echo "openssl required" >&2; exit 1; }
-install -d -m 700 -o root -g root secrets
+# Preserve the existing secrets/ owner. The original init.sh created it
+# under the deployment user; changing ownership breaks unprivileged preflight.
+mkdir -p secrets
+chmod 700 secrets
 if [[ ! -s secrets/wg_metrics_bearer ]]; then
   openssl rand -hex 32 > secrets/wg_metrics_bearer
   echo "Created wg-easy bearer credential; paste it into Admin Panel > General > Prometheus."
@@ -35,9 +38,10 @@ else
 fi
 # Compose mounts local secret files read-only without always changing owner/mode.
 # These files are readable by non-root processes INSIDE their isolated containers.
-# Host parent secrets/ is root-only (0700), so ordinary host users cannot traverse it.
+# The host secrets/ directory remains owner-only (0700); unrelated host
+# accounts cannot traverse it. Existing Pi-hole/Grafana credentials are untouched.
 chown root:root secrets/wg_metrics_bearer secrets/pihole_monitor_password
 chmod 644 secrets/wg_metrics_bearer secrets/pihole_monitor_password
 chmod 700 secrets
-echo "Both credentials remain under root-only secrets/; never post or commit them."
+echo "Both credentials remain under the owner-only secrets/ directory; never post or commit them."
 echo "To privately display the wg-easy bearer: sudo cat secrets/wg_metrics_bearer"
