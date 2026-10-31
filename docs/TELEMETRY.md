@@ -90,6 +90,6 @@ Query the Prometheus-compatible series `sensordash_reading_value{host="my-window
 
 ## Next milestone
 
-Add a machine-local stable sensor catalog (sensor ID, aliases, kind and device), explicit derived metrics with source/provenance, and programmatically generated cooling dashboards. Compare historical peaks, gap handling, estimated watts and paired-sample correlations with the original SensorDash UI before removing it.
+The sensor catalog, cooling association metadata and first cooling dashboard are implemented. Next: export derived electrical power with explicit measurement provenance/revisions and compare gap handling, historical peaks and paired-sample correlations with SensorDash's local UI. The Pi's **VictoriaMetrics query compatibility is now exercised in CI against a real container**, without touching the actual Pi.
 
 Official references: [VictoriaMetrics Influx write API](https://docs.victoriametrics.com/victoriametrics/integrations/influxdb/), [Grafana file provisioning](https://grafana.com/docs/grafana/latest/administration/provisioning/).
