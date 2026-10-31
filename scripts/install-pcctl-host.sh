@@ -51,6 +51,9 @@ exec /usr/bin/python3 -B /opt/homeaway-pcctl/$source "\$@"
 EOF
   chmod 0755 "$target"
 done
+# Run-directory must be traversable by the pcctl Unix-socket group after reboot.
+install -m 0644 "$root/control/pcctl/homeaway-pcctl.tmpfiles.conf" /etc/tmpfiles.d/homeaway-pcctl.conf
+systemd-tmpfiles --create /etc/tmpfiles.d/homeaway-pcctl.conf
 install -m 0644 "$root/control/pcctl/pcctl-agent.socket" /etc/systemd/system/pcctl-agent.socket
 install -m 0644 "$root/control/pcctl/pcctl-agent.service" /etc/systemd/system/pcctl-agent.service
 systemctl daemon-reload

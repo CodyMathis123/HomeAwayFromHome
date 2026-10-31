@@ -153,7 +153,16 @@ docker compose -f compose.yaml -f compose.control.yaml --profile control --profi
 docker compose -f compose.yaml -f compose.control.yaml --profile control up -d --no-deps --build authelia pc-control gateway
 ```
 
-Caddy listens on private LAN TCP **8443**, not the WAN. The existing :8088 status dashboard is still read-only. Grafana remains password-protected for administration. To also make the previously implemented Grafana embedded view work on HTTPS, the **metrics hostname** proxies to Grafana, and the overlay changes Grafana's canonical root URL (requires a deliberate Grafana container recreation with both Compose files). The original direct HTTP :3000 may then redirect to the secure hostname; verify both paths.
+Rebuild the portal once to enable the Computer Controls link and secure Grafana link. This does **not** touch DNS or VPN:
+```bash
+docker compose -f compose.yaml -f compose.control.yaml --profile control up -d --no-deps --build portal
+```
+
+Caddy listens on private LAN TCP **8443**, not the WAN. The existing :8088 status dashboard is still read-only. Grafana remains password-protected for administration. To also make the previously implemented Grafana embedded view work on HTTPS, the **metrics hostname** proxies to Grafana, and the overlay changes Grafana's canonical root URL. When the metrics stack is installed, apply that deliberately using:
+```bash
+docker compose -f compose.yaml -f compose.control.yaml --profile metrics up -d --no-deps --force-recreate grafana
+```
+ The original direct HTTP :3000 may then redirect to the secure hostname; verify both paths.
 
 Caddy's local root certificate is stored under `data/control/caddy/pki/authorities/local/root.crt` (or the `caddy/pki` subdirectory depending on volume layout). **Verify its origin on the Pi**, export/install as a trusted CA on each iPhone/PC, and enable full trust in iOS Certificate Trust Settings. This avoids browser warnings and is needed for a reliable authenticated mobile experience. Do not distribute the private CA key.
 
