@@ -47,6 +47,7 @@ def main() -> None:
         f"sensordash_reading,host=CI,sensor=cpu_temp,kind=Temperature value=50 {stamp}",
         f"sensordash_sensor_info,host=CI,sensor=cpu_temp,kind=Temperature,name=CPU_Package,alias=CPU_Temp,device=Test_PC value=1 {stamp}",
         f"sensordash_cooling_binding,host=CI,sensor=cpu_temp,system=loop,system_name=Lab_Loop,component=cpu,component_name=CPU_Block,role=heat-source,kind=Temperature value=1 {stamp}",
+        f"sensordash_cooling_binding,host=CI,sensor=cpu_temp,system=loop,system_name=Lab_Loop,component=aux,component_name=Auxiliary,role=other,kind=Temperature value=1 {stamp}",
     ]
     req = urllib.request.Request(
         BASE + "/api/v2/write?precision=ms",
@@ -70,11 +71,34 @@ def main() -> None:
 
     assert float(results[0][0]["value"][1]) == 50.0, results[0]
     joined = results[3]
-    assert len(joined) == 1, joined
-    assert float(joined[0]["value"][1]) == 50.0, joined
-    assert joined[0]["metric"]["system"] == "loop", joined
-    assert joined[0]["metric"]["component_name"] == "CPU_Block", joined
-    print("PASS: VictoriaMetrics ingest, Prometheus conversion and cooling binding join")
+    assert len(joined) == 2, joined
+    assert all(float(p["value"][1]) == 50.0 for p in joined), joined
+    assert {p["metric"]["system"] for p in joined} == {"loop"}, joined
+    assert {p["metric"]["component_name"] for p in joined} == {"CPU_Block", "Auxiliary"}, joined
+
+    # A removed assignment receives the same label set with value=0. The
+    # no-bool comparison filters it out, while preserving the single raw series.
+    removed = (
+        f"sensordash_cooling_binding,host=CI,sensor=cpu_temp,system=loop,"
+        f"system_name=Lab_Loop,component=aux,component_name=Auxiliary,"
+        f"role=other,kind=Temperature value=0 {stamp + 1500}\n"
+    ).encode("ascii")
+    deletion = urllib.request.Request(
+        BASE + "/api/v2/write?precision=ms", data=removed, method="POST",
+        headers={"Content-Type": "text/plain"},
+    )
+    with urllib.request.urlopen(deletion, timeout=10) as response:
+        assert 200 <= response.status < 300
+    for _ in range(20):
+        remaining = query(JOIN)
+        if len(remaining) == 1:
+            break
+        time.sleep(0.5)
+    else:
+        raise AssertionError("Old cooling binding remained active: " + repr(remaining))
+    assert remaining[0]["metric"]["component_name"] == "CPU_Block", remaining
+    assert len(query(RAW)) == 1, "Tombstone must never delete original raw sensor"
+    print("PASS: VictoriaMetrics ingestion, one-to-many cooling joins and removal tombstones")
 
 
 if __name__ == "__main__":
