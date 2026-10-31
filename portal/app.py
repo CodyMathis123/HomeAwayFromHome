@@ -97,6 +97,29 @@ def shared_embed_url() -> str | None:
     return f"http://{ip}:3000/public-dashboards/{token}?theme=dark"
 
 
+
+def control_url() -> str | None:
+    """An explicitly configured private HTTPS entry point, never an arbitrary URL."""
+    value = os.getenv("HOMEAWAY_CONTROL_URL", "").strip()
+    parsed = urlsplit(value)
+    if (parsed.scheme != "https" or parsed.port != 8443 or
+            parsed.username is not None or parsed.password is not None or
+            parsed.query or parsed.fragment or parsed.path != "/control/" or
+            not re.fullmatch(r"[a-zA-Z0-9.-]+", parsed.hostname or "")):
+        return None
+    return value
+
+
+def metrics_origin() -> str | None:
+    value = os.getenv("HOMEAWAY_METRICS_ORIGIN", "").strip()
+    parsed = urlsplit(value)
+    if (parsed.scheme != "https" or parsed.port != 8443 or
+            parsed.username is not None or parsed.password is not None or
+            parsed.path or parsed.query or parsed.fragment or
+            not re.fullmatch(r"[a-zA-Z0-9.-]+", parsed.hostname or "")):
+        return None
+    return value
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "HomeAwayPortal/1"
 
@@ -110,6 +133,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("X-Frame-Options", "DENY")
         embed = shared_embed_url()
         frame_origin = embed.split("/public-dashboards/")[0] if embed else "'none'"
+        if self.headers.get("X-Forwarded-Proto") == "https" and metrics_origin():
+            frame_origin = metrics_origin()
         self.send_header("Content-Security-Policy",
                          "default-src 'none'; script-src 'self'; style-src 'self'; "
                          "connect-src 'self'; img-src 'self'; base-uri 'none'; "
@@ -123,8 +148,17 @@ class Handler(BaseHTTPRequestHandler):
             self._headers(200, "application/json; charset=utf-8", len(payload))
             self.wfile.write(payload)
             return
+        if path == "/api/control-config":
+            url = control_url()
+            payload = json.dumps({"enabled": url is not None, "url": url},
+                                 separators=(",", ":")).encode("utf-8")
+            self._headers(200, "application/json; charset=utf-8", len(payload))
+            self.wfile.write(payload)
+            return
         if path == "/api/embed-config":
             url = shared_embed_url()
+            if self.headers.get("X-Forwarded-Proto") == "https" and metrics_origin() and url:
+                url = metrics_origin() + url[url.index("/public-dashboards/"):]
             payload = json.dumps({"enabled": url is not None, "url": url},
                                  separators=(",", ":")).encode("utf-8")
             self._headers(200, "application/json; charset=utf-8", len(payload))
