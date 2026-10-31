@@ -12,7 +12,7 @@ permissions:
 jobs:
   config:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - name: Validate Python code and unit tests
@@ -42,4 +42,15 @@ jobs:
           docker run --rm -d --name homeaway-vm-ci -p 127.0.0.1:18428:8428 victoriametrics/victoria-metrics:v1.155.0 -retentionPeriod=1d
           trap 'docker rm -f homeaway-vm-ci >/dev/null 2>&1 || true' EXIT
           python3 scripts/integration-victoriametrics.py
+      - name: Verify Grafana bootstrap and provisioned dashboard import
+        run: |
+          docker run --rm -d --name homeaway-grafana-ci \
+            -p 127.0.0.1:13000:3000 \
+            -e GF_SECURITY_ADMIN_PASSWORD=ci-only-grafana-password \
+            -e GF_AUTH_ANONYMOUS_ENABLED=false \
+            -v "$PWD/grafana/provisioning:/etc/grafana/provisioning:ro" \
+            -v "$PWD/grafana/dashboards:/etc/grafana/dashboards:ro" \
+            grafana/grafana:13.3.0
+          trap 'docker rm -f homeaway-grafana-ci >/dev/null 2>&1 || true' EXIT
+          python3 scripts/integration-grafana.py
 
