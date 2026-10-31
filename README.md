@@ -130,3 +130,7 @@ See [docs/TELEMETRY.md](docs/TELEMETRY.md) and [cooling dashboard contract](docs
 ## Real hardware validation
 
 After CI passes, follow [First Pi/Windows rollout and side-by-side verification](docs/LIVE-VALIDATION.md). It describes the staged Pi-hole/DNS cutover, WireGuard test from iPhone cellular, private CA/token transfer to Windows, and the read-only `scripts/verify-telemetry.sh` checker. **Do not merge or delete the original SensorDash dashboard until that comparison passes.**
+
+## Optional Pi-hole and WireGuard dashboards
+
+The metrics profile now has opt-in internal monitoring for Pi-hole v6 aggregate DNS statistics and wg-easy v15 native Prometheus statistics. Both use the existing VictoriaMetrics instance. No additional host port is opened. Follow [DNS & VPN monitoring setup](docs/DNS-VPN-MONITORING.md) to configure app/bearer credentials and enable wg-easy Prometheus. The HomeAway DNS/VPN dashboard remains read-only; peer public endpoints and DNS queries are not collected.

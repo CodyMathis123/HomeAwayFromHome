@@ -43,7 +43,11 @@ jobs:
         run: python3 scripts/check_contracts.py
       - name: Verify real VictoriaMetrics ingestion and cooling join
         run: |
-          docker run --rm -d --name homeaway-vm-ci -p 127.0.0.1:18428:8428 victoriametrics/victoria-metrics:v1.155.0 -retentionPeriod=1d
+          docker run --rm -d --name homeaway-vm-ci -p 127.0.0.1:18428:8428 \
+            -v "$PWD/monitoring/scrape.yml:/etc/victoria-metrics/prometheus.yml:ro" \
+            -v "$PWD/secrets/wg_metrics_bearer:/run/secrets/wg_metrics_bearer:ro" \
+            victoriametrics/victoria-metrics:v1.155.0 \
+            -retentionPeriod=1d -promscrape.config=/etc/victoria-metrics/prometheus.yml
           trap 'docker rm -f homeaway-vm-ci >/dev/null 2>&1 || true' EXIT
           python3 scripts/integration-victoriametrics.py
       - name: Verify Grafana bootstrap and provisioned dashboard import
