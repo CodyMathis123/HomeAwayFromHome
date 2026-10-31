@@ -123,4 +123,4 @@ Never commit `.env`, `secrets/`, `data/`, `backups/`, or client profiles/QR code
 
 ## SensorDash / Grafana milestone 1
 
-See [docs/TELEMETRY.md](docs/TELEMETRY.md): an optional Grafana 13.3.0 + VictoriaMetrics v1.155.0 profile, write-only authenticated TLS intake, and a provisioned raw-sensor dashboard. SensorDash's exporter remains disabled by default; all existing local control and browser features continue. Do not expose metrics endpoints at the router.
+See [docs/TELEMETRY.md](docs/TELEMETRY.md) and [cooling dashboard contract](docs/COOLING-GRAFANA.md): an optional Grafana 13.3.0 + VictoriaMetrics v1.155.0 profile, write-only authenticated TLS intake, a raw-sensor dashboard and a metadata-driven cooling-system dashboard. SensorDash's exporter remains disabled by default; all existing local control and browser features continue. Do not expose metrics endpoints at the router.
