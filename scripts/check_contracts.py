@@ -50,9 +50,9 @@ def check(config: dict, ip: str) -> None:
     assert services["pihole-exporter"].get("user") == "65534:65534"
     assert "ALL" in services["pihole-exporter"].get("cap_drop", [])
     assert "no-new-privileges:true" in services["pihole-exporter"].get("security_opt", [])
-    assert services["pihole-exporter"].get("secrets") == ["pihole_monitor_password"]
+    assert {s["source"] for s in services["pihole-exporter"].get("secrets", [])} == {"pihole_monitor_password"}
     assert services["pihole-exporter"]["environment"]["PIHOLE_API_BASE"] == "http://pihole"
-    assert services["victoria-metrics"].get("secrets") == ["wg_metrics_bearer"]
+    assert {s["source"] for s in services["victoria-metrics"].get("secrets", [])} == {"wg_metrics_bearer"}
     vm = services["victoria-metrics"]
     assert any("-promscrape.config=/etc/victoria-metrics/prometheus.yml" == arg
                for arg in vm.get("command", []))
