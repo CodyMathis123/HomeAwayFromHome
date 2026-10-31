@@ -9,7 +9,7 @@
   ],
   "timezone": "browser",
   "schemaVersion": 40,
-  "version": 2,
+  "version": 3,
   "time": {
     "from": "now-1h",
     "to": "now"
@@ -738,6 +738,21 @@
         "mode": "markdown",
         "content": "### SENSOR REFERENCE\nNames and aliases for discovered sensors · technical IDs remain in the original measurements"
       }
+    }
+  ],
+  "links": [
+    {
+      "type": "dashboards",
+      "title": "Other HomeAway views",
+      "tags": [
+        "homeaway"
+      ],
+      "asDropdown": true,
+      "includeVars": true,
+      "keepTime": true,
+      "targetBlank": false,
+      "icon": "dashboard",
+      "tooltip": "Jump to another HomeAway monitoring dashboard"
     }
   ]
 }

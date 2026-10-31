@@ -3,7 +3,7 @@
   "uid": "homeaway-cooling",
   "title": "SensorDash · Cooling Systems",
   "schemaVersion": 40,
-  "version": 3,
+  "version": 4,
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
@@ -1060,6 +1060,21 @@
         "mode": "markdown",
         "content": "### ASSIGNMENT REFERENCE\nCooling relationships are edited in SensorDash; this inventory is read-only"
       }
+    }
+  ],
+  "links": [
+    {
+      "type": "dashboards",
+      "title": "Other HomeAway views",
+      "tags": [
+        "homeaway"
+      ],
+      "asDropdown": true,
+      "includeVars": true,
+      "keepTime": true,
+      "targetBlank": false,
+      "icon": "dashboard",
+      "tooltip": "Jump to another HomeAway monitoring dashboard"
     }
   ]
 }

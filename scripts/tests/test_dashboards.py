@@ -160,6 +160,12 @@ class DashboardContracts(unittest.TestCase):
                          "electrical.json", "dns-vpn.json"):
             d = json.loads((PANELS / filename).read_text(encoding="utf-8"))
             self.assertEqual(d["time"]["from"], "now-1h")
+            self.assertEqual(len(d["links"]), 1)
+            nav = d["links"][0]
+            self.assertEqual(nav["type"], "dashboards")
+            self.assertEqual(nav["tags"], ["homeaway"])
+            self.assertTrue(nav["asDropdown"])
+            self.assertTrue(nav["keepTime"])
             headers = [p for p in d["panels"] if p["type"] == "text"]
             self.assertGreaterEqual(len(headers), 2, filename)
             self.assertTrue(all(p["options"]["mode"] == "markdown"
