@@ -535,6 +535,60 @@
           "range": true
         }
       ]
+    },
+    {
+      "id": 11,
+      "title": "Coolant-to-room ambient ΔT",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 44,
+        "w": 24,
+        "h": 9
+      },
+      "description": "Only calculated when both coolant-probe and room-ambient roles have measured temperatures in the same cooling system. Temperature difference is not a direct measurement of heat removal.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "custom": {
+            "drawStyle": "line",
+            "spanNulls": false,
+            "lineInterpolation": "linear",
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "max by(host,system) (sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_right(system,role) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",role=\"coolant-probe\",kind=\"Temperature\"} == 1)) - on(host,system) max by(host,system) (sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_right(system,role) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",role=\"room-ambient\",kind=\"Temperature\"} == 1))",
+          "legendFormat": "{{host}} · {{system}} ΔT",
+          "range": true
+        }
+      ]
     }
   ]
 }
