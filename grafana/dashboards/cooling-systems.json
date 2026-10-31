@@ -550,7 +550,7 @@
         "w": 24,
         "h": 9
       },
-      "description": "Only calculated when both coolant-probe and room-ambient roles have measured temperatures in the same cooling system. Temperature difference is not a direct measurement of heat removal.",
+      "description": "A read-only difference between actual coolant-probe and room-ambient temperature readings. Missing either physical role produces no series, never a fabricated zero.",
       "fieldConfig": {
         "defaults": {
           "unit": "celsius",
@@ -584,7 +584,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max by(host,system) (sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",role=\"coolant-probe\",kind=\"Temperature\"} == 1)) - on(host,system) max by(host,system) (sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",role=\"room-ambient\",kind=\"Temperature\"} == 1))",
+          "expr": "max by(host,system) ((sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",role=\"coolant-probe\",kind=\"Temperature\"} == 1) * on(host,sensor) group_left() sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}) - on(host,system) max by(host,system) ((sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",role=\"room-ambient\",kind=\"Temperature\"} == 1) * on(host,sensor) group_left() sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"})",
           "legendFormat": "{{host}} · {{system}} ΔT",
           "range": true
         }
