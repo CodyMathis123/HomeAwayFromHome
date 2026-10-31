@@ -157,6 +157,22 @@ class DashboardContracts(unittest.TestCase):
             self.assertIn("on(host,sensor) group_left(name,alias,device)", query)
             self.assertEqual(panels[id]["targets"][0]["legendFormat"], "{{name}}")
 
+    def test_cpu_amd_librehardwaremonitor_paths_are_included(self):
+        # LibreHardwareMonitor AMD CPUs use /amdcpu/... not /cpu/...;
+        # Grafana selectors are full regex matches, so /cpu/ was a bug.
+        import re
+        d = json.loads((PANELS / "overview.json").read_text(encoding="utf-8"))
+        panels = {p["id"]: p for p in d["panels"]}
+        for id in (1, 5, 7, 200, 201):
+            query = panels[id]["targets"][0]["expr"]
+            self.assertNotIn(".*/cpu.*/", query, id)
+            self.assertNotIn(".*/(cpu|gpu", query, id)
+            # Ensure a genuine AMD CPU ID is covered by a selector.
+            matches = re.findall(r'sensor=~"([^"]+)"', query)
+            self.assertTrue(matches, id)
+            example = "/amdcpu/0/power/0" if id in (7, 201) else "/amdcpu/0/temperature/0"
+            self.assertTrue(any(re.fullmatch(pattern, example) for pattern in matches), id)
+
     def test_sensordash_style_overview_is_read_only_and_gap_safe(self):
         d = json.loads((PANELS / "overview.json").read_text(encoding="utf-8"))
         self.assertEqual(d["uid"], "homeaway-overview")

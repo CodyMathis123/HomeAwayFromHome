@@ -10,7 +10,7 @@
   ],
   "description": "A SensorDash-inspired, read-only front page with featured sensor cards, sample-based peaks, CPU/GPU power, cooling electrical estimates, temperature history, and catalog summaries. Actual fan control, aliases, configured probes, energy integrals and retention remain authoritative on the Windows collector.",
   "schemaVersion": 40,
-  "version": 2,
+  "version": 3,
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
@@ -111,7 +111,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\",sensor=~\".*/cpu.*/temperature/.*\"})",
+          "expr": "max(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\",sensor=~\".*cpu.*/temperature/.*\"})",
           "range": true
         }
       ],
@@ -372,7 +372,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max(max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\",sensor=~\".*/cpu.*/temperature/.*\"}[$__range]))",
+          "expr": "max(max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\",sensor=~\".*cpu.*/temperature/.*\"}[$__range]))",
           "instant": true
         }
       ],
@@ -492,7 +492,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max(sensordash_reading_value{host=~\"$host\",kind=\"Power\",sensor=~\".*/cpu.*/power/.*\"})",
+          "expr": "max(sensordash_reading_value{host=~\"$host\",kind=\"Power\",sensor=~\".*cpu.*/power/.*\"})",
           "range": true
         }
       ],
@@ -612,7 +612,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\",sensor=~\".*/(cpu|gpu|nvme|storage|hdd|ssd).*/temperature/.*\"} * on(host,sensor) group_left(name,alias,device) (sensordash_sensor_info_value{host=~\"$host\"} == 1), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"device\", \"$1 $2\", \"device\", \"^(.*)_(.*)$\"), \"device\", \"$1 $2\", \"device\", \"^(.*)_(.*)$\"), \"device\", \"$1 $2\", \"device\", \"^(.*)_(.*)$\")",
+          "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\",sensor=~\".*(cpu|gpu|nvme|storage|hdd|ssd).*/temperature/.*\"} * on(host,sensor) group_left(name,alias,device) (sensordash_sensor_info_value{host=~\"$host\"} == 1), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"device\", \"$1 $2\", \"device\", \"^(.*)_(.*)$\"), \"device\", \"$1 $2\", \"device\", \"^(.*)_(.*)$\"), \"device\", \"$1 $2\", \"device\", \"^(.*)_(.*)$\")",
           "range": true,
           "legendFormat": "{{device}} · {{name}}"
         }
@@ -681,7 +681,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "label_replace(label_replace(label_replace(label_replace(sensordash_reading_value{host=~\"$host\",kind=\"Power\",sensor=~\".*/(cpu|gpu).*/power/.*\"} * on(host,sensor) group_left(name,device) (sensordash_sensor_info_value{host=~\"$host\"} == 1), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
+          "expr": "label_replace(label_replace(label_replace(label_replace(sensordash_reading_value{host=~\"$host\",kind=\"Power\",sensor=~\".*(cpu|gpu).*/power/.*\"} * on(host,sensor) group_left(name,device) (sensordash_sensor_info_value{host=~\"$host\"} == 1), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
           "range": true,
           "legendFormat": "{{name}}"
         }
