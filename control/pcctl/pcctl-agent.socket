@@ -1,0 +1,11 @@
+[Unit]
+Description=HomeAway restricted PC control socket
+[Socket]
+ListenStream=/run/homeaway-pcctl/agent.sock
+SocketUser=pcctl
+SocketGroup=pcctl
+SocketMode=0660
+DirectoryMode=0750
+RemoveOnStop=true
+[Install]
+WantedBy=sockets.target

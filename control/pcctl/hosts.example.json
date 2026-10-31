@@ -1,0 +1,22 @@
+{
+  "hosts": [
+    {
+      "id": "gaming",
+      "name": "Gaming Desktop",
+      "address": "192.168.1.88",
+      "mac": "REPLACE_WITH_GAMING_MAC",
+      "broadcast": "192.168.1.255",
+      "ssh_user": "pcctl",
+      "ssh_port": 22
+    },
+    {
+      "id": "work",
+      "name": "Work Desktop",
+      "address": "192.168.1.173",
+      "mac": "REPLACE_WITH_WORK_MAC",
+      "broadcast": "192.168.1.255",
+      "ssh_user": "pcctl",
+      "ssh_port": 22
+    }
+  ]
+}
