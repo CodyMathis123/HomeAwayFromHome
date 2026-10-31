@@ -11,8 +11,7 @@ fi
 python3 scripts/validate_config.py .env
 docker compose config -q
 docker compose --profile monitoring config -q
-docker compose pull pihole wg-easy
+docker compose --profile monitoring pull
 docker compose build portal
-docker compose up -d pihole wg-easy portal
-# Optional monitoring is never enabled implicitly. Update it explicitly if installed.
+docker compose --profile monitoring up -d --remove-orphans
 echo "Update applied. Run ./scripts/doctor.sh and ./scripts/smoke.sh."
