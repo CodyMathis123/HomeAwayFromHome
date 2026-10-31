@@ -19,7 +19,7 @@ if [[ ! -f .env || ! -s secrets/pihole_password ]]; then
 fi
 mkdir -p /var/backups/homeawayfromhome
 chmod 700 /var/backups/homeawayfromhome
-running_list="$(docker compose --profile monitoring ps --services --status running)"
+running_list="$(docker compose --profile metrics ps --services --status running)"
 running=()
 while IFS= read -r service; do
   [[ -n "$service" ]] && running+=("$service")
@@ -29,12 +29,12 @@ stopped=0
 restart_services() {
   if [[ "$stopped" == 1 && "${#running[@]}" -gt 0 ]]; then
     echo "Restarting previously running services..."
-    docker compose --profile monitoring start "${running[@]}" || echo "ERROR: Manual recovery required" >&2
+    docker compose --profile metrics start "${running[@]}" || echo "ERROR: Manual recovery required" >&2
   fi
 }
 trap restart_services EXIT
 if [[ "${#running[@]}" -gt 0 ]]; then
-  docker compose --profile monitoring stop "${running[@]}"
+  docker compose --profile metrics stop "${running[@]}"
   stopped=1
 fi
 archive="/var/backups/homeawayfromhome/backup-$(date -u +%Y%m%dT%H%M%SZ).tar.gz"
