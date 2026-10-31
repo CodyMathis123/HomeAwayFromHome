@@ -17,7 +17,7 @@
   "refresh": "10s",
   "editable": false,
   "graphTooltip": 1,
-  "description": "Raw readings exported asynchronously from Windows SQLite history. No remote fan control. Missing data is not joined across outages.",
+  "description": "Raw readings exported asynchronously from Windows SQLite history. No remote fan control. Missing data is not joined across outages. Sensor names/aliases are descriptive metadata, not part of raw sensor identity.",
   "templating": {
     "list": [
       {
@@ -68,6 +68,42 @@
   },
   "panels": [
     {
+      "id": 10,
+      "title": "Sensor catalog and aliases",
+      "type": "table",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Latest SensorDash sensor names, aliases, types and devices. Identity remains a stable hardware sensor ID; alias changes do not fragment raw measurements. Metadata refreshes every two minutes.",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "sensordash_sensor_info_value{host=~\"$host\"} == 1",
+          "instant": true,
+          "format": "table"
+        }
+      ]
+    },
+    {
       "id": 1,
       "title": "Temperatures",
       "type": "timeseries",
@@ -77,7 +113,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 0,
+        "y": 8,
         "w": 12,
         "h": 9
       },
@@ -130,7 +166,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 0,
+        "y": 8,
         "w": 12,
         "h": 9
       },
@@ -183,7 +219,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 9,
+        "y": 17,
         "w": 12,
         "h": 9
       },
@@ -236,7 +272,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 9,
+        "y": 17,
         "w": 12,
         "h": 9
       },
