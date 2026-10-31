@@ -253,6 +253,36 @@ class DashboardContracts(unittest.TestCase):
             for pid in ids:
                 self.assertEqual(panels[pid]["fieldConfig"]["defaults"]["unit"], "rotrpm")
 
+    def test_pi_system_health_uses_host_metrics_and_does_not_claim_windows_faults(self):
+        d = json.loads((PANELS / "system-health.json").read_text(encoding="utf-8"))
+        self.assertEqual(d["uid"], "homeaway-system")
+        self.assertFalse(d["editable"])
+        self.assertIn("read-only", d["tags"])
+        self.assertEqual(d["time"]["from"], "now-24h")
+        panels = {p["id"]: p for p in d["panels"]}
+        q = {id: p["targets"][0]["expr"] for id, p in panels.items() if p["targets"]}
+        self.assertIn('node_cpu_seconds_total{job="pi-node",mode="idle"}', q[1])
+        self.assertIn('node_thermal_zone_temp{job="pi-node"', q[2])
+        self.assertIn("node_memory_MemAvailable_bytes", q[3])
+        self.assertIn("vm_free_disk_space_bytes", q[4])
+        self.assertIn("node_boot_time_seconds", q[5])
+        self.assertIn("up{job=~", q[6])
+        self.assertIn("last_over_time(sensordash_reading_value", q[7])
+        self.assertIn("[24h]", q[7])
+        self.assertIn("vm_data_size_bytes", q[8])
+        self.assertIn("sum by(job)(rate(node_disk_", q[15])
+        self.assertIn('direction", "read"', q[15])
+        self.assertIn('direction", "write"', q[15])
+        self.assertIn("count_over_time(", q[17])
+        self.assertNotIn("rate(sensordash_reading_value", q[17])
+        self.assertIn("may simply be asleep", d["panels"][5]["options"]["content"])
+        for p in d["panels"]:
+            if p["type"] == "timeseries":
+                self.assertFalse(p["fieldConfig"]["defaults"]["custom"]["spanNulls"])
+            for target in p["targets"]:
+                self.assertNotIn("fan_control", target["expr"])
+                self.assertNotIn("remote_action", target["expr"])
+
     def test_dashboard_visual_contract(self):
         # Native panels only; the CSS/theme belongs to Grafana, not a patched
         # app image. Display cleanup must not touch stored sensor labels.

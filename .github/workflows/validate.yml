@@ -37,6 +37,8 @@ jobs:
         run: |
           docker compose build portal wg-easy
           docker compose --profile metrics build telemetry-ingest pihole-exporter
+          # Verify that the official pinned multi-arch image is available.
+          docker compose --profile metrics run --rm --no-deps pi-node-exporter --version
           docker compose run --rm --no-deps --entrypoint sh wg-easy -c \
             'iptables --version | grep -q nf_tables && ip6tables --version | grep -q nf_tables'
       - name: Enforce security and deployment contracts

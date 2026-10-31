@@ -53,3 +53,31 @@ The **SensorDash · Storage** view identifies drive sensors via the canonical `d
 ### Historical storage diagnostics
 
 The Storage dashboard now includes VictoriaMetrics' internal data-store size, filesystem free space, on-disk component breakdown and ingestion throughput. The VM scraper collects its own `/metrics` on the **internal Docker bridge only**; no host/LAN metric port is introduced. The selected-time-range sample count by sensor comes from real retained samples in VictoriaMetrics. It is *not* an estimate of bytes per sensor, because VM compressed structures are shared and allocated collectively. This replaces the old Windows History Storage visualization while keeping Windows SQLite as a retry spool. For these metrics to start on an existing Pi, recreate only `victoria-metrics` with the updated scrape file; its bind-mounted history directory persists.
+
+## Pi host health and ingest freshness
+
+**HomeAway · System Health** uses upstream Prometheus Node Exporter v1.12.1
+instead of a second custom Linux collector. Node Exporter runs with no Docker
+socket, privileges, published port, secrets, host-network or host-PID access.
+Only `/proc` and `/sys` are mounted read-only; the default collector set
+is disabled so the Pi 4 only exports CPU, RAM, load, kernel thermal zone,
+diskstats, uname and basic kernel counters.
+
+The Grafana dashboard displays Pi CPU busy, a labeled CPU/SoC thermal zone
+(if exposed by the running kernel), MemAvailable-based RAM use, host uptime,
+VM data-volume free bytes, VM stored bytes, four internal scrape statuses,
+disk read/write activity, and real SensorDash sample observations. It does
+**not** claim to display Pi OS root filesystem free bytes when VictoriaMetrics
+may be on a separate SSD. Disk I/O is restricted to recognizable physical
+disk identifiers; an empty plot may mean unsupported kernel naming, not zero
+I/O. We deliberately do not show misleading container-network counters
+as Pi host traffic.
+
+The Windows freshness tile uses the last observed sample's original timestamp
+over a 24-hour lookback. If Windows sleeps, shuts off, the LAN is down, or the
+exporter cannot deliver, the value ages; **none of those conditions can be
+distinguished from this metric alone**. If no samples exist within 24 hours,
+the tile says no data, not a fabricated zero. No alerts or control commands
+are provisioned by this change.
+
+[Source: Prometheus Node Exporter container guidance](https://github.com/prometheus/node_exporter#docker).
