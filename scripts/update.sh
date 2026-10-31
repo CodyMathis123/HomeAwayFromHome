@@ -10,9 +10,9 @@ if [[ "${1:-}" != "--apply" ]]; then
 fi
 python3 scripts/validate_config.py .env
 docker compose config -q
-docker compose --profile monitoring config -q
+docker compose --profile metrics config -q
 docker compose pull pihole wg-easy
 docker compose build portal
 docker compose up -d pihole wg-easy portal
-# Optional monitoring remains opt-in and is not started by core updates.
+# Optional metrics remain opt-in and are not started by core updates.
 echo "Update applied. Run ./scripts/doctor.sh and ./scripts/smoke.sh."
