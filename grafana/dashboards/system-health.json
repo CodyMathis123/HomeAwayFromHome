@@ -10,7 +10,7 @@
   ],
   "description": "Pi 4 host metrics from a minimal internal Node Exporter; VictoriaMetrics data-store health; DNS/VPN scrape availability; and actual Windows sensor-sample freshness. No control or remote administration.",
   "schemaVersion": 40,
-  "version": 1,
+  "version": 2,
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
@@ -488,7 +488,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "time() - max(timestamp(last_over_time(sensordash_reading_value{host=~\"$host\"}[24h])))",
+          "expr": "time() - max(timestamp(sensordash_reading_value{host=~\"$host\"}[24h]))",
           "instant": true
         }
       ],

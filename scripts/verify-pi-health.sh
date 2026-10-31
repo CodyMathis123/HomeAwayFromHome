@@ -59,8 +59,8 @@ try:
     # A 24-hour window is intentional: an idling or sleeping desktop is not
     # automatically an exporter failure. It may have no recent series at all.
     age = query(
-        'time() - max(timestamp(last_over_time('
-        'sensordash_reading_value{host="' + host + '"}[24h])))'
+        'time() - max(timestamp('
+        'sensordash_reading_value{host="' + host + '"}[24h]))'
     )
     if age:
         seconds = max(0, float(age[0]["value"][1]))

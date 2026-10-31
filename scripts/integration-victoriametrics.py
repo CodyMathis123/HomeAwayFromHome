@@ -192,8 +192,8 @@ def main() -> None:
     # inferred Windows or collector state. Test the actual 24h lookback
     # operator against VictoriaMetrics' PromQL-compatible API.
     freshness = query(
-        'time() - max(timestamp(last_over_time('
-        'sensordash_reading_value{host="CI"}[24h])))'
+        'time() - max(timestamp('
+        'sensordash_reading_value{host="CI"}[24h]))'
     )
     assert len(freshness) == 1, freshness
     age_seconds = float(freshness[0]["value"][1])

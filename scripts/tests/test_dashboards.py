@@ -267,7 +267,7 @@ class DashboardContracts(unittest.TestCase):
         self.assertIn("vm_free_disk_space_bytes", q[4])
         self.assertIn("node_boot_time_seconds", q[5])
         self.assertIn("up{job=~", q[6])
-        self.assertIn("last_over_time(sensordash_reading_value", q[7])
+        self.assertIn("timestamp(sensordash_reading_value", q[7])
         self.assertIn("[24h]", q[7])
         self.assertIn("vm_data_size_bytes", q[8])
         self.assertIn("sum by(job)(rate(node_disk_", q[15])
