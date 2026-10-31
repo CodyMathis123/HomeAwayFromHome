@@ -11,9 +11,9 @@ class DashboardContracts(unittest.TestCase):
     def test_both_dashboards_are_provisioned(self):
         dashboards = {
             name: json.loads((PANELS / name).read_text(encoding="utf-8"))
-            for name in ("overview.json", "sensordash.json", "cooling-systems.json", "electrical.json", "dns-vpn.json")
+            for name in ("overview.json", "sensordash.json", "cooling-systems.json", "electrical.json", "dns-vpn.json", "storage.json", "events.json")
         }
-        self.assertEqual(len({d["uid"] for d in dashboards.values()}), 5)
+        self.assertEqual(len({d["uid"] for d in dashboards.values()}), 7)
         for name, d in dashboards.items():
             self.assertFalse(d["editable"], name)
             self.assertIn("read-only", d["tags"], name)
@@ -157,6 +157,26 @@ class DashboardContracts(unittest.TestCase):
             self.assertIn("on(host,sensor) group_left(name,alias,device)", query)
             self.assertEqual(panels[id]["targets"][0]["legendFormat"], "{{name}}")
 
+    def test_storage_and_events_are_observational(self):
+        storage = json.loads((PANELS / "storage.json").read_text(encoding="utf-8"))
+        events = json.loads((PANELS / "events.json").read_text(encoding="utf-8"))
+        self.assertEqual(storage["uid"], "homeaway-storage")
+        self.assertEqual(events["uid"], "homeaway-events")
+        s = "\\n".join(t["expr"] for p in storage["panels"] for t in p["targets"])
+        e = "\\n".join(t["expr"] for p in events["panels"] for t in p["targets"])
+        self.assertIn('device_type="Storage"', s)
+        self.assertIn("sensordash_spool_value", s)
+        self.assertIn("sensordash_sensor_info_value", s)
+        self.assertIn("sensordash_reading_value", s)
+        self.assertIn("sensordash_event_value", e)
+        self.assertIn("count_over_time(", e)
+        self.assertNotIn("message=", e)
+        self.assertNotIn("fan_control", e)
+        for d in (storage, events):
+            self.assertFalse(d["editable"])
+            self.assertEqual(d["time"]["from"], "now-24h")
+            self.assertEqual(len({p["id"] for p in d["panels"]}), len(d["panels"]))
+
     def test_cpu_amd_librehardwaremonitor_paths_are_included(self):
         # LibreHardwareMonitor AMD CPUs use /amdcpu/... not /cpu/...;
         # Grafana selectors are full regex matches, so /cpu/ was a bug.
@@ -214,7 +234,7 @@ class DashboardContracts(unittest.TestCase):
         # Grafana "rpm" is Reads per minute (rd/m), not tachometer RPM.
         # Fan and pump charts must use the rotational-speed unit "rotrpm".
         for filename in ("overview.json", "sensordash.json", "cooling-systems.json",
-                         "electrical.json", "dns-vpn.json"):
+                         "electrical.json", "dns-vpn.json", "storage.json", "events.json"):
             d = json.loads((PANELS / filename).read_text(encoding="utf-8"))
             for panel in d["panels"]:
                 unit = panel.get("fieldConfig", {}).get("defaults", {}).get("unit")
@@ -232,9 +252,9 @@ class DashboardContracts(unittest.TestCase):
         # Native panels only; the CSS/theme belongs to Grafana, not a patched
         # app image. Display cleanup must not touch stored sensor labels.
         for filename in ("overview.json", "sensordash.json", "cooling-systems.json",
-                         "electrical.json", "dns-vpn.json"):
+                         "electrical.json", "dns-vpn.json", "storage.json", "events.json"):
             d = json.loads((PANELS / filename).read_text(encoding="utf-8"))
-            self.assertEqual(d["time"]["from"], "now-1h")
+            self.assertEqual(d["time"]["from"], "now-24h" if filename in ("storage.json", "events.json") else "now-1h")
             self.assertEqual(len(d["links"]), 1)
             nav = d["links"][0]
             self.assertEqual(nav["type"], "dashboards")

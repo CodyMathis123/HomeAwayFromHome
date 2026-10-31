@@ -138,3 +138,7 @@ The metrics profile now has opt-in internal monitoring for Pi-hole v6 aggregate 
 ## SensorDash-style unified overview
 
 The read-only [SensorDash Overview](grafana/dashboards/overview.json) puts featured temperatures/RPM, recorded peaks, CPU/GPU power, cooling electrical estimates, temperature trends and a hardware catalog on one Grafana page. See [design and limitations](docs/GRAFANA-DESIGN.md). Windows remains the sole authority for hardware control.
+
+## Storage and events moved to Grafana
+
+Storage-device activity and temperature, local history-buffer footprint, and historical threshold events are now available in the new read-only [Storage](grafana/dashboards/storage.json) and [Events](grafana/dashboards/events.json) dashboards. Windows remains the sole owner of sensor sampling, alert thresholds, fan control, tray icons and cooling associations. Deploy the Pi ingestion schema before upgrading the Windows exporter.

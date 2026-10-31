@@ -9,7 +9,7 @@
   ],
   "description": "Drive monitoring is visualized on the Pi, but hardware collection and recording policy remain in Windows SensorDash. Only real device_type=Storage sensors are included; data gaps remain gaps. Local SQLite bytes are the outbound retry buffer, not the Pi database size.",
   "schemaVersion": 40,
-  "version": 1,
+  "version": 2,
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
@@ -265,13 +265,13 @@
     },
     {
       "id": 4,
-      "title": "Active storage readings",
+      "title": "Storage catalog sensors",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Recent temperature/load signals only; excludes throughput and other types.",
+      "description": "Storage sensor descriptions in the active catalog, not a count of live readings.",
       "gridPos": {
         "x": 18,
         "y": 3,
@@ -285,7 +285,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "count(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(name,device,device_type) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Storage\"} == 1)) + (count(sensordash_reading_value{host=~\"$host\",kind=\"Load\"} * on(host,sensor) group_left(name,device,device_type) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Storage\"} == 1)) or vector(0))",
+          "expr": "count(sensordash_sensor_info_value{host=~\"$host\",device_type=\"Storage\"} == 1)",
           "instant": true
         }
       ],
@@ -556,7 +556,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Read/write data counts reported by hardware. Units depend on the original hardware sensor; inspect raw values before relying on their scale.",
+      "description": "Raw storage Data readings. LibreHardwareMonitor may report GiB or another scale; this panel intentionally does not mislabel them as bytes.",
       "gridPos": {
         "x": 12,
         "y": 21,
@@ -577,7 +577,7 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "bytes",
+          "unit": "none",
           "custom": {
             "drawStyle": "line",
             "lineInterpolation": "linear",

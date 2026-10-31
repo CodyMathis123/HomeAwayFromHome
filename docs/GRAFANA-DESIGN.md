@@ -43,3 +43,9 @@ CPU/GPU cards show their **highest available exported sensor reading**; they int
 Fan/pump electricity remains labeled by measured/calibrated/curve/rated source and configuration revision. No guessed aggregate wattage is presented when revisions overlap, and no watt-hours are extrapolated during sleep gaps. Windows SensorDash remains the owner of fan control, alias editing, energy integration and local sensor retention.
 
 The Overview is an additional Grafana dashboard, not a replacement for the detailed Hardware/Cooling/Electricity views. It appears in the Other HomeAway views menu automatically.
+
+## SensorDash storage and events dashboards
+
+The **SensorDash · Storage** view identifies drive sensors via the canonical `device_type=Storage` metadata exported by Windows, not guessed `/hdd` sensor names. It visualizes physical temperatures, utilization/throughput when available, raw data channels with units unspecified until validated, and three aggregate Windows local SQLite buffer file sizes. The local database remains necessary as the export retry spool; Grafana/VictoriaMetrics own retention, disk analytics and the long-term historical view. No local Windows Storage or History Storage UI is retained.
+
+**SensorDash · Events** visualizes actual threshold-crossing and recovery timestamps as isolated event impulses, plus counts over the selected interval. Free-form event messages remain local to SensorDash. This is deliberately not a remote control channel; threshold settings and event ownership stay in Windows. Both dashboards are initially empty until the Windows exporter update deploys and Pi telemetry intake accepts the new whitelisted schemas.
