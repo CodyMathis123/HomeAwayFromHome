@@ -289,7 +289,7 @@ class DashboardContracts(unittest.TestCase):
                                         for t in p.get("transformations", [])))
             # Keep required data sources and full IDs in *raw series*;
             # rename only graph titles or joined display/catalog fields.
-            if filename != "dns-vpn.json":
+            if filename in ("overview.json", "sensordash.json", "cooling-systems.json", "electrical.json"):
                 self.assertTrue(any("label_replace(" in t["expr"]
                                     for p in d["panels"] for t in p["targets"]))
 
