@@ -981,7 +981,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Host physical-disk throughput from /proc/diskstats. Excludes loop, ram and virtual partition double counting; exact device names depend on kernel.",
+      "description": "Host disk throughput from non-partition physical devices on the Pi. If kernel disk names differ, this panel may be empty; it does not fabricate zeros.",
       "gridPos": {
         "x": 12,
         "y": 42,
@@ -995,7 +995,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "label_replace(sum(rate(node_disk_read_bytes_total{job=\"pi-node\",device=~\"mmcblk[0-9]+|sd[a-z]+|nvme[0-9]+n[0-9]+\"}[5m])), \"direction\", \"read\", \"__name__\", \".*\") or label_replace(sum(rate(node_disk_written_bytes_total{job=\"pi-node\",device=~\"mmcblk[0-9]+|sd[a-z]+|nvme[0-9]+n[0-9]+\"}[5m])), \"direction\", \"write\", \"__name__\", \".*\")",
+          "expr": "label_replace(sum by(job)(rate(node_disk_read_bytes_total{job=\"pi-node\",device=~\"mmcblk[0-9]+|sd[a-z]+|nvme[0-9]+n[0-9]+\"}[5m])), \"direction\", \"read\", \"job\", \".*\") or label_replace(sum by(job)(rate(node_disk_written_bytes_total{job=\"pi-node\",device=~\"mmcblk[0-9]+|sd[a-z]+|nvme[0-9]+n[0-9]+\"}[5m])), \"direction\", \"write\", \"job\", \".*\")",
           "range": true,
           "legendFormat": "{{direction}}"
         }
