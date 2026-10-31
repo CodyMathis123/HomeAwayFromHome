@@ -152,7 +152,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_right(system,system_name,component,component_name,role) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\"} == 1)",
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\"} == 1)",
           "legendFormat": "{{component_name}} · {{sensor}}",
           "range": true
         }
@@ -206,7 +206,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Power\"} * on(host,sensor) group_right(system,system_name,component,component_name,role) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Power\",role=~\"heat-source\"} == 1)",
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Power\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Power\",role=~\"heat-source\"} == 1)",
           "legendFormat": "{{component_name}} · {{sensor}}",
           "range": true
         }
@@ -260,7 +260,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Fan\"} * on(host,sensor) group_right(system,system_name,component,component_name,role) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Fan\",role=~\"fan-group\"} == 1)",
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Fan\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Fan\",role=~\"fan-group\"} == 1)",
           "legendFormat": "{{component_name}} · {{sensor}}",
           "range": true
         }
@@ -314,7 +314,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Fan\"} * on(host,sensor) group_right(system,system_name,component,component_name,role) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Fan\",role=~\"pump\"} == 1)",
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Fan\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Fan\",role=~\"pump\"} == 1)",
           "legendFormat": "{{component_name}} · {{sensor}}",
           "range": true
         }
@@ -368,7 +368,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Control\"} * on(host,sensor) group_right(system,system_name,component,component_name,role) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Control\",role=~\"fan-group\"} == 1)",
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Control\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Control\",role=~\"fan-group\"} == 1)",
           "legendFormat": "{{component_name}} · {{sensor}}",
           "range": true
         }
@@ -422,7 +422,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_right(system,system_name,component,component_name,role) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=~\"coolant-probe\"} == 1)",
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=~\"coolant-probe\"} == 1)",
           "legendFormat": "{{component_name}} · {{sensor}}",
           "range": true
         }
@@ -476,7 +476,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Flow\"} * on(host,sensor) group_right(system,system_name,component,component_name,role) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Flow\",role=~\"flow-meter\"} == 1)",
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Flow\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Flow\",role=~\"flow-meter\"} == 1)",
           "legendFormat": "{{component_name}} · {{sensor}}",
           "range": true
         }
@@ -530,7 +530,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_right(system,system_name,component,component_name,role) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=~\"room-ambient\"} == 1)",
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=~\"room-ambient\"} == 1)",
           "legendFormat": "{{component_name}} · {{sensor}}",
           "range": true
         }
@@ -584,7 +584,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max by(host,system) (sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_right(system,role) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",role=\"coolant-probe\",kind=\"Temperature\"} == 1)) - on(host,system) max by(host,system) (sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_right(system,role) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",role=\"room-ambient\",kind=\"Temperature\"} == 1))",
+          "expr": "max by(host,system) (sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",role=\"coolant-probe\",kind=\"Temperature\"} == 1)) - on(host,system) max by(host,system) (sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",role=\"room-ambient\",kind=\"Temperature\"} == 1))",
           "legendFormat": "{{host}} · {{system}} ΔT",
           "range": true
         }
