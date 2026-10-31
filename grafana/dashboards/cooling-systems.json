@@ -3,7 +3,7 @@
   "uid": "homeaway-cooling",
   "title": "SensorDash · Cooling Systems",
   "schemaVersion": 40,
-  "version": 5,
+  "version": 6,
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
@@ -333,7 +333,7 @@
       "description": "Measurements are recorded on Windows; cooling assignments remain controlled by SensorDash. Gaps are not filled. Series names come from the SensorDash sensor catalog; stable sensor IDs and the raw measurement values are unchanged. Alias/label changes do not rewrite archived samples. Visible name labels are normalized at query time; the stored series and join identity labels are unchanged.",
       "fieldConfig": {
         "defaults": {
-          "unit": "rpm",
+          "unit": "rotrpm",
           "custom": {
             "drawStyle": "line",
             "lineInterpolation": "smooth",
@@ -403,7 +403,7 @@
       "description": "Measurements are recorded on Windows; cooling assignments remain controlled by SensorDash. Gaps are not filled. Series names come from the SensorDash sensor catalog; stable sensor IDs and the raw measurement values are unchanged. Alias/label changes do not rewrite archived samples. Visible name labels are normalized at query time; the stored series and join identity labels are unchanged.",
       "fieldConfig": {
         "defaults": {
-          "unit": "rpm",
+          "unit": "rotrpm",
           "custom": {
             "drawStyle": "line",
             "lineInterpolation": "smooth",
@@ -754,7 +754,7 @@
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "rpm",
+          "unit": "rotrpm",
           "color": {
             "mode": "fixed",
             "fixedColor": "#58D4BD"
@@ -814,7 +814,7 @@
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "rpm",
+          "unit": "rotrpm",
           "color": {
             "mode": "fixed",
             "fixedColor": "#8B9EFF"

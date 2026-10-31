@@ -157,6 +157,22 @@ class DashboardContracts(unittest.TestCase):
             self.assertIn("on(host,sensor) group_left(name,alias,device)", query)
             self.assertEqual(panels[id]["targets"][0]["legendFormat"], "{{name}}")
 
+    def test_rotational_speed_uses_revolutions_per_minute(self):
+        # Grafana "rpm" is Reads per minute (rd/m), not tachometer RPM.
+        # Fan and pump charts must use the rotational-speed unit "rotrpm".
+        for filename in ("sensordash.json", "cooling-systems.json",
+                         "electrical.json", "dns-vpn.json"):
+            d = json.loads((PANELS / filename).read_text(encoding="utf-8"))
+            for panel in d["panels"]:
+                unit = panel.get("fieldConfig", {}).get("defaults", {}).get("unit")
+                self.assertNotEqual(unit, "rpm", (filename, panel["title"]))
+        raw = json.loads((PANELS / "sensordash.json").read_text(encoding="utf-8"))
+        cooling = json.loads((PANELS / "cooling-systems.json").read_text(encoding="utf-8"))
+        for d, ids in ((raw, (2,)), (cooling, (4, 5, 110, 111))):
+            panels = {p["id"]: p for p in d["panels"]}
+            for pid in ids:
+                self.assertEqual(panels[pid]["fieldConfig"]["defaults"]["unit"], "rotrpm")
+
     def test_dashboard_visual_contract(self):
         # Native panels only; the CSS/theme belongs to Grafana, not a patched
         # app image. Display cleanup must not touch stored sensor labels.
