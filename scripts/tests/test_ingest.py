@@ -39,9 +39,9 @@ class IngestTests(unittest.TestCase):
         valid = (
             b"sensordash_component_info,host=PC,system=loop1,component=fans,"
             b"system_name=Walnut_Loop,component_name=Radiator_Bank,"
-            b"role=fan-group value=1 1793450400000\\n"
+            b"role=fan-group value=1 1793450400000\n"
             b"sensordash_accessory_power,host=PC,system=loop1,component=fans,"
-            b"source=calibrated,revision=12345678abcdef00 value=12.25 1793450400000\\n"
+            b"source=calibrated,revision=12345678abcdef00 value=12.25 1793450400000\n"
         )
         self.assertTrue(valid_payload(valid))
         self.assertFalse(valid_payload(valid.replace(b"source=calibrated", b"source=unverified")))
