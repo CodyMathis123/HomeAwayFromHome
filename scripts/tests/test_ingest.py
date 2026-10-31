@@ -35,6 +35,21 @@ class IngestTests(unittest.TestCase):
         self.assertFalse(valid_payload(descriptors[1] + b"\nrogue_metric value=1 1793450400000"))
         self.assertFalse(valid_payload(descriptors[1].replace(b"value=1", b"value=nan")))
 
+    def test_provenance_aware_power_and_component_metadata(self):
+        valid = (
+            b"sensordash_component_info,host=PC,system=loop1,component=fans,"
+            b"system_name=Walnut_Loop,component_name=Radiator_Bank,"
+            b"role=fan-group value=1 1793450400000\\n"
+            b"sensordash_accessory_power,host=PC,system=loop1,component=fans,"
+            b"source=calibrated,revision=12345678abcdef00 value=12.25 1793450400000\\n"
+        )
+        self.assertTrue(valid_payload(valid))
+        self.assertFalse(valid_payload(valid.replace(b"source=calibrated", b"source=unverified")))
+        self.assertFalse(valid_payload(valid.replace(b"value=12.25", b"value=-12.25")))
+        self.assertFalse(valid_payload(valid.replace(b"revision=12345678abcdef00", b"revision=wrong")))
+        self.assertFalse(valid_payload(valid.replace(b"role=fan-group", b"role=fan group")))
+        self.assertFalse(valid_payload(valid.replace(b"sensordash_accessory_power", b"fan_control_command")))
+
     def test_reject_injection_and_oversize(self):
         self.assertFalse(valid_payload(b"other,host=PC value=1 1793450400000"))
         self.assertFalse(valid_payload(
