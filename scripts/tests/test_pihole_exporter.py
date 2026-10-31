@@ -44,14 +44,14 @@ class ExporterTests(unittest.TestCase):
             sample["queries"] = dict(SUMMARY["queries"], total=value)
             with self.assertRaises(ValueError):
                 render_metrics(sample, {"blocking": True})
-        for bad in (True, False, "failed", "unknown", "ENABLED", None):
+        for bad in ("failed", "unknown", "ENABLED", None, 1, 0, {}, []):
             with self.subTest(blocking=bad), self.assertRaises(ValueError):
                 render_metrics(SUMMARY, {"blocking": bad})
 
-    def test_v6_blocking_state_strings(self):
-        # The real GET /api/dns/blocking response is a string; it must never
-        # be confused with the boolean accepted when POSTing a state change.
-        for state, expected in (("enabled", 1), ("disabled", 0)):
+    def test_v6_blocking_state_values(self):
+        # Pi-hole's documented GET response is Boolean; tolerate both formats
+        # but never silently interpret other values as disabled.
+        for state, expected in ((True, 1), (False, 0), ("enabled", 1), ("disabled", 0)):
             with self.subTest(state=state):
                 output = render_metrics(SUMMARY, {"blocking": state, "timer": None, "took": 0.00004})
                 self.assertIn(f"homeaway_pihole_blocking_enabled {expected}", output.splitlines())
@@ -78,7 +78,7 @@ class ExporterTests(unittest.TestCase):
                         raise urllib.error.HTTPError(req.full_url, 401, "Unauthorized", None, None)
                     return FakeResponse(SUMMARY)
                 if path == "/api/dns/blocking":
-                    return FakeResponse({"blocking": "enabled", "timer": None})
+                    return FakeResponse({"blocking": True, "timer": None})
                 self.fail("Unexpected API endpoint: " + path)
             client = PiHoleV6Client("http://pihole", pw, opener=opener)
             text = client.snapshot()

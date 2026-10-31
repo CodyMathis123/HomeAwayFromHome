@@ -47,16 +47,20 @@ def render_metrics(summary: dict, blocking: dict) -> str:
         for key in path:
             value = value[key]
         rows.extend((f"# HELP {name} {help_text}", f"# TYPE {name} gauge", f"{name} {number(value)}"))
-    # Pi-hole v6 GET /api/dns/blocking returns "enabled" or "disabled",
-    # not the boolean accepted by its POST request. Unknown/failed must not
-    # masquerade as "blocking off": fail this scrape instead.
+    # GET /api/dns/blocking has a Boolean example in official Pi-hole v6
+    # docs. Other deployments/clients may return enabled/disabled strings.
+    # Normalize both *without* treating an unexpected response as OFF.
     status = blocking["blocking"]
-    if status not in ("enabled", "disabled"):
+    if status is True or status == "enabled":
+        enabled = 1
+    elif status is False or status == "disabled":
+        enabled = 0
+    else:
         raise ValueError("Unrecognized Pi-hole v6 blocking state")
     rows += (
         "# HELP homeaway_pihole_blocking_enabled DNS filtering enabled (1/0)",
         "# TYPE homeaway_pihole_blocking_enabled gauge",
-        f"homeaway_pihole_blocking_enabled {1 if status == 'enabled' else 0}",
+        f"homeaway_pihole_blocking_enabled {enabled}",
     )
     types = summary.get("queries", {}).get("types", {})
     if isinstance(types, dict):
