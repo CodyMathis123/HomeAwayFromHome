@@ -4,7 +4,7 @@
 
 Pi-hole v6 · WireGuard via wg-easy v15 · built-in responsive read-only status portal · optional Grafana + VictoriaMetrics. Everything is self-hosted on the Pi using Docker Compose. No VPS, external dashboard, mandatory account, or ongoing control-plane dependency.
 
-> **Status:** feature-branch implementation. Configurations and CI tests are complete source artifacts, not a claim that the services have been installed or tested on your actual Pi. Read the [installation runbook](docs/INSTALL.md) before replacing live DNS or VPN.
+> **Status:** feature-branch implementation with a first real Pi 4 / Raspberry Pi OS 64-bit deployment. Pi-hole reached healthy DNS service, wg-easy started successfully with the documented nftables-compatible image, and the read-only portal/smoke checks passed on October 31, 2026. Real iPhone cellular VPN routing, DNS coverage through the VPN, eero household DNS cutover and Grafana/SensorDash telemetry are **not yet fully validated**. Read the [installation runbook](docs/INSTALL.md) and [existing-Pi migration notes](docs/EXISTING-PI-MIGRATION.md) before replacing live DNS or VPN.
 
 ## Architecture
 
@@ -70,7 +70,9 @@ Pi-hole v6 · WireGuard via wg-easy v15 · built-in responsive read-only status 
 6. Forward **UDP 51820** on your router to the Pi. Check for ISP CGNAT if the handshake never works; DNS records alone cannot fix CGNAT. Use the iPhone's WireGuard client to verify tunnel handshake, Pi-hole DNS filtering, RDP and SensorDash access.
 7. Only after those tests, change the router's DHCP DNS to the Pi's LAN IP and renew clients' leases. Router stays the DHCP server. Never port-forward TCP/UDP 53 or any web-admin ports.
 
-Detailed notes: [Install and cutover](docs/INSTALL.md) · [Security](docs/SECURITY.md) · [Operations and recovery](docs/OPERATIONS.md) · [Architecture decisions](docs/DECISIONS.md).
+Detailed notes: [Existing-Pi headless migration and observed network fixes](docs/EXISTING-PI-MIGRATION.md) · [Install and cutover](docs/INSTALL.md) · [Security](docs/SECURITY.md) · [Operations and recovery](docs/OPERATIONS.md) · [Architecture decisions](docs/DECISIONS.md).
+
+**Raspberry Pi nftables note:** the pinned wg-easy 15.5.0 image is built locally using `Dockerfile.wg-easy-nft`, which selects the `iptables-nft` and `ip6tables-nft` tools inside the container. This addresses a confirmed startup failure on Pi kernel 6.18.50 without altering host firewall alternatives. Also, `VPN_CIDR` and `VPN_ENDPOINT` in `.env` are not currently injected into wg-easy; set and verify the actual interface, endpoint and client defaults in wg-easy's v15 UI. See the migration notes for details.
 
 ## Client profiles and DNS
 
