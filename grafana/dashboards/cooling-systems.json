@@ -535,60 +535,6 @@
           "range": true
         }
       ]
-    },
-    {
-      "id": 11,
-      "title": "Coolant-to-room ambient ΔT",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "homeaway-vm"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 44,
-        "w": 24,
-        "h": 9
-      },
-      "description": "A read-only difference between actual coolant-probe and room-ambient temperature readings. Missing either physical role produces no series, never a fabricated zero.",
-      "fieldConfig": {
-        "defaults": {
-          "unit": "celsius",
-          "custom": {
-            "drawStyle": "line",
-            "spanNulls": false,
-            "lineInterpolation": "linear",
-            "showPoints": "never"
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ]
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "homeaway-vm"
-          },
-          "expr": "max by(host,system) ((sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",role=\"coolant-probe\",kind=\"Temperature\"} == 1) * on(host,sensor) group_left() sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}) - on(host,system) max by(host,system) ((sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",role=\"room-ambient\",kind=\"Temperature\"} == 1) * on(host,sensor) group_left() sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"})",
-          "legendFormat": "{{host}} · {{system}} ΔT",
-          "range": true
-        }
-      ]
     }
   ]
 }
