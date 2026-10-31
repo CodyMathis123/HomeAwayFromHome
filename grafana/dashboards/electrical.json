@@ -9,7 +9,7 @@
     "read-only"
   ],
   "schemaVersion": 40,
-  "version": 1,
+  "version": 2,
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
@@ -84,7 +84,7 @@
   "panels": [
     {
       "id": 1,
-      "title": "Component inventory and electrical source",
+      "title": "Cooling component inventory",
       "type": "table",
       "datasource": {
         "type": "prometheus",
@@ -96,7 +96,7 @@
         "w": 24,
         "h": 7
       },
-      "description": "Active SensorDash cooling components; model parameters and names are managed exclusively on Windows.",
+      "description": "Active components defined in Windows SensorDash. This inventory includes heat sources even when they have no fan/pump electrical estimate; only the charts below report watts. Source, calibration revision, and all electrical model configuration live in SensorDash.",
       "fieldConfig": {
         "defaults": {},
         "overrides": []
@@ -116,6 +116,33 @@
           "format": "table",
           "instant": true
         }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "component": true,
+              "system": true,
+              "Value": true,
+              "Value #A": true
+            },
+            "indexByName": {
+              "component_name": 0,
+              "role": 1,
+              "system_name": 2,
+              "host": 3
+            },
+            "renameByName": {
+              "component_name": "Component",
+              "role": "Role",
+              "system_name": "Cooling system",
+              "host": "Computer"
+            }
+          }
+        }
       ]
     },
     {
@@ -132,7 +159,7 @@
         "w": 12,
         "h": 9
       },
-      "description": "Archived watts from SensorDash's C# electrical model. The source label distinguishes real measurements, user calibration, curves and nameplate-rated estimates; config revision preserves the historical model.",
+      "description": "Archived watts from SensorDash's C# electrical model. The source label distinguishes real measurements, user calibration, curves and nameplate-rated estimates; config revision preserves the historical model. Legend shows the first six revision characters for readability; the complete immutable configuration revision remains attached to the metric. A new line after calibration changes does not imply a second physical fan group. Historical values are not recomputed.",
       "fieldConfig": {
         "defaults": {
           "unit": "watt",
@@ -166,8 +193,8 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "sensordash_accessory_power_value{host=~\"$host\",system=~\"$system\",source=~\"$source\"} * on(host,system,component) group_left(component_name,system_name,role) (sensordash_component_info_value{host=~\"$host\",system=~\"$system\"} == 1)",
-          "legendFormat": "{{component_name}} · {{source}} · rev {{revision}}",
+          "expr": "label_replace((sensordash_accessory_power_value{host=~\"$host\",system=~\"$system\",source=~\"$source\"} * on(host,system,component) group_left(component_name,system_name,role) (sensordash_component_info_value{host=~\"$host\",system=~\"$system\"} == 1)), \"revision_short\", \"$1\", \"revision\", \"^([0-9a-f]{6})[0-9a-f]{10}$\")",
+          "legendFormat": "{{component_name}} · {{source}} · rev {{revision_short}}",
           "range": true
         }
       ]
@@ -186,7 +213,7 @@
         "w": 12,
         "h": 9
       },
-      "description": "Archived watts from SensorDash's C# electrical model. The source label distinguishes real measurements, user calibration, curves and nameplate-rated estimates; config revision preserves the historical model.",
+      "description": "Archived watts from SensorDash's C# electrical model. The source label distinguishes real measurements, user calibration, curves and nameplate-rated estimates; config revision preserves the historical model. Legend shows the first six revision characters for readability; the complete immutable configuration revision remains attached to the metric. A new line after calibration changes does not imply a second physical fan group. Historical values are not recomputed.",
       "fieldConfig": {
         "defaults": {
           "unit": "watt",
@@ -220,15 +247,15 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "sensordash_accessory_power_value{host=~\"$host\",system=~\"$system\",source=~\"$source\"} * on(host,system,component) group_left(component_name,system_name,role) (sensordash_component_info_value{host=~\"$host\",system=~\"$system\",role=\"fan-group\"} == 1)",
-          "legendFormat": "{{component_name}} · {{source}} · rev {{revision}}",
+          "expr": "label_replace((sensordash_accessory_power_value{host=~\"$host\",system=~\"$system\",source=~\"$source\"} * on(host,system,component) group_left(component_name,system_name,role) (sensordash_component_info_value{host=~\"$host\",system=~\"$system\",role=\"fan-group\"} == 1)), \"revision_short\", \"$1\", \"revision\", \"^([0-9a-f]{6})[0-9a-f]{10}$\")",
+          "legendFormat": "{{component_name}} · {{source}} · rev {{revision_short}}",
           "range": true
         }
       ]
     },
     {
       "id": 4,
-      "title": "Measured electrical power only",
+      "title": "Directly measured watts (requires power sensor)",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -240,7 +267,7 @@
         "w": 12,
         "h": 9
       },
-      "description": "Archived watts from SensorDash's C# electrical model. The source label distinguishes real measurements, user calibration, curves and nameplate-rated estimates; config revision preserves the historical model.",
+      "description": "Archived watts from SensorDash's C# electrical model. The source label distinguishes real measurements, user calibration, curves and nameplate-rated estimates; config revision preserves the historical model. Legend shows the first six revision characters for readability; the complete immutable configuration revision remains attached to the metric. A new line after calibration changes does not imply a second physical fan group. Historical values are not recomputed. No data is expected unless SensorDash is assigned a real power measurement. Rated/curve-based estimates intentionally do not appear here.",
       "fieldConfig": {
         "defaults": {
           "unit": "watt",
@@ -274,8 +301,8 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "sensordash_accessory_power_value{host=~\"$host\",system=~\"$system\",source=\"measured\"} * on(host,system,component) group_left(component_name,system_name,role) (sensordash_component_info_value{host=~\"$host\",system=~\"$system\"} == 1)",
-          "legendFormat": "{{component_name}} · {{source}} · rev {{revision}}",
+          "expr": "label_replace((sensordash_accessory_power_value{host=~\"$host\",system=~\"$system\",source=\"measured\"} * on(host,system,component) group_left(component_name,system_name,role) (sensordash_component_info_value{host=~\"$host\",system=~\"$system\"} == 1)), \"revision_short\", \"$1\", \"revision\", \"^([0-9a-f]{6})[0-9a-f]{10}$\")",
+          "legendFormat": "{{component_name}} · {{source}} · rev {{revision_short}}",
           "range": true
         }
       ]
@@ -294,7 +321,7 @@
         "w": 12,
         "h": 9
       },
-      "description": "Archived watts from SensorDash's C# electrical model. The source label distinguishes real measurements, user calibration, curves and nameplate-rated estimates; config revision preserves the historical model.",
+      "description": "Archived watts from SensorDash's C# electrical model. The source label distinguishes real measurements, user calibration, curves and nameplate-rated estimates; config revision preserves the historical model. Legend shows the first six revision characters for readability; the complete immutable configuration revision remains attached to the metric. A new line after calibration changes does not imply a second physical fan group. Historical values are not recomputed.",
       "fieldConfig": {
         "defaults": {
           "unit": "watt",
@@ -328,8 +355,8 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "sensordash_accessory_power_value{host=~\"$host\",system=~\"$system\",source=~\"$source\"} * on(host,system,component) group_left(component_name,system_name,role) (sensordash_component_info_value{host=~\"$host\",system=~\"$system\",role=\"pump\"} == 1)",
-          "legendFormat": "{{component_name}} · {{source}} · rev {{revision}}",
+          "expr": "label_replace((sensordash_accessory_power_value{host=~\"$host\",system=~\"$system\",source=~\"$source\"} * on(host,system,component) group_left(component_name,system_name,role) (sensordash_component_info_value{host=~\"$host\",system=~\"$system\",role=\"pump\"} == 1)), \"revision_short\", \"$1\", \"revision\", \"^([0-9a-f]{6})[0-9a-f]{10}$\")",
+          "legendFormat": "{{component_name}} · {{source}} · rev {{revision_short}}",
           "range": true
         }
       ]
