@@ -2,7 +2,7 @@
 const byId = id => document.getElementById(id);
 const host = window.location.hostname;
 byId('link-dns').href = `http://${host}:8080/admin/`;
-byId('link-monitor').href = `http://${host}:3001/`;
+byId('link-monitor').href = `http://${host}:3000/`;
 let pending = false;
 async function refresh() {
   if (pending) return;
