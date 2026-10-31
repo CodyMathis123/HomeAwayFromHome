@@ -126,7 +126,18 @@ def main() -> None:
             break
         time.sleep(0.5)
     else:
-        raise AssertionError("Cooling ΔT join did not equal 31°C - 22°C: " + repr(delta))
+        raise AssertionError(
+            "Cooling delta did not equal 31°C - 22°C; "
+            + repr({
+                "delta": delta,
+                "coolant": query(role("coolant-probe")),
+                "ambient": query(role("room-ambient")),
+                "coolant_raw": query('sensordash_reading_value{host="CI",sensor="coolant"}'),
+                "ambient_raw": query('sensordash_reading_value{host="CI",sensor="ambient"}'),
+                "coolant_bind": query('sensordash_cooling_binding_value{host="CI",role="coolant-probe"}'),
+                "ambient_bind": query('sensordash_cooling_binding_value{host="CI",role="room-ambient"}'),
+            })
+        )
     print("PASS: real VictoriaMetrics joins, tombstones and coolant-to-room delta")
 
 
