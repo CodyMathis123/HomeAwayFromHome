@@ -16,7 +16,7 @@ INFO = 'sensordash_sensor_info_value{host="CI",sensor="cpu_temp"} == 1'
 BIND = 'sensordash_cooling_binding_value{host="CI",system="loop",role="heat-source"} == 1'
 JOIN = (
     'sensordash_reading_value{host="CI",kind="Temperature"}'
-    ' * on(host,sensor) group_right(system,system_name,component,component_name,role)'
+    ' * on(host,sensor) group_right()'
     ' (sensordash_cooling_binding_value{host="CI",system="loop",kind="Temperature"} == 1)'
 )
 
