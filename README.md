@@ -146,3 +146,9 @@ Storage-device activity and temperature, local history-buffer footprint, and his
 ### Embedded read-only Grafana metrics in HomeAway
 
 The portal supports an opt-in, one-iframe compact Grafana view without an extra login. Keep all browser endpoints LAN/VPN-only; read [the enablement and revocation guide](docs/PORTAL-METRICS-EMBED.md) before sharing. By default no dashboard is shared and no iframe loads. Grafana admin authentication remains enabled.
+
+## Authenticated Windows PC control (optional)
+
+The new **HomeAway PC Controls** section uses a pinned Caddy + Authelia 2FA gateway on private HTTPS port 8443. Two Windows PCs (`gaming` and `work`) are inventory examples, not hardcoded assumptions; register additional machines with `scripts/add-pc.py`. WOL and Windows power actions run through an unprivileged host-side `pcctl` agent over a group-restricted Unix socket, not directly from the web application. The iOS Shortcut's forced-command SSH entry point remains compatible.
+
+**Not enabled by default and not deployed automatically.** Start with [PC control and authentication onboarding](docs/PC-CONTROL.md), including Pi inventory, Windows SSH hardening, Authelia bootstrapping, local CA trust, TOTP enrollment, reversible migration and the step-by-step procedure to add a new PC. :8088 remains read-only and the controller has no host TCP listener.
