@@ -26,7 +26,7 @@ Pi-hole v6 · WireGuard via wg-easy v15 · built-in responsive read-only status 
   DNS :53            VPN UDP :51820       HTTP :8088 (LAN)
   Web :8080 (LAN)    Admin :51821          Read-only checks
                      localhost ONLY              |
-       |                 |                 Grafana :3001
+       |                 |                 Grafana :3000
        +------- Pi LAN DNS / RDP / SensorDash ----+ (optional metrics)
 ```
 
@@ -85,7 +85,7 @@ Full tunnel is optional: use `0.0.0.0/0` for IPv4 AllowedIPs when intentionally 
 | HomeAway portal | `http://PI_IP:8088` | Read only; no credentials |
 | Pi-hole | `http://PI_IP:8080/admin/` | Pi-hole password |
 | wg-easy | `http://127.0.0.1:51821` | Only via SSH forwarding, then wg-easy login |
-| Uptime Kuma | `http://PI_IP:3001` | Optional, separate account |
+| Grafana | `http://PI_IP:3000` | Optional metrics profile, authenticated |
 
 Start optional Grafana/VictoriaMetrics using the [telemetry guide](docs/TELEMETRY.md), which includes local HTTPS certificate and bearer token bootstrap. Monitoring charts never authorize physical fan control. Do not add a Docker socket to any web service.
 
@@ -118,7 +118,7 @@ python3 scripts/check_contracts.py
 
 Never commit `.env`, `secrets/`, `data/`, `backups/`, or client profiles/QR codes. CI tests configuration without starting DNS or WireGuard or modifying a router. See [AGENTS.md](AGENTS.md) for AI-assisted change rules.
 
-**References:** [Pi-hole Docker](https://docs.pi-hole.net/docker/) · [Pi-hole v6 config](https://docs.pi-hole.net/docker/configuration/) · [wg-easy 15 setup](https://wg-easy.github.io/wg-easy/v15.2/examples/tutorials/basic-installation/) · [wg-easy admin security warning](https://wg-easy.github.io/wg-easy/latest/examples/tutorials/reverse-proxyless/) · [Uptime Kuma](https://github.com/louislam/uptime-kuma).
+**References:** [Pi-hole Docker](https://docs.pi-hole.net/docker/) · [Pi-hole v6 config](https://docs.pi-hole.net/docker/configuration/) · [wg-easy 15 setup](https://wg-easy.github.io/wg-easy/v15.2/examples/tutorials/basic-installation/) · [wg-easy admin security warning](https://wg-easy.github.io/wg-easy/latest/examples/tutorials/reverse-proxyless/) · [Grafana](https://grafana.com/docs/grafana/latest/) · [VictoriaMetrics](https://docs.victoriametrics.com/).
 
 
 ## SensorDash / Grafana milestone 1
