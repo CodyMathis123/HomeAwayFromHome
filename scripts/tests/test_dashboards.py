@@ -114,6 +114,30 @@ class DashboardContracts(unittest.TestCase):
         self.assertNotIn("top_clients", expressions)
         self.assertNotIn("rate(homeaway_pihole_queries_window", expressions)
         self.assertEqual(len({p["id"] for p in d["panels"]}), len(d["panels"]))
+        # The quiet-network rate should not be duplicated as an oversized
+        # status tile. Summary counts remain gauges, never counter rates.
+        self.assertEqual(d["time"]["from"], "now-1h")
+        panels = {p["id"]: p for p in d["panels"]}
+        self.assertEqual(
+            {t["legendFormat"] for t in panels[8]["targets"]},
+            {"All queries", "Cached", "Forwarded", "Blocked"},
+        )
+        self.assertEqual(len(panels[8]["targets"]), 4)
+        for item in panels[8]["targets"]:
+            self.assertTrue(item["range"])
+            self.assertIn("_window", item["expr"])
+        self.assertEqual(panels[15]["title"], "VPN transferred data")
+        self.assertEqual(panels[15]["fieldConfig"]["defaults"]["unit"], "bytes")
+        self.assertIn("wireguard_received_bytes", panels[15]["targets"][0]["expr"])
+        self.assertIn("wireguard_sent_bytes", panels[15]["targets"][0]["expr"])
+        self.assertEqual(
+            sum(t["expr"] == "homeaway_pihole_query_frequency"
+                for p in d["panels"] for t in p["targets"]), 1,
+        )
+        for id in (10, 11):
+            mappings = panels[id]["fieldConfig"]["defaults"]["mappings"][0]["options"]
+            self.assertEqual(mappings["1"]["text"], "UP")
+            self.assertEqual(mappings["0"]["text"], "DOWN")
 
     def test_catalog_is_distinct_from_raw_identity(self):
         d = json.loads((PANELS / "sensordash.json").read_text(encoding="utf-8"))
