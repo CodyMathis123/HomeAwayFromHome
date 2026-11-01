@@ -8,7 +8,7 @@ let authChecked = false;
 // These are view-state decisions, never an authorization mechanism.
 // The /control/ document and all /control/api/* endpoints remain authenticated
 // and server-side capabilities determine which admin sections exist.
-const VIEWS = new Set(['hosts', 'computer-admin', 'accounts', 'recent-activity']);
+const VIEWS = new Set(['hosts', 'computer-admin', 'accounts', 'recent-activity', 'setup-readiness']);
 const main = document.querySelector('main');
 let currentView = 'hosts';
 function updateCurrentSection(focus = false) {
@@ -18,6 +18,7 @@ function updateCurrentSection(focus = false) {
   if (target === 'computer-admin' && !capabilities?.manageComputers) target = 'hosts';
   if (target === 'accounts' && !capabilities?.manageUsers) target = 'hosts';
   if (target === 'recent-activity' && !capabilities?.history) target = 'hosts';
+  if (target === 'setup-readiness' && capabilities?.role !== 'admins') target = 'hosts';
   currentView = target;
   main.dataset.activeView = target;
   document.body.classList.add('control-views-ready');
@@ -32,6 +33,8 @@ function updateCurrentSection(focus = false) {
   if (authChecked && requested && requested !== target)
     history.replaceState(history.state, '', '/control/#hosts');
   window.HomeAwayNavigation?.sync();
+  if (target === 'setup-readiness' && capabilities?.role === 'admins')
+    window.HomeAwayReadiness?.show();
   if (focus) {
     const section = $(target);
     if (section) {
@@ -45,6 +48,7 @@ function updateSectionNavigation(capabilities) {
   $('nav-computers').hidden = !capabilities?.manageComputers;
   $('nav-accounts').hidden = !capabilities?.manageUsers;
   $('nav-activity').hidden = !capabilities?.history;
+  $('nav-readiness').hidden = capabilities?.role !== 'admins';
   updateCurrentSection();
 }
 async function loadIdentity() {
@@ -59,6 +63,7 @@ async function loadIdentity() {
     $('identity').textContent = identity.user + ' · ' + identity.capabilities.role;
     if (typeof HomeAwayAccounts !== 'undefined') HomeAwayAccounts.start(identity);
     if (typeof HomeAwayComputers !== 'undefined') HomeAwayComputers.start(identity);
+    if (typeof HomeAwayReadiness !== 'undefined') HomeAwayReadiness.start(identity);
     return identity;
   } catch (error) {
     // A lost connection or revoked session must not leave stale admin UI visible.
@@ -67,6 +72,8 @@ async function loadIdentity() {
     updateSectionNavigation(null);
     $('computer-admin').hidden = true;
     $('accounts').hidden = true;
+    $('setup-readiness').hidden = true;
+    if (typeof HomeAwayReadiness !== 'undefined') HomeAwayReadiness.start(null);
     // Never leave previously rendered power action buttons on screen when
     // authorization cannot be refreshed (the API still enforces all actions).
     hosts.replaceChildren(node('p', 'detail',
