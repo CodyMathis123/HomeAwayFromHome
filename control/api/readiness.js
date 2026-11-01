@@ -13,13 +13,28 @@ const HomeAwayReadiness = (() => {
     const description = $('readiness-detail-' + id);
     if (!badge || !description) return;
     badge.dataset.state = state;
+    delete badge.dataset.refreshStale;
+    badge.removeAttribute('title');
     badge.textContent = title;
     description.textContent = detail;
+  }
+  function markStale(ids) {
+    // Never erase the last reading when a refresh fails. Its state remains
+    // the last observation, visually marked as potentially outdated.
+    for (const id of ids) {
+      const badge = $('readiness-' + id);
+      if (!badge) continue;
+      badge.dataset.refreshStale = 'true';
+      badge.title = 'Refresh failed — showing last observed result';
+    }
   }
   function unknown(message = 'Not checked in this session') {
     for (const id of ids) display(id, 'unknown', 'Unknown', message);
   }
   const serviceIds = ['service.pihole', 'service.wireguard', 'service.victoria'];
+  function servicesStale() {
+    markStale(serviceIds.map(id => id.replace('.', '-')));
+  }
   function servicesUnknown(message) {
     for (const id of serviceIds) display(id.replace('.', '-'), 'unknown', 'Unknown', message);
   }
@@ -45,6 +60,9 @@ const HomeAwayReadiness = (() => {
   }
   const metricIds = ['pi.scrape', 'pi.cpu', 'pi.memory', 'pi.load', 'pi.thermal', 'vm.free'];
   const metricSlug = id => id.replace('.', '-');
+  function metricsStale() {
+    markStale([...metricIds.map(metricSlug), 'telemetry']);
+  }
   function metricsUnknown(message) {
     for (const id of metricIds)
       display(metricSlug(id), 'unknown', 'Unknown', message);
@@ -108,6 +126,9 @@ const HomeAwayReadiness = (() => {
   }
 
   const certificateIds = ['browser-home', 'browser-auth', 'browser-metrics', 'telemetry-receiver'];
+  function certificatesStale() {
+    markStale(certificateIds.map(id => 'cert-' + id));
+  }
   function certificatesUnknown(message) {
     for (const id of certificateIds) {
       const label = $('readiness-cert-' + id);
@@ -139,6 +160,8 @@ const HomeAwayReadiness = (() => {
         continue;
       }
       label.dataset.state = item.state;
+      delete label.dataset.refreshStale;
+      label.removeAttribute('title');
       label.textContent = item.state === 'unknown' ? 'Unknown'
         : item.daysRemaining + ' days remaining';
       const trust = item.publicTrust === 'verified' ? 'Public system roots: verified'
@@ -170,6 +193,8 @@ const HomeAwayReadiness = (() => {
       Number.isFinite(data?.ageHours) && Number.isFinite(backupStamp);
     const fresh = verified && evidenceAgeHours >= 0 && evidenceAgeHours <= 24;
     label.dataset.state = fresh ? (data.ageHours <= 168 ? 'observed' : 'stale') : 'unknown';
+    delete label.dataset.refreshStale;
+    label.removeAttribute('title');
     label.textContent = !fresh ? 'Evidence unavailable or stale' :
       data.ageHours <= 168 ? 'Checksum verified' : 'Backup older than 7 days';
     detail.textContent = fresh
@@ -203,12 +228,9 @@ const HomeAwayReadiness = (() => {
     pending = true;
     button.disabled = true;
     checked = true;
-    unknown('Checking source…');
-    metricsUnknown('Checking existing VictoriaMetrics series…');
-    servicesUnknown('Checking internal metrics scrape targets…');
-    certificatesUnknown('Checking private TLS endpoints…');
-    displayBackup(null);
-    updated.textContent = 'Checking authorized status…';
+    // Keep the last observed values visible until each request returns.
+    // This is a transient activity notice, not a replacement observation.
+    updated.textContent = 'Refreshing checks… Previous values remain visible until updated.';
     try {
       // /control/api/me must be freshly verified before querying status.
       const me = await readJson('/control/api/me');
@@ -229,6 +251,7 @@ const HomeAwayReadiness = (() => {
       // Render each independent observation as soon as its own request
       // completes. A slow SSH/computer check must not block certificates,
       // metrics or backup status; every request has a finite timeout.
+      let failedSections = 0;
       const queries = [
         readJson('/api/status').then(
           value => ({status: 'fulfilled', value}),
@@ -254,8 +277,8 @@ const HomeAwayReadiness = (() => {
              ' · Dashboard content and telemetry freshness not verified'));
         }
       } else {
-        for (const id of ['dns', 'wireguard', 'monitor'])
-          display(id, 'unknown', 'Unknown', 'Portal status unavailable; service state not established');
+        failedSections++;
+        markStale(['dns', 'wireguard', 'monitor']);
       }
 
         }),
@@ -277,7 +300,8 @@ const HomeAwayReadiness = (() => {
               : 'No registered active computer targets; this is not a failed reachability test');
         }
       } else {
-        display('hosts', 'unknown', 'Unknown', 'Computer inventory or reachability check unavailable');
+        failedSections++;
+        markStale(['hosts']);
       }
         }),
         readJson('/control/api/admin/diagnostics').then(
@@ -286,10 +310,12 @@ const HomeAwayReadiness = (() => {
         ).then(metrics => {
       if (metrics.status === 'fulfilled')
         displayMetrics(metrics.value);
-      else
-        metricsUnknown('Metrics observer unavailable; existing source state not established');
+      else {
+        failedSections++;
+        metricsStale();
+      }
       if (metrics.status === 'fulfilled') displayServices(metrics.value);
-      else servicesUnknown('Metrics observer unavailable');
+      else servicesStale();
         }),
         readJson('/control/api/admin/certificates').then(
           value => ({status: 'fulfilled', value}),
@@ -297,19 +323,27 @@ const HomeAwayReadiness = (() => {
         ).then(certificates => {
       if (certificates.status === 'fulfilled')
         displayCertificates(certificates.value);
-      else
-        certificatesUnknown('Certificate observer unavailable; issuer/expiry not verified');
+      else {
+        failedSections++;
+        certificatesStale();
+      }
         }),
         readJson('/control/api/admin/backup-status').then(
           value => ({status: 'fulfilled', value}),
           () => ({status: 'rejected'})
         ).then(backup => {
-      displayBackup(backup.status === 'fulfilled' ? backup.value : null);
+      if (backup.status === 'fulfilled') displayBackup(backup.value);
+      else {
+        failedSections++;
+        markStale(['backup']);
+      }
         }),
       ];
       await Promise.all(queries);
-      updated.textContent = 'Checked ' + new Date().toLocaleTimeString() +
-        ' · Individual statuses have limited scope';
+      updated.textContent = (failedSections
+        ? 'Refresh finished with ' + failedSections + ' unavailable source(s) '
+          + '— last readings retained and marked as stale'
+        : 'Refreshed successfully') + ' · ' + new Date().toLocaleTimeString();
     } catch (_) {
       // Session loss or stale admin role. Clear any prior observations and
       // hide this view; never leave sensitive control details on screen.
@@ -341,7 +375,9 @@ const HomeAwayReadiness = (() => {
       checked = false;
       unknown('Not checked in this session');
       metricsUnknown('Not checked in this session');
+      servicesUnknown('Not checked in this session');
       certificatesUnknown('Not checked in this session');
+      displayBackup(null);
     }
     if (allowed && location.hash === '#setup-readiness' && !checked)
       void refresh();
