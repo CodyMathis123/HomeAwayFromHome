@@ -22,6 +22,6 @@ if homeaway_publish_postbackup "$tmp" 2>"$tmp/errors"; then
   exit 1
 fi
 grep -q "backup exists" "$tmp/errors"
-grep -q "manual" "$tmp/errors"
+grep -q "Retry later: sudo python3 scripts/publish-backup-status.py --publish" "$tmp/errors"
 [[ "$(wc -l < "$tmp/calls")" -eq 2 ]]
 echo "PASS: postbackup publication succeeds/fails independently; real services and archives untouched."
