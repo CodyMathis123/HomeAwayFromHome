@@ -24,7 +24,7 @@ def main():
     assert "LLDAP_LDAP_USER_PASS_FILE" in c
     assert "LLDAP_KEY_SEED_FILE" in c
     assert "LLDAP_JWT_SECRET_FILE" in c
-    assert "ports:" not in c, "No account service may publish host ports"
+    assert "127.0.0.1:17170:17170/tcp" in c, "Directory UI must bind loopback only"
     assert "docker.sock" not in c and "privileged:" not in c
     assert "/config/users_database" not in c, "Never mount Authelia users writeable"
     assert "pc-control:" in c and "account-broker:" in c
@@ -53,10 +53,15 @@ def main():
     assert set(services["lldap"]["networks"]) == {"account-directory"}
     assert set(services["account-broker"]["networks"]) == {"pc-control","account-directory"}
     assert set(services["pc-control"]["networks"]) == {"pc-control"}
-    for name in ("lldap","account-broker","authelia","pc-control"):
+    ui_ports=services["lldap"].get("ports",[])
+    assert len(ui_ports)==1 and ui_ports[0]["host_ip"]=="127.0.0.1"
+    assert ui_ports[0]["target"]==17170 and ui_ports[0]["published"]=="17170"
+    assert ui_ports[0]["protocol"]=="tcp"
+    for name in ("account-broker","authelia","pc-control"):
         assert not services[name].get("ports"), name+" must not expose a host port"
+    assert "1000" in [str(x) for x in services["account-broker"].get("group_add",[])]
     assert not services["lldap"].get("privileged", False)
     assert "lldap_admin_password" not in services["pc-control"].get("secrets",[])
-    print("PASS: account directory is opt-in, internal-only, reachable from Authelia, and denies stale grants")
+    print("PASS: account directory is opt-in, SSH-loopback UI only, reachable from Authelia, and denies stale grants")
 
 if __name__=="__main__":main()
