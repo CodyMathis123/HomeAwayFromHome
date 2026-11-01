@@ -19,6 +19,30 @@ const HomeAwayReadiness = (() => {
   function unknown(message = 'Not checked in this session') {
     for (const id of ids) display(id, 'unknown', 'Unknown', message);
   }
+  const serviceIds = ['service.pihole', 'service.wireguard', 'service.victoria'];
+  function servicesUnknown(message) {
+    for (const id of serviceIds) display(id.replace('.', '-'), 'unknown', 'Unknown', message);
+  }
+  function displayServices(data) {
+    if (data?.schemaVersion !== 1 || !Array.isArray(data.serviceChecks)) {
+      servicesUnknown('No validated scrape-health response');
+      return;
+    }
+    const checks = new Map(data.serviceChecks.filter(item =>
+      item && serviceIds.includes(item.id)).map(item => [item.id, item]));
+    for (const id of serviceIds) {
+      const item = checks.get(id);
+      if (!item || !['observed', 'attention', 'unknown'].includes(item.state) ||
+          item.unit !== 'boolean' || (item.value !== null && item.value !== 0 && item.value !== 1)) {
+        display(id.replace('.', '-'), 'unknown', 'Unknown', 'Invalid scrape status');
+        continue;
+      }
+      const label = item.state === 'observed' ? 'Scraped' :
+        item.state === 'attention' ? 'Scrape failed' : 'Unknown';
+      display(id.replace('.', '-'), item.state, label,
+        'Internal metrics endpoint only; end-to-end service health not established');
+    }
+  }
   const metricIds = ['pi.scrape', 'pi.cpu', 'pi.memory', 'pi.load', 'pi.thermal', 'vm.free'];
   const metricSlug = id => id.replace('.', '-');
   function metricsUnknown(message) {
@@ -173,6 +197,7 @@ const HomeAwayReadiness = (() => {
     checked = true;
     unknown('Checking source…');
     metricsUnknown('Checking existing VictoriaMetrics series…');
+    servicesUnknown('Checking internal metrics scrape targets…');
     certificatesUnknown('Checking private TLS endpoints…');
     displayBackup(null);
     updated.textContent = 'Checking authorized status…';
@@ -244,6 +269,8 @@ const HomeAwayReadiness = (() => {
         displayMetrics(metrics.value);
       else
         metricsUnknown('Metrics observer unavailable; existing source state not established');
+      if (metrics.status === 'fulfilled') displayServices(metrics.value);
+      else servicesUnknown('Metrics observer unavailable');
       if (certificates.status === 'fulfilled')
         displayCertificates(certificates.value);
       else
@@ -256,6 +283,7 @@ const HomeAwayReadiness = (() => {
       // hide this view; never leave sensitive control details on screen.
       unknown('Administrator authorization could not be verified');
       metricsUnknown('Administrator authorization could not be verified');
+      servicesUnknown('Administrator authorization could not be verified');
       certificatesUnknown('Administrator authorization could not be verified');
       displayBackup(null);
       updated.textContent = 'Authorization unavailable; reopen HomeAway Control and sign in';
