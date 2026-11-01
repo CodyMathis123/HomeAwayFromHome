@@ -111,6 +111,16 @@ class InventoryAgentTests(unittest.TestCase):
         self.assertEqual(self.manager.execute("homeowner","list",{})["drafts"],[])
         self.assertEqual(len(json.loads(self.live.read_text())["hosts"]),1)
 
+    def test_missing_active_inventory_fails_closed(self):
+        self.live.unlink()
+        with self.assertRaises(agent.InventoryFault) as err:
+            self.manager.execute("homeowner","list",{})
+        self.assertEqual(err.exception.status,503)
+        with self.assertRaises(agent.InventoryFault):
+            self.manager.execute("homeowner","draft-create",
+                                 host("other","192.168.50.44","02:11:22:33:44:56"))
+        self.assertFalse(self.live.exists())
+
     def test_corrupted_draft_state_fails_closed(self):
         agent.DRAFTS.write_text("garbled")
         with self.assertRaises(agent.InventoryFault) as err:
