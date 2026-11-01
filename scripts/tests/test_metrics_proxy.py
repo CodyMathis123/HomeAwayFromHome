@@ -31,6 +31,11 @@ def response():
              "detail": "Measured sample", "unexpectedSecret": "never pass this through"}
             for key in sorted(control.DIAG_CHECKS)
         ],
+        "serviceChecks": [
+            {"id": key, "label": key, "state": "observed", "value": 1,
+             "unit": "boolean", "detail": "Synthetic scrape", "unexpectedSecret": "redacted"}
+            for key in sorted(control.SERVICE_DIAG_CHECKS)
+        ],
         "telemetry": {"state": "observed", "hosts": [
             {"host": "main-desktop", "ageSeconds": 72,
              "lastObservedAt": "2026-11-01T14:58:48+00:00", "state": "observed",
