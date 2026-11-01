@@ -248,6 +248,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(422, {"error": "Confirm the computer ID for this action"})
             if action not in ("restart", "shutdown") and confirm:
                 raise ValueError("Confirmation must be empty")
+            if action not in ACTIONS:
+                raise ValueError("Unknown action")
             # The local agent has fixed verbs, but must never determine user
             # permissions. Enforce the Authelia role on every request before RPC.
             if not can_command(role, action):
