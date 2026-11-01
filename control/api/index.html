@@ -76,7 +76,7 @@
     <h2 id="readiness-title">Operations &amp; diagnostics</h2>
     <button id="readiness-refresh" type="button">Refresh checks</button>
   </div>
-  <p class="detail">Admin-only, read-only operational observations. Results reuse existing service, telemetry and certificate checks. No shell commands, backup execution or service restarts are exposed through this page.</p>
+  <p class="detail">Service health, telemetry, certificates, and recovery status.</p>
   <p id="readiness-updated" role="status" aria-live="polite">Not checked yet</p>
   <div class="readiness-grid" aria-label="Bounded setup readiness checks">
     <article class="readiness-item"><h3>Private browser connection</h3><span id="readiness-transport" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-transport">Not checked in this session</p></article>
@@ -88,14 +88,14 @@
     <article class="readiness-item"><h3>Registered computer reachability</h3><span id="readiness-hosts" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-hosts">Not checked in this session</p></article>
   </div>
   <h3 id="readiness-services-heading">Metrics scrape health</h3>
-  <p class="detail">Observed from the existing internal VictoriaMetrics scrape targets. This verifies whether metrics endpoints responded; it does not prove WireGuard tunnels, client DNS or application login work.</p>
+  <p class="detail">Internal metrics endpoints.</p>
   <div class="readiness-grid" aria-labelledby="readiness-services-heading">
     <article class="readiness-item"><h3>Pi-hole exporter</h3><span id="readiness-service-pihole" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-service-pihole">Not checked</p></article>
     <article class="readiness-item"><h3>WireGuard exporter</h3><span id="readiness-service-wireguard" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-service-wireguard">Not checked</p></article>
     <article class="readiness-item"><h3>VictoriaMetrics</h3><span id="readiness-service-victoria" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-service-victoria">Not checked</p></article>
   </div>
   <h3 id="readiness-metrics-heading">Pi and SensorDash telemetry observations</h3>
-  <p class="detail">Derived from existing VictoriaMetrics history via an isolated, fixed-query observer. These numbers are observations, not commands or proof of computer power state. No fan-curve settings are read or changed.</p>
+  <p class="detail">Measurements from VictoriaMetrics.</p>
   <p id="readiness-metrics-checked" role="status">Metric checks not yet requested</p>
   <div class="readiness-grid" aria-labelledby="readiness-metrics-heading">
     <article class="readiness-item"><h3>Pi exporter scrape</h3><span id="readiness-pi-scrape" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-pi-scrape">Not checked</p></article>
@@ -107,11 +107,11 @@
   </div>
   <div class="readiness-item readiness-telemetry">
     <div class="heading"><h3>SensorDash export freshness</h3><span id="readiness-telemetry" class="readiness-badge" data-state="unknown">Unknown</span></div>
-    <p id="readiness-detail-telemetry">No samples checked. An idle or sleeping PC can legitimately stop exporting; this cannot establish whether it is powered on.</p>
+    <p id="readiness-detail-telemetry">No recent exports observed</p>
     <ul id="readiness-telemetry-hosts" aria-label="Per-host last observed export" class="readiness-telemetry-list"></ul>
   </div>
   <h3 id="certificate-heading">TLS certificate observations</h3>
-  <p class="detail">Fixed internal TLS handshakes check the leaf certificate for the three Caddy browser names and the separate SensorDash receiver. Public-root trust below is the observer container's trust only: it does not establish iPhone, Windows, or collector trust, or prove automatic renewal succeeded.</p>
+  <p class="detail">TLS certificate expiry and trust checks. Device trust and renewal success are not verified.</p>
   <p id="readiness-certificates-checked" role="status">Certificates not yet checked</p>
   <div class="readiness-grid" aria-labelledby="certificate-heading">
     <article class="readiness-item">
@@ -128,13 +128,13 @@
     </article>
     <article class="readiness-item">
       <h3>SensorDash telemetry receiver certificate</h3><span id="readiness-cert-telemetry-receiver" class="readiness-badge" data-state="unknown">Unknown</span>
-      <p id="readiness-cert-detail-telemetry-receiver">Not checked; separate telemetry CA, not part of Let's Encrypt browser migration</p>
+      <p id="readiness-cert-detail-telemetry-receiver">Separate telemetry certificate</p>
     </article>
   </div>
   <h3>Backup &amp; recovery</h3>
-  <p class="detail">Encrypted full-state backups are operator-run on the Pi. This browser has no access to the root-only archive directory, backup encryption keys, or systemd, so it cannot verify when a backup last completed or whether a clean-host restore is possible.</p>
+  <p class="detail">Encrypted backup status and recovery readiness.</p>
   <div class="readiness-grid" aria-label="Backup verification boundaries">
-    <article class="readiness-item"><h3>Encrypted archive</h3><span id="readiness-backup" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-backup-detail">Backup status not yet checked. A checksum does not prove decryption or full recovery.</p><p id="readiness-backup-checked">No observation yet</p></article>
+    <article class="readiness-item"><h3>Encrypted archive</h3><span id="readiness-backup" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-backup-detail">Backup status not checked</p><p id="readiness-backup-checked">No observation yet</p></article>
     <article class="readiness-item"><h3>Recovery verification</h3><span class="readiness-badge" data-state="unknown">Not verified here</span><p>Copy a backup off the Pi, decrypt it with your separately protected identity and test restoration on disposable storage. Never extract a recovery archive over running services.</p></article>
   </div>
   <div class="readiness-manual">
@@ -143,7 +143,7 @@
     <p><strong>Permission and deployment audit (read-only)</strong> <code>sudo python3 scripts/audit-production.py</code></p>
   </div>
   <h3>Checks that still require the Pi</h3>
-  <p class="detail">Certificate expiry is observed separately above; renewal attempts and success, client-side TLS trust, external WireGuard/DNS connectivity, backup freshness and backup recoverability are not verified by these checks. Pi metrics and export freshness now use the dedicated read-only metrics observer when deployed.</p>
+  <p class="detail">Additional checks require the Pi or a client device. Pi metrics and export freshness now use the dedicated read-only metrics observer when deployed.</p>
   <div class="readiness-manual">
     <p><strong>Pi host metrics</strong> <code>sudo bash scripts/verify-pi-metrics.sh</code></p>
     <p><strong>Windows telemetry</strong> <code>sudo bash scripts/verify-telemetry.sh</code></p>
