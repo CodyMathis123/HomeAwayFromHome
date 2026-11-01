@@ -117,7 +117,7 @@ def computer_request(actor: str, operation: str, payload: dict) -> dict:
         raise BrokerError(413, "Computer request too large")
     try:
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as conn:
-            conn.settimeout(23 if operation in ("verify", "activate") else 5)
+            conn.settimeout(23 if operation in ("verify", "activate", "restore") else 5)
             conn.connect("/run/homeaway-pcinventory/agent.sock")
             conn.sendall(message)
             response = conn.makefile("rb").readline(65537)
