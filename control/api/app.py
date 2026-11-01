@@ -561,7 +561,14 @@ class Handler(BaseHTTPRequestHandler):
             record_denial(actor, "-", "users")
             return self._json(403, {"error": "Insufficient permissions"})
         expected_origin = os.getenv("HOMEAWAY_CONTROL_ORIGIN", "")
-        if (not expected_origin or self.headers.get("Origin", "") != expected_origin or
+        alternate_origin = os.getenv("HOMEAWAY_CONTROL_ALT_ORIGIN", "")
+        trusted_origins = set()
+        if expected_origin == "https://homeaway.home.arpa:8443":
+            trusted_origins.add(expected_origin)
+        if (expected_origin and
+                alternate_origin == "https://home.homeawayfromhome.house:8443"):
+            trusted_origins.add(alternate_origin)
+        if (self.headers.get("Origin", "") not in trusted_origins or
                 self.headers.get("Sec-Fetch-Site", "same-origin") != "same-origin" or
                 self.headers.get("X-HomeAway-Request") != "1" or
                 self.headers.get("Content-Type", "").split(";")[0].strip().lower() != "application/json"):

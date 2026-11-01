@@ -1,0 +1,16 @@
+# Explicit opt-in application migration, applied AFTER compose.dns01-production.yaml.
+# Keeps the legacy gateway import and all existing listener bindings.
+services:
+  gateway:
+    volumes:
+      - ./control/gateway/Caddyfile.phase3-domain:/etc/caddy/Caddyfile:ro
+  pc-control:
+    environment:
+      HOMEAWAY_CONTROL_ALT_ORIGIN: "https://home.homeawayfromhome.house:8443"
+  portal:
+    environment:
+      HOMEAWAY_CONTROL_URL: "https://home.homeawayfromhome.house:8443/control/"
+      HOMEAWAY_METRICS_ORIGIN: "https://metrics.homeawayfromhome.house:8443"
+  grafana:
+    environment:
+      GF_SERVER_ROOT_URL: "https://metrics.homeawayfromhome.house:8443"
