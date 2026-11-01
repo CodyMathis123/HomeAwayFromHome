@@ -1,9 +1,10 @@
 # Phase 2 Computer Management — supervised preview (not deployed)
 
 **State, November 1, 2026:** PR #10 contains the C1 inventory transaction layer and
-the first C2/C4 admin-only **active inventory / inactive draft** UI. It is on a
-review branch, not running on the Pi. Real Windows enrollment and activation
-are deliberately **not implemented yet**.
+the C2/C4 admin inventory lifecycle UI, verified SSH status checker and
+out-of-band key-pinning helper. It is on a **review branch**, not running on
+the Pi. No Windows pairing, activation, deactivation or archival has been
+physically tested yet.
 
 ## What exists
 
@@ -13,9 +14,20 @@ list of computers the Pi can control**. Existing power actions, Pi-side
 
 The new HomeAway admin interface displays the active registry (including private
 IP, MAC and SSH settings **to admins only**), allows friendly-name edits
-without renaming IDs, and creates/discards unconfigured computer drafts.
+without renaming IDs, and creates/discards unconfigured computer drafts; with explicit confirmation it can
+activate a **freshly SSH-verified** draft, disable an active host, archive its
+retained connection metadata or reverify and restore a retired computer.
 A draft is stored separately in `/var/lib/homeaway-pcinventory/drafts.json`,
 **not in the active `hosts.json`**, and cannot receive power commands.
+
+A separate `homeaway-pcverify` systemd socket executes only pinned-host-key
+SSH `status` as the existing unprivileged `pcctl` Linux user. Only a matching
+ED25519 host-key pin **and** a successful restricted Windows `status` response
+can activate or restore a computer. The inventory writer cannot read SSH
+private keys and the browser never receives them. The `pin-pc-hostkey.py`
+script requires a full fingerprint read **locally on Windows**, compares the
+Pi network scan to that independent fingerprint and refuses to overwrite
+existing trust without manual review.
 
 The `pc-control` container still mounts `/etc/homeaway-pcctl` **read-only**.
 With the *explicit* `compose.computers.yaml` overlay, it accesses a fixed Unix
@@ -33,10 +45,22 @@ LLDAP `admins` role**, enforced server-side for every inventory request.
 | Rename | Changes only the display name, preserving immutable ID/IP/MAC/SSH |
 | Create draft | Validated private IPv4, MAC, broadcast, SSH user/port; no activation |
 | Discard draft | Requires matching draft revision; no active changes |
-| Activate, disable, archive, pair Windows | **Not yet implemented**; requires supervised SSH host-key trust |
+| Verify draft | Pi runs pinned SSH host-key and authenticated forced-command `status` check, never WOL or power mutation |
+| Activate draft | Typed ID, current inventory and draft revisions, **fresh** SSH verification, then atomic promotion to active commands |
+| Disable | Typed ID, archive snapshot written **first**, then removes host from active command registry; in-flight commands cannot be cancelled |
+| Archive retired host | Keeps private recovery snapshot and audit; host remains disabled |
+| Restore retired host | Typed ID, current revisions, pinned host-key and authenticated SSH **reverified**, then atomic active promotion |
+| Prepare Windows | Manual local elevated setup and independently verified SSH fingerprint; no remote arbitrary installer |
 
-Viewer and Operator permissions remain unchanged. The original power-control
-socket is independent. Duplicate IDs, MACs and IPs are rejected for drafts.
+Viewer and Operator permissions remain unchanged. The original power-control socket is independent. Duplicate IDs, MACs and IPs
+are rejected across active, drafts, and retired records. Retirement metadata is
+stored in `/var/lib/homeaway-pcinventory/retired.json` (private 0600). A disabled
+computer immediately becomes an unknown target for new HomeAway and Shortcut
+power requests. On failure to remove the host after saving its archive, the
+active inventory remains authoritative and the overlapping record is flagged;
+retry Disable after reviewing. If a Restore succeeds but archive cleanup fails,
+HomeAway flags the overlap for manual inspection instead of deleting ambiguous
+recovery data. The system does **not** revoke already executing SSH/power actions.
 
 ## Future operator review (not a request to run this yet)
 
@@ -52,7 +76,8 @@ socket is independent. Duplicate IDs, MACs and IPs are rejected for drafts.
    use `sudo bash scripts/install-pcinventory-host.sh --apply`. It validates
    the existing inventory, snapshots it to the root-only
    `/var/backups/homeaway-pcinventory/` directory, adds the **separate**
-   `homeaway-inventory` Linux user, and installs only the new socket service.
+   `homeaway-inventory` Linux user, and installs both new sockets: the restricted inventory writer and the
+    `pcctl`-user non-destructive SSH verifier.
    It does **not** restart the existing `pcctl` socket or change inventory rows.
    The fixed host inventory directory becomes owned by the dedicated writer,
    and `hosts.json` remains 0644 read-only to other users (the existing
@@ -64,8 +89,22 @@ socket is independent. Duplicate IDs, MACs and IPs are rejected for drafts.
    `-f compose.computers.yaml` to the already working
    `compose.yaml` + `compose.control.yaml` + `compose.accounts.yaml`
    invocation, **recreating only `pc-control`**, never Pi-hole/WireGuard.
-5. Verify admin-only list, draft creation/discard, unchanged live power controls
-   and Shortcut. Do not attempt Windows activation from this preview.
+5. Verify admin-only inventory listing, draft creation/discard, and existing
+   PC/Shortcut functionality first. **Do not activate or disable an existing
+   computer in the initial smoke test**. For a truly new test PC, first use
+   the reviewed local Windows installer, independently note its ED25519 host
+   fingerprint on the Windows console, then run the Pi trust helper:
+
+   ```bash
+   python3 scripts/pin-pc-hostkey.py --ip 192.168.1.120 --port 22 --expected 'SHA256:REPLACE_WITH_WINDOWS_CONSOLE_VALUE' --plan
+   sudo python3 scripts/pin-pc-hostkey.py --ip 192.168.1.120 --port 22 --expected 'SHA256:REPLACE_WITH_WINDOWS_CONSOLE_VALUE' --apply
+   ```
+
+   These are **examples only**, not a suggestion to pin the shown IP or run
+   anything without a matching Windows fingerprint. Confirm that `pcctl`
+   can SSH to the Windows host with the existing forced `status` command,
+   then use the two-step **Verify SSH → Activate verified computer** UI.
+   Actual Wake/Sleep must be tested separately, under supervision.
 
 **No commands in this section have been run by the assistant on your Pi.**
 Do not copy this overlay into a live deployment until the relevant review
@@ -75,8 +114,8 @@ and operational acceptance gate is explicitly agreed.
 
 - Missing service or unset flag: the new UI stays hidden; existing power
   controls continue to use the unchanged `pcctl` agent.
-- Invalid/corrupt inventory or draft registry: writes fail closed.
-- Conflicting global/draft revisions: refresh and retry; no silent overwrite.
+- Invalid/corrupt inventory, draft or retired registry: writes fail closed.
+- Conflicting active/draft/retired revisions: refresh and retry; no silent overwrite.
 - Every inventory transaction takes a cooperative file lock and stages an
   atomic replacement, with the last valid active file retained as
   `hosts.json.previous`. External editors **must use the same lock**.
@@ -89,10 +128,11 @@ and operational acceptance gate is explicitly agreed.
 
 ## Next development packages
 
-- C3: guided Windows SSH and WOL onboarding with explicit host-key
-  fingerprint confirmation. No auto-accept, no arbitrary LAN scanning,
-  no SSH private keys transmitted to a browser.
-- C4: verification and activation of reviewed drafts, safe disable/archive
-  lifecycle, clear network/trust diagnostics and ergonomic mobile workflow.
-- C5: integration tests and supervised Pi/Windows validation. Never infer
-  actual power state from a TCP/22 reachability probe.
+- C3: polish the reviewed Windows installation handoff and make manual
+  fingerprint comparison/SSH trust diagnostics easier; no auto-accept, no
+  arbitrary LAN scanning or SSH keys transmitted to a browser.
+- C4: refine mobile/keyboard usability, explain unknown/offline SSH status,
+  and expose bounded administrative audit history.
+- C5: isolated end-to-end integration, actual Pi/Windows supervised validation,
+  rollback and break-glass review before merging/deployment. Never infer
+  physical power state from a TCP/22 probe or unconfirmed WOL packet.
