@@ -84,7 +84,7 @@ if ! sudo docker run --rm --network none --cap-drop ALL \
     --security-opt no-new-privileges:true --read-only \
     --tmpfs /data --tmpfs /config --tmpfs /tmp \
     --env-file "$tmp/legacy-hosts.env" \
-    -e CF_API_TOKEN=offline-synthetic-no-access \
+    -e CF_API_TOKEN=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA \
     -v "$PWD/control/gateway/Caddyfile.dns01-production:/etc/caddy/Caddyfile:ro" \
     -v "$PWD/control/gateway/Caddyfile:/etc/caddy/Caddyfile.legacy:ro" \
     --entrypoint /usr/local/bin/homeaway-caddy \
