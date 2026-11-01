@@ -168,6 +168,12 @@ Caddy's local root certificate is stored under `data/control/caddy/pki/authoriti
 
 Open `https://auth.homeaway.home.arpa:8443` on a device that trusts the CA. Sign in with the generated password and follow Authelia's TOTP enrollment; read the locally generated registration link from `notification.txt`. Then open `https://homeaway.home.arpa:8443/control/`. Subsequent visits reuse an Authelia session until it expires. Sensitive commands are still confirmed in the UI. The browser is **not** asked to authenticate to the Windows machines.
 
+### Resolved identity handoff and security regression
+
+Caddy's default directive ordering puts `forward_auth` **before** `request_header`. A prior `handle` block therefore removed the successful Authelia `Remote-User` identity **after** authorization and the browser saw `{"error":"Not authenticated"}` from the protected backend. The gateway uses an explicit `route` to strip all browser-supplied identity headers *before* `forward_auth`, then copies only Authelia's verified `Remote-User` directly to `X-HomeAway-User`. The backend continues to reject requests without that verified header. Never bypass Authelia or hardcode an identity as a workaround.
+
+The official Caddy image is upgraded from 2.10.2 to the pinned `2.11.7-alpine` because of an upstream [forward-auth header-spoofing advisory](https://github.com/caddyserver/caddy/security/advisories/GHSA-7r4p-vjf4-gxv4). Keep Caddy's original data volume and local CA during the upgrade. Its necessary `NET_BIND_SERVICE` capability remains the **only** added capability, with all other sandboxing intact. CI validates the adapted routing order and basic security contract; actual authenticated and unauthenticated browser requests must still be tested on the Pi. A successful 2FA enrollment alone does not prove the proxy-to-backend authorization path.
+
 ## 5. iOS Shortcut compatibility
 
 Your working Shortcut can remain: connect by SSH to the Pi as `pcctl`, using the existing iPhone key restricted with `restrict,command="/usr/local/bin/pcctl-dispatch"` in `/home/pcctl/.ssh/authorized_keys`. Commands are unchanged:
