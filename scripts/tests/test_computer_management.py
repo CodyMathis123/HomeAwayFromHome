@@ -50,7 +50,7 @@ class InventoryAgentTests(unittest.TestCase):
         data=self.manager.execute("homeowner","list",{})
         self.assertEqual(data["active"][0]["id"],"gaming")
         self.assertEqual(data["drafts"],[])
-        self.assertIs(data["activationAvailable"],False)
+        self.assertIs(data["activationAvailable"],True)
         draft=host("living-room","192.168.50.44","02:11:22:33:44:56")
         self.manager.execute("homeowner","draft-create",draft)
         updated=self.manager.execute("homeowner","list",{})
@@ -60,6 +60,101 @@ class InventoryAgentTests(unittest.TestCase):
         # Only the canonical active inventory is available to the power agent.
         from core import load_hosts
         self.assertNotIn("living-room",load_hosts(str(self.live)))
+
+    def test_verification_checks_draft_but_never_activates(self):
+        entry=host("living-room","192.168.50.44","02:11:22:33:44:56")
+        created=self.manager.execute("homeowner","draft-create",entry)["draft"]
+        original=self.live.read_bytes()
+        with patch.object(agent,"_probe",return_value={
+            "verified":True,"code":"ssh_key_and_status_verified"}) as verify:
+            result=self.manager.execute("homeowner","verify",{
+                "id":entry["id"],"revision":created["revision"]})
+        self.assertTrue(result["verified"])
+        verify.assert_called_once_with(entry)
+        self.assertEqual(self.live.read_bytes(),original)
+
+    def test_activation_requires_fresh_key_and_authenticated_ssh(self):
+        entry=host("living-room","192.168.50.44","02:11:22:33:44:56")
+        draft=self.manager.execute("homeowner","draft-create",entry)["draft"]
+        revision=self.manager.execute("homeowner","list",{})["revision"]
+        args={"id":entry["id"],"revision":draft["revision"],
+              "inventoryRevision":revision,"confirm":entry["id"]}
+        with patch.object(agent,"_probe",return_value={
+            "verified":False,"code":"host_key_not_pinned"}):
+            with self.assertRaises(agent.InventoryFault) as denied:
+                self.manager.execute("homeowner","activate",args)
+            self.assertEqual(denied.exception.status,409)
+        self.assertEqual(len(json.loads(self.live.read_text())["hosts"]),1)
+        with patch.object(agent,"_probe",return_value={
+            "verified":True,"code":"ssh_key_and_status_verified"}) as check:
+            activated=self.manager.execute("homeowner","activate",args)
+        self.assertEqual(check.call_count,1)
+        self.assertEqual(activated["activated"],entry["id"])
+        self.assertFalse(activated["cleanupPending"])
+        self.assertEqual(set(x["id"] for x in json.loads(self.live.read_text())["hosts"]),
+                         {"gaming","living-room"})
+        self.assertEqual(self.manager.execute("homeowner","list",{})["drafts"],[])
+        with patch.object(agent,"_probe") as check:
+            with self.assertRaises(agent.InventoryFault):
+                self.manager.execute("homeowner","activate",args)
+            check.assert_not_called()
+
+    def test_activate_denies_bad_confirmation_and_stale_inventory_without_probe(self):
+        entry=host("living-room","192.168.50.44","02:11:22:33:44:56")
+        draft=self.manager.execute("homeowner","draft-create",entry)["draft"]
+        prior=self.manager.execute("homeowner","list",{})["revision"]
+        original=self.live.read_bytes()
+        base={"id":entry["id"],"revision":draft["revision"],
+              "inventoryRevision":prior,"confirm":"wrong"}
+        with patch.object(agent,"_probe") as verify:
+            with self.assertRaises(agent.InventoryFault) as err:
+                self.manager.execute("homeowner","activate",base)
+            self.assertEqual(err.exception.status,400)
+            agent.update_inventory(self.live,lambda d:{
+                "hosts":d["hosts"]+[host("other","192.168.50.45","02:11:22:33:44:57")]})
+            with self.assertRaises(agent.InventoryFault) as err:
+                self.manager.execute("homeowner","activate",{
+                    **base,"confirm":entry["id"]})
+            self.assertEqual(err.exception.status,409)
+            verify.assert_not_called()
+        self.assertNotIn("living-room",self.live.read_text())
+
+    def test_verification_denials_do_not_modify_active_inventory(self):
+        entry=host("living-room","192.168.50.44","02:11:22:33:44:56")
+        draft=self.manager.execute("homeowner","draft-create",entry)["draft"]
+        original=self.live.read_bytes()
+        with patch.object(agent,"_probe",return_value={
+            "verified":False,"code":"ssh_auth_or_status_failed"}):
+            result=self.manager.execute("homeowner","verify",{
+                "id":entry["id"],"revision":draft["revision"]})
+        self.assertFalse(result["verified"])
+        self.assertEqual(self.live.read_bytes(),original)
+        with patch.object(agent,"_probe",side_effect=agent.InventoryFault(503,"SSH verifier unavailable")):
+            with self.assertRaises(agent.InventoryFault) as err:
+                self.manager.execute("homeowner","activate",{
+                    "id":entry["id"],"revision":draft["revision"],
+                    "inventoryRevision":self.manager.execute("homeowner","list",{})["revision"],
+                    "confirm":entry["id"]})
+            self.assertEqual(err.exception.status,503)
+        self.assertEqual(self.live.read_bytes(),original)
+
+    def test_activated_but_uncleaned_draft_is_visible_and_discardable(self):
+        entry=host("living-room","192.168.50.44","02:11:22:33:44:56")
+        draft=self.manager.execute("homeowner","draft-create",entry)["draft"]
+        args={"id":entry["id"],"revision":draft["revision"],
+              "inventoryRevision":self.manager.execute("homeowner","list",{})["revision"],
+              "confirm":entry["id"]}
+        real_save=agent._save_drafts
+        with patch.object(agent,"_probe",return_value={
+            "verified":True,"code":"ssh_key_and_status_verified"}),\
+             patch.object(agent,"_save_drafts",side_effect=agent.InventoryFault(503,"save failed")):
+            activated=self.manager.execute("homeowner","activate",args)
+        self.assertTrue(activated["cleanupPending"])
+        listed=self.manager.execute("homeowner","list",{})
+        self.assertTrue(listed["drafts"][0]["cleanupPending"])
+        self.manager.execute("homeowner","draft-discard",{
+            "id":entry["id"],"revision":draft["revision"]})
+        self.assertEqual(len(self.manager.execute("homeowner","list",{})["active"]),2)
 
     def test_duplicate_id_address_mac_are_denied(self):
         originals=self.live.read_bytes()
