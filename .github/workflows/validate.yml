@@ -37,6 +37,7 @@ jobs:
           node scripts/tests/test_portal_router.cjs
           node --check portal/architecture.js
           node --check control/api/app.js
+          node scripts/tests/test_control_views.cjs
           node --check control/api/accounts.js
           node --check control/api/computers.js
           python3 -m unittest discover -s scripts/tests -v

@@ -4,20 +4,47 @@ const hosts = $('hosts');
 const status = $('updated');
 let pending = new Set();
 let identity = null;
-function updateCurrentSection() {
-  const local = new Set(['#hosts', '#computer-admin', '#accounts', '#recent-activity']);
-  const target = local.has(location.hash) ? location.hash : '#hosts';
+let authChecked = false;
+// These are view-state decisions, never an authorization mechanism.
+// The /control/ document and all /control/api/* endpoints remain authenticated
+// and server-side capabilities determine which admin sections exist.
+const VIEWS = new Set(['hosts', 'computer-admin', 'accounts', 'recent-activity']);
+const main = document.querySelector('main');
+let currentView = 'hosts';
+function updateCurrentSection(focus = false) {
+  const requested = location.hash.slice(1);
+  let target = VIEWS.has(requested) ? requested : 'hosts';
+  const capabilities = identity?.capabilities;
+  if (target === 'computer-admin' && !capabilities?.manageComputers) target = 'hosts';
+  if (target === 'accounts' && !capabilities?.manageUsers) target = 'hosts';
+  if (target === 'recent-activity' && !capabilities?.history) target = 'hosts';
+  currentView = target;
+  main.dataset.activeView = target;
+  document.body.classList.add('control-views-ready');
   for (const link of document.querySelectorAll('.section-nav a[href^="#"]')) {
-    if (!link.hidden && link.getAttribute('href') === target)
+    if (!link.hidden && link.getAttribute('href') === '#' + target)
       link.setAttribute('aria-current', 'location');
     else
       link.removeAttribute('aria-current');
+  }
+  // Never leave the URL pointing to a privileged section after a role check
+  // refuses it. Before identity resolves, retain the requested deep link.
+  if (authChecked && requested && requested !== target)
+    history.replaceState(history.state, '', '/control/#hosts');
+  window.HomeAwayNavigation?.sync();
+  if (focus) {
+    const section = $(target);
+    if (section) {
+      section.focus({preventScroll: true});
+      section.scrollIntoView({block: 'start', behavior: 'auto'});
+    }
   }
 }
 function updateSectionNavigation(capabilities) {
   // Convenience only: every control API still enforces roles server-side.
   $('nav-computers').hidden = !capabilities?.manageComputers;
   $('nav-accounts').hidden = !capabilities?.manageUsers;
+  $('nav-activity').hidden = !capabilities?.history;
   updateCurrentSection();
 }
 async function loadIdentity() {
@@ -27,6 +54,7 @@ async function loadIdentity() {
     const nextIdentity = await response.json();
     if (!nextIdentity?.capabilities?.role) throw new Error('Account capabilities unavailable');
     identity = nextIdentity;
+    authChecked = true;
     updateSectionNavigation(identity.capabilities);
     $('identity').textContent = identity.user + ' · ' + identity.capabilities.role;
     if (typeof HomeAwayAccounts !== 'undefined') HomeAwayAccounts.start(identity);
@@ -35,9 +63,14 @@ async function loadIdentity() {
   } catch (error) {
     // A lost connection or revoked session must not leave stale admin UI visible.
     identity = null;
+    authChecked = true;
     updateSectionNavigation(null);
     $('computer-admin').hidden = true;
     $('accounts').hidden = true;
+    // Never leave previously rendered power action buttons on screen when
+    // authorization cannot be refreshed (the API still enforces all actions).
+    hosts.replaceChildren(node('p', 'detail',
+      'Computer controls are unavailable until authorization is restored.'));
     $('identity').textContent = 'Authorization unavailable';
     throw error;
   }
@@ -134,7 +167,7 @@ async function loadHistory() {
     $('events').replaceChildren(...(rows.length ? rows : [node('p', '', 'No commands yet.')]));
   } catch (error) { $('events').textContent = error.message; }
 }
-window.addEventListener('hashchange', updateCurrentSection);
+window.addEventListener('hashchange', () => updateCurrentSection(true));
 updateCurrentSection();
 $('refresh').addEventListener('click', refresh);
 $('refresh-history').addEventListener('click', loadHistory);

@@ -14,7 +14,7 @@
     <a id="nav-power" href="#hosts">Power controls</a>
     <a id="nav-computers" href="#computer-admin" hidden>Manage computers</a>
     <a id="nav-accounts" href="#accounts" hidden>Users and permissions</a>
-    <a href="#recent-activity">Activity</a>
+    <a id="nav-activity" href="#recent-activity" hidden>Activity</a>
   </nav>
 </aside>
 <main>
@@ -22,12 +22,12 @@
   <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">⌂</span><span>Home<span class="brand-accent">Away</span><small>COMPUTERS &amp; ACCESS</small></span></a>
   <span class="environment"><span class="led" aria-hidden="true"></span> PRIVATE CONTROL · <span id="identity">Checking permissions…</span></span>
 </header>
-<section class="hero"><p class="eyebrow">YOUR COMPUTERS</p><h1>Power and presence.</h1>
+<section class="hero" data-view-section="hosts"><p class="eyebrow">YOUR COMPUTERS</p><h1>Power and presence.</h1>
 <div class="intro">Wake your computers or request Windows power actions. The PC must be configured for SSH and Wake-on-LAN. Status checks SSH reachability only; power requests are not confirmation that Windows completed the action.</div>
 <button id="refresh" type="button">Refresh status</button><span id="updated" role="status">Loading computers…</span>
 <p id="last-action" class="action-feedback" aria-live="polite"></p></section>
-<section id="hosts" class="hosts" aria-label="Computer controls"></section>
-<section id="computer-admin" class="accounts history" hidden aria-label="Computer administration">
+<section id="hosts" class="hosts" data-view-section="hosts" tabindex="-1" aria-label="Computer controls"></section>
+<section id="computer-admin" class="accounts history" data-view-section="computer-admin" tabindex="-1" hidden aria-label="Computer administration">
   <div class="heading"><h2>Computer management</h2><button id="computer-admin-refresh" type="button">Refresh inventory</button></div>
   <p class="detail">Existing machines remain active. New entries start as drafts and cannot be controlled until their Windows setup and SSH trust are verified in a later enrollment step.</p>
   <div id="computer-admin-active" class="account-list"></div>
@@ -55,7 +55,7 @@
     <ol id="computer-admin-audit-events" class="computer-audit-events"></ol>
   </details>
 </section>
-<section id="accounts" class="accounts history" hidden aria-label="Account administration">
+<section id="accounts" class="accounts history" data-view-section="accounts" tabindex="-1" hidden aria-label="Account administration">
   <div class="heading"><h2>Users and permissions</h2><button id="accounts-refresh" type="button">Refresh users</button></div>
   <p class="detail">These are HomeAway permissions. Revoking access does not disable an LDAP password or access to unrelated applications.</p>
   <form id="accounts-add" class="account-create">
@@ -68,7 +68,7 @@
   <p id="accounts-message" role="status" aria-live="polite"></p>
   <div id="accounts-users" class="account-list"></div>
 </section>
-<section id="recent-activity" class="history"><div class="heading"><h2>Recent activity</h2><button id="refresh-history" type="button">Refresh log</button></div>
+<section id="recent-activity" class="history" data-view-section="recent-activity" tabindex="-1"><div class="heading"><h2>Recent activity</h2><button id="refresh-history" type="button">Refresh log</button></div>
 <div id="events" class="events">No commands yet.</div></section>
 <footer><span>Private network · Verified sign-in required</span><span>Commands are allowlisted and audited · Your iOS Shortcut remains independent</span></footer>
 </main></div></body></html>
