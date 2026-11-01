@@ -19,6 +19,11 @@ def check(config: dict, private_ip: str):
     assert port["target"] == 8443 and port["published"] == "8443"
     assert port["host_ip"] == private_ip and port["protocol"] == "tcp"
     assert ipaddress.ip_address(private_ip).is_private
+    # Official Caddy's file capability needs to be in its bounding set for exec.
+    # Keep only NET_BIND_SERVICE; do not relax other gateway isolation.
+    assert gateway.get("cap_drop") == ["ALL"]
+    assert gateway.get("cap_add") == ["NET_BIND_SERVICE"]
+    assert "no-new-privileges:true" in gateway.get("security_opt", [])
     for name in ("pc-control", "authelia"):
         service = services[name]
         assert not service.get("ports"), name + " must never publish a host port"
@@ -41,7 +46,7 @@ def check(config: dict, private_ip: str):
     assert "infra" in gateway["networks"] and "pc-control" in gateway["networks"]
     assert "pc-control" not in services["portal"]["networks"]
     assert not services["portal"].get("secrets")
-    assert services["gateway"]["image"] == "caddy:2.10.2"
+    assert services["gateway"]["image"] == "caddy:2.11.7-alpine"
     assert services["authelia"]["image"] == "authelia/authelia:4.39.28"
     print("PASS: isolated, unprivileged PC control stack and private HTTPS port")
 

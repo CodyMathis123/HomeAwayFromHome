@@ -106,7 +106,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "count(count by (host,device) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Storage\"} == 1))",
-          "instant": true
+          "instant": true,
+          "legendFormat": "Detected storage devices"
         }
       ],
       "fieldConfig": {
@@ -166,7 +167,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "max(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(name,device,device_type) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Storage\"} == 1))",
-          "instant": true
+          "instant": true,
+          "legendFormat": "Highest drive temperature"
         }
       ],
       "fieldConfig": {
@@ -226,7 +228,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "sum(sensordash_spool_value{host=~\"$host\"})",
-          "instant": true
+          "instant": true,
+          "legendFormat": "Local history buffer"
         }
       ],
       "fieldConfig": {
@@ -286,7 +289,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "count(sensordash_sensor_info_value{host=~\"$host\",device_type=\"Storage\"} == 1)",
-          "instant": true
+          "instant": true,
+          "legendFormat": "Storage catalog sensors"
         }
       ],
       "fieldConfig": {
@@ -785,7 +789,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "sum(vm_data_size_bytes)",
-          "instant": true
+          "instant": true,
+          "legendFormat": "VictoriaMetrics stored data"
         }
       ],
       "fieldConfig": {
@@ -845,7 +850,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "max(vm_free_disk_space_bytes)",
-          "instant": true
+          "instant": true,
+          "legendFormat": "Pi volume free"
         }
       ],
       "fieldConfig": {
@@ -905,7 +911,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "count(sensordash_reading_value{host=~\"$host\"})",
-          "instant": true
+          "instant": true,
+          "legendFormat": "Sensor series active"
         }
       ],
       "fieldConfig": {
@@ -965,7 +972,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "sum(count_over_time(sensordash_reading_value{host=~\"$host\"}[$__range]))",
-          "instant": true
+          "instant": true,
+          "legendFormat": "Samples · selected range"
         }
       ],
       "fieldConfig": {

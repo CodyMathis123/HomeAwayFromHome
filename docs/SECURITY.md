@@ -4,7 +4,7 @@ This is a **home-network appliance**, not a hardened public multi-tenant service
 
 ## Internet surface
 
-Only **UDP 51820** should be forwarded from the router to the Pi. DNS (TCP/UDP 53), SSH, Pi-hole (8080), HomeAway portal (8088), Grafana (3000), TLS telemetry ingest (8429), and wg-easy admin (51821) must NOT be forwarded. Published LAN web ports are bound to PI_LAN_IP, not wildcard. Docker-published ports can bypass some host firewall rules; verify router and IPv6 exposure separately. Keep Docker and host packages updated.
+Only **UDP 51820** should be forwarded from the router to the Pi. DNS (TCP/UDP 53), SSH, Pi-hole (8080), HomeAway portal (8088), Grafana (3000), TLS telemetry ingest (8429), optional authenticated PC gateway HTTPS (8443), and wg-easy admin (51821) must NOT be forwarded. Published LAN web ports are bound to PI_LAN_IP, not wildcard. Docker-published ports can bypass some host firewall rules; verify router and IPv6 exposure separately. Keep Docker and host packages updated.
 
 ## Administration
 
@@ -44,3 +44,11 @@ As a tradeoff, container-network statistics are intentionally excluded,
 and Pi OS root filesystem free space is not inferred from container overlays.
 VictoriaMetrics provides reliable free bytes for the filesystem holding its
 data directory; a real thermal zone may not exist on every kernel.
+
+## Optional authenticated computer-control gateway
+
+The separate [PC control runbook](PC-CONTROL.md) covers the private Caddy HTTPS endpoint on TCP 8443, the local Authelia password + second-factor challenge for an `admins`-group user, and the isolated `pc-control` container. Caddy is the only LAN-exposed ingress for this feature: neither Authelia nor the computer controller publishes a port. Caddy's internally issued root CA must be explicitly trusted on every client. **Never forward port 8443 to WAN** or use untrusted TLS exceptions.
+
+The browser controller has no Pi/Windows SSH private keys and no Docker socket. Its restricted RPC reaches a group-protected Unix socket; only the non-root host agent owns the allowlisted WOL/Windows SSH actions. Requests require POST, same-origin/CSRF checks and confirmation for destructive actions; returns acknowledge requested actions rather than proving shutdown. The original :8088 portal continues to be read-only and may be viewed by any LAN/VPN client. Authelia session authentication does not protect that standalone status page.
+
+Grafana's separate externally shared metrics URL is also a bearer-style read-only link. It is accessible without the Authelia login to anyone who has the URL **and** LAN/VPN reachability. Grafana administrative credentials remain required for dashboard edits and sharing.

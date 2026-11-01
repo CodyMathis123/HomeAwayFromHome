@@ -112,7 +112,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "max(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\",sensor=~\".*cpu.*/temperature/.*\"})",
-          "range": true
+          "range": true,
+          "legendFormat": "CPU · warmest reported"
         }
       ],
       "fieldConfig": {
@@ -172,7 +173,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "max(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\",sensor=~\".*/gpu.*/temperature/.*\"})",
-          "range": true
+          "range": true,
+          "legendFormat": "GPU · warmest reported"
         }
       ],
       "fieldConfig": {
@@ -232,7 +234,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "max(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\",sensor=~\".*/(nvme|storage|hdd|ssd).*/temperature/.*\"})",
-          "range": true
+          "range": true,
+          "legendFormat": "NVMe / storage temperature"
         }
       ],
       "fieldConfig": {
@@ -292,7 +295,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "max((sensordash_reading_value{host=~\"$host\",kind=\"Fan\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",role=\"fan-group\",kind=\"Fan\"} == 1)))",
-          "range": true
+          "range": true,
+          "legendFormat": "Radiator fan speed"
         }
       ],
       "fieldConfig": {
@@ -373,7 +377,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "max(max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\",sensor=~\".*cpu.*/temperature/.*\"}[$__range]))",
-          "instant": true
+          "instant": true,
+          "legendFormat": "CPU · temperature peak"
         }
       ],
       "fieldConfig": {
@@ -433,7 +438,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "max(max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\",sensor=~\".*/gpu.*/temperature/.*\"}[$__range]))",
-          "instant": true
+          "instant": true,
+          "legendFormat": "GPU · temperature peak"
         }
       ],
       "fieldConfig": {
@@ -493,7 +499,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "max(sensordash_reading_value{host=~\"$host\",kind=\"Power\",sensor=~\".*cpu.*/power/.*\"})",
-          "range": true
+          "range": true,
+          "legendFormat": "CPU · reported power"
         }
       ],
       "fieldConfig": {
@@ -553,7 +560,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "max(sensordash_reading_value{host=~\"$host\",kind=\"Power\",sensor=~\".*/gpu.*/power/.*\"})",
-          "range": true
+          "range": true,
+          "legendFormat": "GPU · reported power"
         }
       ],
       "fieldConfig": {
@@ -841,7 +849,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "max((sensordash_reading_value{host=~\"$host\",kind=\"Fan\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",role=\"fan-group\",kind=\"Fan\"} == 1)))",
-          "range": true
+          "range": true,
+          "legendFormat": "Radiator fan RPM"
         }
       ],
       "fieldConfig": {
@@ -901,7 +910,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "max((sensordash_reading_value{host=~\"$host\",kind=\"Fan\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",role=\"pump\",kind=\"Fan\"} == 1)))",
-          "range": true
+          "range": true,
+          "legendFormat": "DDC pump tachometer"
         }
       ],
       "fieldConfig": {
@@ -1095,7 +1105,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "max((sensordash_reading_value{host=~\"$host\",kind=\"Control\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",role=\"fan-group\",kind=\"Control\"} == 1)))",
-          "range": true
+          "range": true,
+          "legendFormat": "Radiator PWM duty"
         }
       ],
       "fieldConfig": {

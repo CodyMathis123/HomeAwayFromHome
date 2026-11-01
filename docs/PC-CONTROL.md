@@ -158,7 +158,7 @@ Rebuild the portal once to enable the Computer Controls link and secure Grafana 
 docker compose -f compose.yaml -f compose.control.yaml --profile control up -d --no-deps --build portal
 ```
 
-Caddy listens on private LAN TCP **8443**, not the WAN. The existing :8088 status dashboard is still read-only. Grafana remains password-protected for administration. To also make the previously implemented Grafana embedded view work on HTTPS, the **metrics hostname** proxies to Grafana, and the overlay changes Grafana's canonical root URL. When the metrics stack is installed, apply that deliberately using:
+Caddy listens on private LAN TCP **8443**, not the WAN. The official Caddy image carries a `cap_net_bind_service=+ep` executable file capability; with `cap_drop: [ALL]` and no matching bounding-set entry, the container may crash-loop with `exec /usr/bin/caddy: operation not permitted` before parsing any config. The gateway therefore adds back **only** `NET_BIND_SERVICE` while retaining dropped other capabilities and `no-new-privileges:true`. Do not fix this by making the gateway privileged or removing the security boundary. The existing :8088 status dashboard is still read-only. Grafana remains password-protected for administration. To also make the previously implemented Grafana embedded view work on HTTPS, the **metrics hostname** proxies to Grafana, and the overlay changes Grafana's canonical root URL. When the metrics stack is installed, apply that deliberately using:
 ```bash
 docker compose -f compose.yaml -f compose.control.yaml --profile metrics up -d --no-deps --force-recreate grafana
 ```
@@ -167,6 +167,12 @@ docker compose -f compose.yaml -f compose.control.yaml --profile metrics up -d -
 Caddy's local root certificate is stored under `data/control/caddy/pki/authorities/local/root.crt` (or the `caddy/pki` subdirectory depending on volume layout). **Verify its origin on the Pi**, export/install as a trusted CA on each iPhone/PC, and enable full trust in iOS Certificate Trust Settings. This avoids browser warnings and is needed for a reliable authenticated mobile experience. Do not distribute the private CA key.
 
 Open `https://auth.homeaway.home.arpa:8443` on a device that trusts the CA. Sign in with the generated password and follow Authelia's TOTP enrollment; read the locally generated registration link from `notification.txt`. Then open `https://homeaway.home.arpa:8443/control/`. Subsequent visits reuse an Authelia session until it expires. Sensitive commands are still confirmed in the UI. The browser is **not** asked to authenticate to the Windows machines.
+
+### Resolved identity handoff and security regression
+
+Caddy's default directive ordering puts `forward_auth` **before** `request_header`. A prior `handle` block therefore removed the successful Authelia `Remote-User` identity **after** authorization and the browser saw `{"error":"Not authenticated"}` from the protected backend. The gateway uses an explicit `route` to strip all browser-supplied identity headers *before* `forward_auth`, then copies only Authelia's verified `Remote-User` directly to `X-HomeAway-User`. The backend continues to reject requests without that verified header. Never bypass Authelia or hardcode an identity as a workaround.
+
+The official Caddy image is upgraded from 2.10.2 to the pinned `2.11.7-alpine` because of an upstream [forward-auth header-spoofing advisory](https://github.com/caddyserver/caddy/security/advisories/GHSA-7r4p-vjf4-gxv4). Keep Caddy's original data volume and local CA during the upgrade. Its necessary `NET_BIND_SERVICE` capability remains the **only** added capability, with all other sandboxing intact. CI validates the adapted routing order and basic security contract; actual authenticated and unauthenticated browser requests must still be tested on the Pi. A successful 2FA enrollment alone does not prove the proxy-to-backend authorization path.
 
 ## 5. iOS Shortcut compatibility
 

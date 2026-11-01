@@ -93,7 +93,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "homeaway_pihole_blocking_enabled",
-          "instant": true
+          "instant": true,
+          "legendFormat": "DNS filtering"
         }
       ]
     },
@@ -152,7 +153,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "homeaway_pihole_queries_window",
-          "instant": true
+          "instant": true,
+          "legendFormat": "DNS queries · window"
         }
       ]
     },
@@ -211,7 +213,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "homeaway_pihole_blocked_percent",
-          "instant": true
+          "instant": true,
+          "legendFormat": "Blocked DNS (%)"
         }
       ]
     },
@@ -270,7 +273,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "homeaway_pihole_clients_active",
-          "instant": true
+          "instant": true,
+          "legendFormat": "Active clients"
         }
       ]
     },
@@ -329,7 +333,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "homeaway_pihole_cached_window",
-          "instant": true
+          "instant": true,
+          "legendFormat": "Cached DNS queries"
         }
       ]
     },
@@ -388,7 +393,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "homeaway_pihole_gravity_domains",
-          "instant": true
+          "instant": true,
+          "legendFormat": "Gravity blocklist"
         }
       ]
     },
@@ -702,7 +708,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "up{job=\"pihole\"}",
-          "instant": true
+          "instant": true,
+          "legendFormat": "Pi-hole metrics"
         }
       ]
     },
@@ -779,7 +786,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "up{job=\"wg-easy\"}",
-          "instant": true
+          "instant": true,
+          "legendFormat": "WireGuard metrics"
         }
       ]
     },
@@ -838,7 +846,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "sum(wireguard_connected_peers)",
-          "instant": true
+          "instant": true,
+          "legendFormat": "VPN connected peers"
         }
       ]
     },
@@ -897,7 +906,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "sum(wireguard_enabled_peers)",
-          "instant": true
+          "instant": true,
+          "legendFormat": "VPN enabled peers"
         }
       ]
     },
@@ -956,7 +966,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "sum(wireguard_configured_peers)",
-          "instant": true
+          "instant": true,
+          "legendFormat": "VPN configured peers"
         }
       ]
     },
@@ -1015,7 +1026,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "sum(wireguard_received_bytes) + sum(wireguard_sent_bytes)",
-          "instant": true
+          "instant": true,
+          "legendFormat": "VPN transferred data"
         }
       ]
     },

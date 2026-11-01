@@ -3,7 +3,7 @@
 services:
   gateway:
     profiles: [control]
-    image: caddy:2.10.2
+    image: caddy:2.11.7-alpine
     restart: unless-stopped
     ports:
       - "${PI_LAN_IP:?Set PI_LAN_IP in .env}:8443:8443/tcp"
@@ -16,6 +16,10 @@ services:
       - ./data/control/caddy:/data
       - ./data/control/caddy-config:/config
     cap_drop: [ALL]
+    # Official Caddy binary has cap_net_bind_service=+ep. Keep that one capability
+    # in the bounding set or Linux denies exec before Caddy can start.
+    # All sites listen on unprivileged :8443; no other capabilities are granted.
+    cap_add: [NET_BIND_SERVICE]
     security_opt: [no-new-privileges:true]
     networks: [infra, pc-control]
 
