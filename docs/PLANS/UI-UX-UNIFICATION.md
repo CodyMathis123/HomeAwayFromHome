@@ -88,6 +88,33 @@ two documents requires separate auth/redirect and privacy review; it is not
 safe to embed `/control/` into the unprivileged portal by bypassing
 `X-Frame-Options` or to fetch privileged data for anonymous visitors.
 
+## First Phase 3 evidence in the architecture explorer
+
+The existing read-only `/architecture/` view gains three explicit live status
+observations powered only by the **existing** `GET /api/status` endpoint.
+There is no new probe process, privileged control API, Docker/host inventory
+access, separate monitoring database, or background polling loop.
+
+- **Pi-hole:** current response to the portal's DNS test query. A successful
+  query does not prove that each household client uses that DNS resolver.
+- **WireGuard:** reachability of wg-easy's private TCP management listener.
+  It does *not* prove any client is connected or a tunnel has handshaken.
+- **Grafana:** availability of its TCP listener. It may legitimately be stopped
+  because the metrics profile is optional; success does not prove dashboards
+  or sensor export are current.
+
+The page refreshes when opened or returned to, and via an explicit Refresh
+button; it does **not** add a high-frequency poller. Missing/failed status API
+responses are displayed as **Unknown**, never colored as confirmed outages.
+The architecture SVG remains static and conceptual. We intentionally do not
+assign live status to components lacking a grounded probe: Authelia, LLDAP,
+PC power state, Windows SensorDash, inventory writer, VictoriaMetrics ingestion
+freshness, certificate trust, remote DNS/VPN or backup restoration.
+
+This is a small observation-only foundation for Phase 3 S1. The planned
+authenticated admin setup/readiness checks, privileged configuration broker,
+and real end-to-end verification remain **unimplemented**.
+
 ## UX audit plan, in small PRs
 
 1. **Portal shell and architecture map (implemented)** — responsive desktop left rail / mobile horizontal links, route `/architecture/`, service descriptions and navigation; preserve the current `/control/` boundary. Verify all static pages return correct CSP and HTTP 405 for mutation methods.
