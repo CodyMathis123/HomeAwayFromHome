@@ -53,7 +53,7 @@ class TargetedUiDeployTests(unittest.TestCase):
             (ROOT / "scripts/deploy-ui.sh").read_text(), encoding="utf-8")
         (root / ".env").write_text("# synthetic\n", encoding="utf-8")
         for name in ("compose.yaml", "compose.control.yaml",
-                     "compose.accounts.yaml", "compose.computers.yaml"):
+                     "compose.accounts.yaml", "compose.computers.yaml", "compose.production.yaml"):
             (root / name).write_text("services: {}\n", encoding="utf-8")
         fake = root / "fakebin"
         fake.mkdir()
