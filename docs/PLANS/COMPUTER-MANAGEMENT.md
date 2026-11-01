@@ -1,6 +1,6 @@
 # Computer inventory, pairing and management UI — technical implementation plan
 
-> **Implementation status (November 1, 2026):** Phase C1 (shared locked, revisioned, atomic active-inventory updates) has been started on `feature/homeaway-computer-management-impl` from merged `Production`. Account-management authorization and its live Pi/iOS tests are complete. C2–C5 (dedicated inventory service, authenticated UI, guided Windows onboarding and deployment) are planned but **not yet implemented**. Existing active `pcctl`, iOS Shortcut, Windows SSH keys and fan controls remain unchanged.
+> **Implementation status (November 1, 2026):** C1–C4 are implemented on the **draft** feature branch: transactional active inventory, an independent non-root writer, admin-only browser UI, verified SSH draft activation, and disable/archive/SSH-reverified restore. C5 preflight, safe socket smoke and management-only rollback scripts are implemented. Full CI is required; **no new Pi or Windows services have been deployed or physically tested**. Existing `pcctl` controls, iOS Shortcut, SSH credentials and fan control are unchanged. Supervised hardware acceptance remains required before merging PR #10.
 
 ## 1. Verified existing infrastructure
 
@@ -45,7 +45,7 @@ Suggested states: `draft` → `windows-setup-needed` → `host-key-verification-
 
 **Edits:** display-name-only changes may be immediate; changes to address/SSH port/Windows public key/host fingerprint require a staging + test + approve transaction with rollback. Do not allow renaming an active host `id` in place initially (Shortcuts depend on it). Do not infer broadcast address solely from “private IP”; require network mask or explicit verification of the NIC/subnet.
 
-**C1 implemented:** A shared `inventory_store.update_inventory` performs cooperative Linux lock, optimistic revision, canonical validation, temp-file fsync, owner/mode preservation, atomic replace and a one-deep previous-valid snapshot. `scripts/add-pc.py` now calls it, preventing races between cooperating CLI updates. **C2 preview implemented:** The separate non-root host-side `homeaway-inventory` socket service uses the same helper and locked active path; it provides admin-only active inventory read, display-name rename, and non-active draft create/discard with revisions and bounded audit. The opt-in controller API and Computer Management UI are gated by the current LLDAP admin role. **Remaining:** supervised Windows host-key pairing, verified activation, disable/archive lifecycle and actual Pi deployment. External direct editors that bypass the lock remain unsupported.
+**Implemented in PR #10:** The `inventory_store.update_inventory` shared lock, fsync, revisioned atomic replacement, rollback snapshot and owner/mode preservation; separate non-root `homeaway-inventory` writer and `pcctl`-user SSH verifier sockets; private drafts, retirement metadata and bounded audit; LLDAP-admin-only browser management; per-draft `status` verification with pinned ED25519 SSH identity; typed-confirmation activation, disable, archive and SSH-reverified restore. Synthetic lifecycle and failed-disk/SSH/CSRF tests are in CI. Legacy host records with omitted SSH defaults remain supported. `--plan` now performs read-only installer preflight; separate no-power-action smoke and management-only rollback scripts are provided. **Remaining:** actual Pi/Windows socket, host-key and capability acceptance, followed by an explicitly authorized live rollout. External direct editors that bypass the lock remain unsupported.
 
 ## 4. Least-privilege management path
 
@@ -140,21 +140,21 @@ Phase 3 will eventually change the browser control URL from a private `.home.arp
 
 Refactored `scripts/add-pc.py` and canonical validator and added `control/pcctl/inventory_store.py` for locking, revision conflicts, atomic replacement, previous-file snapshot and preservation of current mode/owner. Tests cover corruption, failed replacement, symlinked path/lock, conflict, permissions and cooperative concurrent writers. **Remaining:** dedicated inventory service, draft metadata, actual admin UI and lock sharing across CLI and service, and real-machine smoke. No change to running inventory until an operator chooses to deploy.
 
-### C2 — authenticated admin APIs (initial preview implemented)
+### C2 — authenticated admin APIs (implemented, awaiting live testing)
 
-The admin-only, separately feature-gated inventory endpoints use the dedicated `homeaway-inventory` Unix socket, never a web writable mount. `GET /control/api/admin/computers`, POST draft-create, draft-discard and rename exist with existing Authelia/LLDAP role checks and same-origin CSRF protections. Live power-control permissions are unchanged. **Next:** non-destructive authenticated status/host-key diagnostics, carefully verified activate/disable/archive routes, and a supervised Pi/Windows review. The service has no SSH private-key access; an unverifiable Windows host must never be autoactivated.
+The admin-only, separately feature-gated inventory endpoints use the dedicated `homeaway-inventory` Unix socket, never a writable mount in the web controller. The list, draft create/discard, rename, Verify SSH, Activate, Disable, Archive and Restore operations are implemented with existing Authelia/LLDAP current-role checks, same-origin CSRF and independent transaction/audit guards. Live power-control permissions remain unchanged. Verification runs through a separate `pcctl`-user socket that never exposes the SSH key to the writer or controller. **Next:** supervised Pi/Windows acceptance rather than more alternative management endpoints.
 
 ### C3 — guided Windows provisioning
 
 Publish reviewed Windows bootstrap package with `-WhatIf`, default non-destructive behavior, signed/hash manifest and operator instructions. Implement a trust-verification handoff and authenticated status check. Detect existing forced command and do not clobber it. CI can exercise PowerShell syntax/mock OpenSSH config, but real Windows needs a supervised VM before the operator's live machines.
 
-### C4 — mobile-friendly UI (active/draft preview implemented)
+### C4 — mobile-friendly UI (lifecycle implemented, acceptance pending)
 
-Added a capability-gated Computer Management section with active host details/rename and separate non-active draft creation/discard; no activation button. Uses existing authenticated page, small framework-free `computers.js` and responsive CSS. The next iteration adds setup progress, diagnostic status, host-key verification, activation/disable/archive and mobile UX/accessibility review.
+The capability-gated Computer Management section now has active host details/rename, non-active draft creation/discard, Windows setup and Pi fingerprint-pinning checklists, Verify SSH, typed ID activation, Disable, Archive and reverified Restore. It uses the existing authenticated page, framework-free `computers.js` and responsive CSS. Pending: real mobile/keyboard and live-host accessibility acceptance.
 
 ### C5 — verification, deployment and rollback
 
-Run `python3 -m unittest discover -s scripts/tests -v`, static code checks, Docker Compose/Authelia/Caddy validations and `scripts/check_control_contracts.py`; add integration tests for inventory IPC and live Caddy/role forwarding with mock Windows endpoints. Test feature on a cloned Pi/test container and Windows VM first. On a real machine, validate **status** and WOL before separately supervised sleep/restart/shutdown; verify Shortcut compatibility. Test failed inventory writer, failed Authelia, internet outage and unchanged SensorDash fan control. Provide one-click disable for the management UI without disabling existing PC power controls.
+CI runs unit tests, real Unix-socket RPC tests, synthetic Windows SSH trust failures, Docker Compose/Authelia/Caddy/role/CSRF checks and Windows setup contracts. Operator-only `scripts/install-pcinventory-host.sh --plan` validates the existing host without modifying it, `scripts/verify-pcinventory-host.sh` exercises both restricted sockets without sending SSH or power commands, and `scripts/disable-pcinventory-host.sh` preserves the legacy power agent during rollback. Actual Pi/systemd socket activation, live Windows forced-command status, iOS Shortcut continuity and a supervised third-host enroll/disable/archive/restore remain unverified. On a real test machine, confirm read-only status and WOL before separately supervised sleep/restart/shutdown. Never invoke those actions from unattended CI.
 
 ## 8. Acceptance criteria
 
