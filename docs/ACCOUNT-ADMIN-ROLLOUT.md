@@ -1,6 +1,6 @@
 # Phase 1 Account Management — implementation and cutover gate
 
-**Status: developed on PR #5; not deployed to HomeAway production.**
+**Status (November 1, 2026): PR #5 is running on the operator's Pi as a supervised greenfield test; NOT merged into `Production`.** Live login and account-role acceptance passed. Remaining production-hardening items are documented below.
 
 ## Greenfield developer walkthrough (operator-run, not deployed automatically)
 
@@ -90,6 +90,19 @@ The original file-backed password and existing TOTP data should work again.
 Do not delete the original backup, rotate Authelia encryption keys, expose LDAP
 port 3890, or publish LLDAP 17170 to the LAN/WAN.
 
+## Verified on the live Pi (operator-reported November 1, 2026)
+
+- LLDAP rootless container became healthy; private directory role bootstrap passed for `admins`, `operators`, `viewers`, including `homeowner` administrator membership. The LLDAP web UI was reached through Pi-loopback TCP 17170 over SSH after adding the dedicated UI bridge.
+- The operator switched Authelia to LLDAP and successfully logged in as `homeowner`, preserving the existing TOTP flow. HomeAway `pc-control` independently resolved `homeowner` from the account broker as `admins` (HTTP 200).
+- The control page and **Users and permissions** interface loaded after fixing the Caddy/Authelia group-header dependency and packaging `accounts.js` in the `pc-control` Docker image.
+- A duplicate email rejected initial user creation; a unique email allowed a pending test account to be created. Password provisioning remained a separate manual action through the LLDAP UI.
+- Tested actual Viewer login: computer status available; power controls and Users administration unavailable.
+- Changed the already-authenticated test account from Viewer to Operator: Wake/Sleep appeared without signing in again; restart/shutdown and admin functions remained unavailable.
+- Revoked the test account's HomeAway access while its Operator session remained open: an existing authenticated session immediately lost access without logging out.
+- Latest CI on PR #5 before documentation refresh: commit `3f382baffbfdf5000ac9544d001b10f8d00eae8f`, all jobs passed, including identity lab, Authelia/TOTP and API tests.
+
+These results establish the live feature flow and RBAC revocation behavior. They **do not** establish a complete off-device restore rehearsal, real Pi/iOS power-action verification, SMTP invitations, general LDAP account disabling, or safety against concurrent independent LDAP editors. The operator's real Pi backup was made and checksum-verified locally, not restore-tested off-device.
+
 ## What is implemented
 
 - The existing secured HomeAway control UI now includes an **admin-only Users** section when the server's account-admin feature switch is explicitly enabled.
@@ -109,22 +122,22 @@ port 3890, or publish LLDAP 17170 to the LAN/WAN.
 6. The optional Compose overlay is opt-in, has no public or LAN-facing ports for LLDAP or broker, and does not mount the existing Authelia secrets into the broker.
 7. An **entirely synthetic** file-backed `admin` account authenticates with its original password and a real encrypted TOTP enrollment. Switching the first-factor backend to LLDAP while retaining the same username, Authelia SQLite volume, session/encryption secrets and TOTP record permits a fresh login with the **new LLDAP password and original TOTP**. Switching back to the original file backend also permits login with the original file password and TOTP. This proves the test migration/rollback mechanism, **not** compatibility with the Pi's actual encrypted storage snapshot.
 
-## What must be proven before real cutover
+## Further production hardening (after the successful live greenfield cutover)
 
-The synthetic tests **do not** migrate a working existing file-backend user and TOTP into LLDAP. LLDAP does not accept the Authelia Argon2 password hash as a drop-in plaintext password. A real migration must preserve the existing **username** and Authelia **storage encryption key + SQLite data**. Synthetic TOTP continuity and rollback are now validated in disposable CI, but **a restored snapshot of the real Pi state has not been tested**. No assumption of password portability or session persistence is allowed.
+The actual Pi's `homeowner` first-factor migration and sign-in succeeded, alongside synthetic CI coverage for TOTP continuity and rollback. LLDAP cannot directly reuse the original Authelia Argon2 password hash, so a separate LDAP password was provisioned. **A restored off-device copy of the Pi's real encrypted storage has not been tested**; password portability, passkey portability and disaster recovery must not be inferred from a successful live login.
 
-Mandatory human-supervised release checklist:
+Hardening / release checklist (some early setup and live role tests are now complete as recorded above):
 
-- Confirm that the opt-in Compose overlay gives **Authelia and the account broker access to the private `account-directory` network** while `lldap` itself has no host-published ports, and `pc-control` cannot directly reach LDAP. The resolved-Compose CI assertion guards this. Do not attempt a live backend switch merely because the overlay validates.
+- **Completed for live test:** Confirm the opt-in Compose overlay gives Authelia and the account broker access to the private `account-directory` network. LLDAP's UI is published **only on Pi loopback** via the dedicated `account-ui` bridge; LDAP is not host-published, and `pc-control` accesses identities through the broker rather than LDAP. Resolved-Compose CI guards this.
 - Build and validate the **LLDAP-backed Authelia authorization policy** in an isolated copy. The original `init-control-auth.py` file-backend configuration only admits `admins` to `/control`. With the new account feature, Authelia must admit `admins`, `operators`, and `viewers` at **two-factor** level; the authenticated `pc-control` API then enforces the distinct command permissions on every request. Preserve `default_policy: deny` and scope the rule to `/control` only. Do not weaken the entire site's access policy or modify the existing Pi file-backend config. The synthetic CI lab now tests all three group grants and existing-session role revocations.
 - Make and verify an **off-device encrypted backup** of the Pi's existing Authelia `configuration.yml`, `users_database.yml`, SQLite data, notifier and encryption/session secrets, plus Caddy CA files; test restore in an isolated environment. Protect backup encryption key independently.
-- Establish a new LLDAP administrator and protected directory secrets, create groups, and provision the matching `homeowner` username with a secure **new password**. Independently test that LLDAP administrator credentials work. Do not remove the existing file backend or original working user.
+- **Completed for live test:** Protected LLDAP secrets, role groups, matching `homeowner` LDAP user with a distinct password, and live login were established. Retain the original file-backend configuration and original working user for rollback.
 - Restore **only a test copy** of existing Authelia encrypted state into an isolated Authelia+LLDAP environment. Verify existing TOTP and passkey device associations and test real password + TOTP; if any 2FA record is unusable, stop and restore file-backend operation.
 - Configure SMTP or a documented supported credential-invitation mechanism, with a test message and safe failure handling. Pending users cannot be onboarded from the current UI until this is reviewed.
-- Verify fresh Authelia session, previously authenticated session after role downgrade/revoke, and reauthorization after role upgrade using two browsers; prove admin access stays recoverable and the iOS Shortcut continues to function. Do not conflate computer power permissions with Pi-hole/wg-easy administrative credentials.
+- **Completed for browser account-role testing:** Verified live admin login, Viewer and Operator access in separate sessions, promotion without re-login and revocation of an existing session. **Still outstanding:** iOS Shortcut and real PC power-action checks; verify break-glass administrator recovery separately. Do not conflate power-control roles with Pi-hole/wg-easy administration.
 - Fail the cutover if old sessions, LDAP outages, last-admin enforcement, backup integrity or TOTP association are unsafe. Roll back the **Authelia backend config and its matching encrypted storage** as a coherent set, without rotating encryption keys.
 - For a stricter rollout, initialize `secrets/control/*` only once rollback requirements are satisfied. The new dev setup scripts bootstrap those secrets, role groups and the explicit Authelia configuration switch separately; there is still **no automatic deployment**.
-- Validate the real deployment as the final gate before merging the feature branch into `Production`.
+- **Live identity/RBAC flow verified.** Before merging into `Production`, decide whether to accept remaining greenfield limitations or complete off-device restore, iOS/physical-action checks and other production-hardening items; merging/deploying remains an explicit operator decision.
 
 ## Explicitly not supported yet
 
@@ -141,7 +154,7 @@ Automatic password invitations, SMTP configuration, factor restoration, password
 - `scripts/check_accounts_contracts.py`
 - `docs/ADR/0001-identity-backend.md`
 
-Do not switch the Pi checkout from its verified `Production` installation just to try this branch.
+This feature branch has been exercised on the operator's live Pi through an explicit supervised checkout; it remains unmerged into `Production`. Do not assume an unreviewed `Production` deploy includes these changes.
 
 ## Development validation cadence
 
