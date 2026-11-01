@@ -11,6 +11,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
 from concurrent.futures import ThreadPoolExecutor
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
 
 ROOT = Path(__file__).resolve().parent
 INVENTORY = Path(os.getenv("HOMEAWAY_HOSTS_FILE", "/etc/homeaway-pcctl/hosts.json"))
@@ -46,12 +48,52 @@ def can_command(role: str, action: str) -> bool:
     return action in ROLE_ACTIONS.get(role, ())
 
 
+def account_admin_enabled() -> bool:
+    # Explicit deployment opt-in; standalone Production stays on the safe
+    # single-user behavior. No browser input may enable this.
+    return os.getenv("HOMEAWAY_ACCOUNT_ADMIN_ENABLED", "false").lower() == "true"
+
+
+class BrokerError(Exception):
+    def __init__(self, status: int, message: str):
+        super().__init__(message)
+        self.status = status
+
+
+def broker_request(actor: str, operation: str, payload: dict) -> dict:
+    if not account_admin_enabled():
+        raise BrokerError(404, "Account management disabled")
+    address = os.getenv("HOMEAWAY_ACCOUNT_BROKER_URL", "")
+    if address != "http://account-broker:8092":
+        raise BrokerError(503, "Account broker configuration invalid")
+    try:
+        key = Path("/run/secrets/homeaway_account_broker_token").read_text(encoding="utf-8").strip()
+        if len(key) < 40:
+            raise ValueError("Broker credential too short")
+        req = Request(address, data=json.dumps({"actor":actor,"operation":operation,
+                                                 "payload":payload}).encode(),
+                      headers={"Content-Type":"application/json",
+                               "X-HomeAway-Broker-Key":key}, method="POST")
+        with urlopen(req, timeout=3) as response:
+            data = response.read(131073)
+            if len(data) > 131072: raise ValueError("Oversize response")
+            result = json.loads(data)
+            if not isinstance(result, dict): raise ValueError("Invalid response")
+            return result
+    except HTTPError as exc:
+        if exc.code in (400, 403, 404, 409, 413):
+            raise BrokerError(exc.code, "Account operation rejected") from exc
+        raise BrokerError(503, "Account broker unavailable") from exc
+    except (OSError, URLError, ValueError, json.JSONDecodeError, TimeoutError) as exc:
+        raise BrokerError(503, "Account broker unavailable") from exc
+
+
 def capabilities(role: str) -> dict:
     return {
         "role": role,
         "actions": list(ROLE_ACTIONS[role]),
         "history": role == "admins",
-        "manageUsers": False,  # Identity provisioning remains disabled until A0.
+        "manageUsers": role == "admins" and account_admin_enabled(),
     }
 LOCKS: dict[str, threading.Lock] = {}
 RECENT: dict[str, float] = {}
@@ -59,6 +101,7 @@ GUARD = threading.RLock()
 AUDIT_LOCK = threading.Lock()
 SAFE_FILES = {"/control/": ("index.html", "text/html; charset=utf-8"),
               "/control/app.js": ("app.js", "text/javascript; charset=utf-8"),
+              "/control/accounts.js": ("accounts.js", "text/javascript; charset=utf-8"),
               "/control/styles.css": ("styles.css", "text/css; charset=utf-8")}
 
 
@@ -181,7 +224,19 @@ class Handler(BaseHTTPRequestHandler):
         # Do not accept a valid username alone as an authorization grant.
         actor = self.headers.get("X-HomeAway-User", "")
         role = verified_role(self.headers.get("X-HomeAway-Groups", ""))
-        return (actor, role) if USER_RE.fullmatch(actor) and role else None
+        if not USER_RE.fullmatch(actor) or not role:
+            return None
+        if account_admin_enabled():
+            # Never allow stale Authelia groups to retain permissions after
+            # a directory demotion/revocation. Require an exact fresh match;
+            # fail closed if the independent broker cannot be reached.
+            try:
+                identity = broker_request(actor, "resolve", {"user": actor})
+                if identity.get("role") != role:
+                    return None
+            except BrokerError:
+                return None
+        return actor, role
 
     def do_GET(self):
         principal = self._principal()
@@ -203,6 +258,15 @@ class Handler(BaseHTTPRequestHandler):
             return
         if path == "/control/api/me":
             return self._json(200, {"user": actor, "capabilities": capabilities(role)})
+        if path == "/control/api/admin/users":
+            if not account_admin_enabled(): return self._json(404, {"error":"Not found"})
+            if role != "admins":
+                record_denial(actor, "-", "users")
+                return self._json(403, {"error":"Insufficient permissions"})
+            try:
+                return self._json(200, broker_request(actor, "users", {}))
+            except BrokerError as exc:
+                return self._json(exc.status, {"error":str(exc)})
         if path == "/control/api/hosts":
             try:
                 hosts = inventory()
@@ -226,8 +290,18 @@ class Handler(BaseHTTPRequestHandler):
         if principal is None:
             return self._json(401, {"error": "Not authenticated or not authorized"})
         actor, role = principal
-        if urlsplit(self.path).path != "/control/api/actions":
+        request_path = urlsplit(self.path).path
+        is_account = request_path in (
+            "/control/api/admin/users/create",
+            "/control/api/admin/users/set-role",
+            "/control/api/admin/users/revoke")
+        if request_path != "/control/api/actions" and not is_account:
             return self._json(404, {"error": "Not found"})
+        if is_account and not account_admin_enabled():
+            return self._json(404, {"error": "Not found"})
+        if is_account and role != "admins":
+            record_denial(actor, "-", "users")
+            return self._json(403, {"error": "Insufficient permissions"})
         expected_origin = os.getenv("HOMEAWAY_CONTROL_ORIGIN", "")
         if (not expected_origin or self.headers.get("Origin", "") != expected_origin or
                 self.headers.get("Sec-Fetch-Site", "same-origin") != "same-origin" or
@@ -236,9 +310,17 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(403, {"error": "Origin or request verification failed"})
         try:
             length = int(self.headers.get("Content-Length", "0"))
-            if not 1 <= length <= 1024:
+            if not 1 <= length <= (2048 if is_account else 1024):
                 return self._json(413, {"error": "Invalid request length"})
             data = json.loads(self.rfile.read(length))
+            if is_account:
+                if not isinstance(data, dict):
+                    raise ValueError("Invalid account payload")
+                operation = request_path.rsplit("/", 1)[-1]
+                try:
+                    return self._json(200, broker_request(actor, operation, data))
+                except BrokerError as exc:
+                    return self._json(exc.status, {"error": str(exc)})
             if not isinstance(data, dict) or set(data) != {"host", "action", "confirm"}:
                 raise ValueError("Invalid payload")
             host, action, confirm = data["host"], data["action"], data["confirm"]
