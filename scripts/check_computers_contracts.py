@@ -48,7 +48,9 @@ def main():
     assert "account_admin_enabled() and" in src
     assert 'role != "admins"' in src
     assert "computer_request(actor, operation, data)" in src
-    assert "computer_request(actor, \"list\", {})" in src
+    assert 'operation = "audit-list" if path.endswith("/audit") else "list"' in src
+    assert "computer_request(actor, operation, {})" in src
+    assert '"/control/api/admin/computers/audit"' in src
     assert '"draft-create", "draft-discard", "rename"' in src
     systemd=(ROOT/"control/pcinventory/homeaway-inventory.service").read_text()
     assert "User=homeaway-inventory" in systemd
@@ -58,6 +60,20 @@ def main():
     assert "ProtectHome=true" in systemd
     handler=(ROOT/"control/pcinventory/agent.py").read_text()
     assert "subprocess.run(" not in handler and "os.system(" not in handler
+    assert 'if op == "audit-list"' in handler
+    assert "os.O_NOFOLLOW" in handler
+    verify_socket=(ROOT/"control/pcverify/homeaway-pcverify.socket").read_text()
+    verify_service=(ROOT/"control/pcverify/homeaway-pcverify.service").read_text()
+    assert "SocketUser=pcctl" in verify_socket
+    assert "SocketGroup=homeaway-inventory" in verify_socket
+    assert "SocketMode=0660" in verify_socket
+    assert "User=pcctl" in verify_service
+    assert "ProtectHome=read-only" in verify_service
+    verifier=(ROOT/"control/pcverify/agent.py").read_text()
+    assert "HostKeyAlgorithms=ssh-ed25519" in verifier
+    assert "StrictHostKeyChecking=yes" in verifier
+    assert '"status"' in verifier
+    assert '"shutdown"' not in verifier and '"sleep"' not in verifier
     print("PASS: computer administration opt-in, non-root writer socket and no browser inventory write/SSH key access")
 
 
