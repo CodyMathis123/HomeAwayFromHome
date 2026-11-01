@@ -81,16 +81,27 @@ def check_inventory(path: Path, core_path: Path) -> tuple[int, str]:
 def inspect_ssh(ssh_dir: Path, pcctl_uid: int) -> list[str]:
     """Only assess readiness. A missing key is not a reason to break existing WOL."""
     notes = []
-    if not ssh_dir.exists():
+    try:
+        info = ssh_dir.lstat()
+    except FileNotFoundError:
         return ["PENDING: pcctl SSH directory absent; pairing cannot be verified yet"]
-    if ssh_dir.is_symlink() or not ssh_dir.is_dir():
+    except PermissionError:
+        if os.geteuid() != 0:
+            return ["PENDING: SSH permissions hidden from ordinary user; rerun sudo --plan for complete checks"]
+        raise PreflightError("pcctl SSH directory unreadable")
+    if not stat.S_ISDIR(info.st_mode):
         raise PreflightError("pcctl SSH directory is unsafe")
-    info = ssh_dir.stat()
     if info.st_uid != pcctl_uid or stat.S_IMODE(info.st_mode) & 0o077:
         raise PreflightError("pcctl SSH directory needs pcctl ownership and private permissions")
     for name in ("id_ed25519", "known_hosts"):
         entry = ssh_dir / name
-        result = check_file(entry, allow_missing=True)
+        try:
+            result = check_file(entry, allow_missing=True)
+        except PreflightError:
+            if os.geteuid() != 0:
+                notes.append(f"PENDING: {name} unreadable; rerun sudo --plan for full checks")
+                continue
+            raise
         if result is None:
             notes.append(f"PENDING: {name} absent; new Windows pairing will require it")
             continue
