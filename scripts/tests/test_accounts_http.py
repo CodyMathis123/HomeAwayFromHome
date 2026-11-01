@@ -122,4 +122,29 @@ class HttpAccounts(unittest.TestCase):
             self.assertEqual(data["user"]["id"],"newmember")
             self.assertEqual(sent[-1],("homeowner","create",req))
 
+
+    def test_viewer_and_operator_actions_remain_server_restricted(self):
+        # Authelia's login gate permits all three roles, but this API
+        # must never turn that into permission to execute every command.
+        body={"host":"gaming","action":"wake","confirm":""}
+        with self.config(),patch.object(api,"broker_request",side_effect=self.resolved("viewers")),\\
+             patch.object(api,"apply_action") as issue:
+            status,result=self.request("GET","/control/api/me",headers=self.claims("viewers"))
+            self.assertEqual(status,200)
+            self.assertEqual(result["capabilities"]["actions"],[])
+            status,_=self.request("POST","/control/api/actions",body,self.claims("viewers"))
+            self.assertEqual(status,403)
+            issue.assert_not_called()
+
+        with self.config(),patch.object(api,"broker_request",side_effect=self.resolved("operators")),\\
+             patch.object(api,"apply_action") as issue:
+            status,result=self.request("GET","/control/api/me",headers=self.claims("operators"))
+            self.assertEqual(status,200)
+            self.assertEqual(result["capabilities"]["actions"],["wake","sleep"])
+            status,_=self.request("POST","/control/api/actions",
+                {"host":"gaming","action":"shutdown","confirm":"gaming"},
+                self.claims("operators"))
+            self.assertEqual(status,403)
+            issue.assert_not_called()
+
 if __name__=="__main__":unittest.main()
