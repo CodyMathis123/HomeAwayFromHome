@@ -3,12 +3,15 @@ FROM caddy:2.11.7-builder-alpine AS builder
 RUN xcaddy build v2.11.7 --with github.com/caddy-dns/cloudflare@v0.2.4
 
 FROM caddy:2.11.7-alpine
-# The stock image marks /usr/bin/caddy with cap_net_bind_service. Under
-# cap_drop: [ALL] + no-new-privileges:true, exec of a file-capability binary
-# can fail with EPERM even though staging uses only unprivileged :8443.
-# Install our custom build at a NEW, capability-free path instead of replacing
-# /usr/bin/caddy. Do not grant NET_BIND_SERVICE to staging.
+# xcaddy adds cap_net_bind_service to the built executable. It survives
+# cross-stage COPY and makes execve fail under cap_drop: [ALL] with
+# no-new-privileges:true (confirmed by GitHub CI). Staging uses only port
+# 8443: REMOVE the file capability rather than granting any capabilities.
 COPY --from=builder --chmod=0755 /usr/bin/caddy /usr/local/bin/homeaway-caddy
 COPY start-dns01.sh /usr/local/bin/start-dns01
-RUN chmod 0755 /usr/local/bin/start-dns01 && \
+RUN apk add --no-cache libcap && \
+    setcap -r /usr/local/bin/homeaway-caddy && \
+    test -z "$(getcap /usr/local/bin/homeaway-caddy)" && \
+    apk del libcap && \
+    chmod 0755 /usr/local/bin/start-dns01 && \
     /usr/local/bin/homeaway-caddy list-modules | grep -Fx dns.providers.cloudflare
