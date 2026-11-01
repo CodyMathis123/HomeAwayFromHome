@@ -34,7 +34,7 @@ def docker(*args, check=True):
         # Only CI-synthetic secrets exist here; redact opaque tokens regardless
         # before revealing an actionable Authelia validation error.
         detail=re.sub(r"[A-Za-z0-9_+/-]{28,}", "<redacted>",
-                      r.stderr[-3200:] or r.stdout[-3200:])
+                      (r.stdout+"\n"+r.stderr)[-6000:])
         raise RuntimeError("Synthetic Docker step failed: " + detail)
     return r.stdout.strip()
 
