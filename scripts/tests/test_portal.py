@@ -116,6 +116,15 @@ class HttpTests(unittest.TestCase):
         self.assertIn("control.hidden = true", (root / "navigation.js").read_text())
         self.assertNotIn("docker.sock", (root / "architecture.js").read_text())
 
+    def test_status_api_failure_displays_unknown_not_service_down(self):
+        root = Path(__file__).resolve().parents[2] / "portal"
+        js = (root / "app.js").read_text()
+        css = (root / "styles.css").read_text()
+        self.assertIn("dataset.status = 'unknown'", js)
+        self.assertIn('Portal status check unavailable; service state not verified', js)
+        self.assertIn('.state[data-status="unknown"]', css)
+        self.assertNotIn("byId('state-' + id).dataset.status = 'down'", js)
+
     def test_status_is_accurately_scoped(self):
         sample = {"checkedAt": "2026-10-31T12:00:00+00:00", "checks": [
             {"id": "dns", "ok": True, "detail": "DNS lookup succeeded"},
