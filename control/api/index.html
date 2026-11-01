@@ -4,6 +4,12 @@
 <link rel="stylesheet" href="/control/styles.css"><script defer src="/control/accounts.js"></script><script defer src="/control/computers.js"></script><script defer src="/control/app.js"></script></head>
 <body><main>
 <header><a href="/">⌂ Home<span>Away</span></a><small>AUTHENTICATED COMPUTER CONTROL · <span id="identity">Checking permissions…</span></small></header>
+<nav class="section-nav" aria-label="Control page sections">
+  <a href="#hosts">Power controls</a>
+  <a id="nav-computers" href="#computer-admin" hidden>Manage computers</a>
+  <a id="nav-accounts" href="#accounts" hidden>Users and permissions</a>
+  <a href="#recent-activity">Activity</a>
+</nav>
 <section class="hero"><p>YOUR COMPUTERS</p><h1>Power and presence.</h1>
 <div class="intro">Wake your computers or request Windows power actions. The PC must be configured for SSH and Wake-on-LAN. Status is an SSH reachability check, not a guarantee of system health.</div>
 <button id="refresh" type="button">Refresh status</button><span id="updated" role="status">Loading computers…</span>
@@ -50,7 +56,7 @@
   <p id="accounts-message" role="status" aria-live="polite"></p>
   <div id="accounts-users" class="account-list"></div>
 </section>
-<section class="history"><div class="heading"><h2>Recent activity</h2><button id="refresh-history" type="button">Refresh log</button></div>
+<section id="recent-activity" class="history"><div class="heading"><h2>Recent activity</h2><button id="refresh-history" type="button">Refresh log</button></div>
 <div id="events" class="events">No commands yet.</div></section>
 <footer><span>Private network · Verified sign-in required</span><span>Commands are allowlisted and audited · Your iOS Shortcut remains independent</span></footer>
 </main></body></html>
