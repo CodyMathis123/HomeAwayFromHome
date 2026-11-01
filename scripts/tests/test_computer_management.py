@@ -555,8 +555,7 @@ class ComputerApiTests(unittest.TestCase):
             def sendall(self, data):
                 self.data = data
             def makefile(self, mode):
-                return io.BytesIO(b'{"ok":true,"result":{}}\\n')
-        from unittest.mock import Mock
+                return io.BytesIO(b'{"ok":true,"result":{}}\n')
         outcomes = []
         def factory(*args, **kwargs):
             result=FakeSocket()
