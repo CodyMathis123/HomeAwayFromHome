@@ -1,0 +1,19 @@
+# EXPLICIT OPT-IN OVERLAY: use ONLY with the existing HomeAway compose stack.
+# This overlays the *running gateway* and causes a short gateway restart.
+# It must never be passed to scripts/deploy-ui.sh or routine stack updates.
+services:
+  gateway:
+    image: homeaway-caddy-dns01:2.11.7-cloudflare-v0.2.4
+    build:
+      context: ./control/gateway
+      dockerfile: Dockerfile.dns01
+    entrypoint: ["/usr/local/bin/start-dns01"]
+    secrets:
+      - cloudflare_dns01_token
+    volumes:
+      - ./control/gateway/Caddyfile.dns01-production:/etc/caddy/Caddyfile:ro
+      - ./control/gateway/Caddyfile:/etc/caddy/Caddyfile.legacy:ro
+
+secrets:
+  cloudflare_dns01_token:
+    file: ./secrets/control/cloudflare_dns01_token
