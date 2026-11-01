@@ -22,13 +22,17 @@ const HomeAwayAccounts = (() => {
     if (!response.ok) throw Error(result.error || 'Account request failed');
     return result;
   }
-  async function mutate(path, data) {
+  async function mutate(path, data, successMessage) {
     try {
       await api(path,data);
-      message('Account directory updated. Permissions are checked again on the next request.');
-      await refresh();
+      const refreshed = await refresh();
+      message(refreshed ?
+        (successMessage || 'Account directory updated. Permissions are checked again on the next request.') :
+        'Change succeeded, but the user list could not refresh. Use Refresh users to verify.');
+      return true;
     } catch (err) {
-      message(err.message + ' Refresh the user list before retrying.');
+      message('Change failed: ' + err.message + '. No success was confirmed; check the list before retrying.');
+      return false;
     }
   }
   function renderUser(user) {
@@ -37,7 +41,8 @@ const HomeAwayAccounts = (() => {
     title.append(make('strong','',user.name),make('code','account-id',user.id));
     card.append(title,make('p','account-detail',user.email));
     card.append(make('p','account-detail',user.role ?
-      'HomeAway role: ' + user.role : 'No HomeAway access (pending or revoked)'));
+      'HomeAway role: ' + user.role :
+      'No HomeAway access · pending or revoked (password status unknown)'));
     if (user.id === 'admin') {
       card.append(make('p','account-detail','Directory bootstrap administrator · protected'));
       return card;
@@ -78,8 +83,10 @@ const HomeAwayAccounts = (() => {
       const result=await api('');
       $('accounts-users').replaceChildren(...result.users.map(renderUser));
       if (!result.users.length) $('accounts-users').textContent='No accounts found.';
+      return true;
     } catch (err) {
       message('Account list unavailable: ' + err.message);
+      return false;
     } finally { btn.disabled=false; }
   }
   function start(identity) {
@@ -100,8 +107,10 @@ const HomeAwayAccounts = (() => {
       const email=form.elements.namedItem('email').value.trim();
       if (!confirm('Create pending account ' + user +
                    '? No password or access will be provisioned yet.')) return;
-      await mutate('/create',{id:user,name,email});
-      form.reset();
+      const created = await mutate('/create',{id:user,name,email},
+        'Created pending user "' + user + '". Look for that username in the list below. ' +
+        'No password or HomeAway access has been granted; set a password in LLDAP and assign a role here.');
+      if (created) form.reset();
     });
     void refresh();
   }
