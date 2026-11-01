@@ -51,6 +51,55 @@ class ProductionDNS01Contracts(unittest.TestCase):
         self.assertNotIn("compose.dns01-production.yaml", ui)
         self.assertNotIn("cloudflare_dns01_token", ui)
 
+    def test_gateway_health_guard_and_automatic_rollback(self):
+        script = (ROOT / "scripts/deploy-dns01-production.sh").read_text()
+        self.assertIn("--rollback|--probe", script)
+        self.assertIn("scripts/check_dns01_gateway_https.py", script)
+        self.assertIn("scripts/extract_dns01_gateway_env.py", script)
+        self.assertIn("--network none --cap-drop ALL", script)
+        self.assertIn("CF_API_TOKEN=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", script)
+        self.assertIn('restart', script.lower())
+        self.assertIn("rollback_failed_apply", script)
+        self.assertIn("gateway-startup-failed-$stamp.log", script)
+        self.assertIn('sudo install -m 600 /dev/null "$failure_log"', script)
+        self.assertIn("ps --all --quiet gateway", script)
+        self.assertIn("{{.RestartCount}}", script)
+
+    def test_health_probe_reads_only_original_hostnames(self):
+        spec = importlib.util.spec_from_file_location(
+            "healthprobe", ROOT / "scripts/check_dns01_gateway_https.py")
+        health = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(health)
+        config = {"services": {"gateway": {
+            "ports": [{"host_ip": "192.168.1.43", "published": "8443"}],
+            "environment": {
+                "HOMEAWAY_DOMAIN": "homeaway.home.arpa",
+                "HOMEAWAY_AUTH_DOMAIN": "auth.homeaway.home.arpa",
+                "HOMEAWAY_METRICS_DOMAIN": "metrics.homeaway.home.arpa",
+            },
+        }}}
+        address, names = health.targets(config)
+        self.assertEqual(address, "192.168.1.43")
+        self.assertEqual(len(names), 3)
+        config["services"]["gateway"]["ports"][0]["host_ip"] = "8.8.8.8"
+        with self.assertRaises(ValueError):
+            health.targets(config)
+
+    def test_offline_probe_env_file_contains_no_other_config(self):
+        spec = importlib.util.spec_from_file_location(
+            "envprobe", ROOT / "scripts/extract_dns01_gateway_env.py")
+        helper = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(helper)
+        config = {"services": {"gateway": {"environment": {
+            "HOMEAWAY_DOMAIN": "homeaway.home.arpa",
+            "HOMEAWAY_AUTH_DOMAIN": "auth.homeaway.home.arpa",
+            "HOMEAWAY_METRICS_DOMAIN": "metrics.homeaway.home.arpa",
+            "SOME_SECRET": "do-not-include",
+        }}}}
+        names = helper.get_values(config)
+        self.assertEqual(set(names), set(helper.KEYS))
+        self.assertNotIn("SOME_SECRET", names)
+
     def test_status_is_strictly_bounded_and_does_not_print_raw_logs(self):
         path = ROOT / "scripts/summarize_dns01_certificate_logs.py"
         spec = importlib.util.spec_from_file_location("summary", path)
