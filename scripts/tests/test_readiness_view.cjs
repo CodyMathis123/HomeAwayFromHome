@@ -113,7 +113,8 @@ function simulate({role = 'admins', servicesFail = false, hostsFail = false,
   await malformed.settle();
   assert.equal(malformed.element('setup-readiness').hidden, false);
   assert.equal(malformed.element('readiness-dns').textContent, 'Responding');
-  assert.equal(malformed.element('readiness-hosts').textContent, '1 / 4');
+  assert.equal(malformed.element('readiness-hosts').textContent, 'Unknown');
+  assert.equal(malformed.element('readiness-hosts').dataset.state, 'unknown');
   assert.equal(malformed.element('readiness-refresh').disabled, false);
   assert.ok(!/Authorization unavailable/.test(malformed.element('readiness-updated').textContent));
 
