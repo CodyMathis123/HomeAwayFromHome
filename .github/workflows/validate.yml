@@ -112,6 +112,31 @@ jobs:
           trap 'docker rm -f homeaway-grafana-ci >/dev/null 2>&1 || true' EXIT
           python3 scripts/integration-grafana.py
 
+  dns01-staging:
+    # Build/test isolated ACME staging without a token or live DNS changes.
+    if: github.head_ref == 'feature/phase3-dns01-staging-prep' || github.ref == 'refs/heads/feature/phase3-dns01-staging-prep'
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact pinned Caddy DNS module
+        run: |
+          docker build -f control/gateway/Dockerfile.dns01 -t homeaway-caddy-dns01:ci ./control/gateway
+          docker run --rm --entrypoint caddy homeaway-caddy-dns01:ci list-modules | grep -Fx dns.providers.cloudflare
+      - name: Adapt staging-only Caddyfile offline (no issuance)
+        run: |
+          docker run --rm --entrypoint caddy \
+            -e CF_API_TOKEN=ci-synthetic-placeholder \
+            -v "$PWD/control/gateway/Caddyfile.dns01-staging:/etc/caddy/Caddyfile:ro" \
+            homeaway-caddy-dns01:ci adapt --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null
+      - name: Validate isolated Compose project (synthetic token only)
+        run: |
+          mkdir -p secrets/control
+          printf 'ci-synthetic-not-a-token\n' > secrets/control/cloudflare_dns01_token
+          docker compose -p homeaway-dns01-staging -f compose.dns01-staging.yaml config -q
+          docker compose -p homeaway-dns01-staging -f compose.dns01-staging.yaml config --format json | \
+            python3 scripts/check_dns01_resolved.py
+
   identity-lab:
     # Disposable fake users only; never mount the Pi's live Authelia files,
     # never publish a directory service on a non-loopback interface.

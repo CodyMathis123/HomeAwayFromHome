@@ -1,0 +1,35 @@
+# STAGING ONLY: standalone Caddy DNS-01 validation instance.
+# NO import of the live HomeAway Caddyfile and NO authenticated app routes.
+# This container publishes no ports and has separate staging certificate state.
+
+{
+  # DNS-01 needs no HTTP challenge or :80 redirect listener.
+  auto_https disable_redirects
+}
+
+home.homeawayfromhome.house:8443 {
+  tls {
+    dns cloudflare {env.CF_API_TOKEN}
+    ca https://acme-staging-v02.api.letsencrypt.org/directory
+    resolvers 1.1.1.1
+  }
+  respond "HomeAway ACME staging validation only" 200
+}
+
+auth.homeawayfromhome.house:8443 {
+  tls {
+    dns cloudflare {env.CF_API_TOKEN}
+    ca https://acme-staging-v02.api.letsencrypt.org/directory
+    resolvers 1.1.1.1
+  }
+  respond "HomeAway ACME staging validation only" 200
+}
+
+metrics.homeawayfromhome.house:8443 {
+  tls {
+    dns cloudflare {env.CF_API_TOKEN}
+    ca https://acme-staging-v02.api.letsencrypt.org/directory
+    resolvers 1.1.1.1
+  }
+  respond "HomeAway ACME staging validation only" 200
+}
