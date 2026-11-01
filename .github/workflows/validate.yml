@@ -140,7 +140,7 @@ jobs:
           printf 'ci-synthetic-not-a-token\n' > secrets/control/cloudflare_dns01_token
           # Network disabled: even an accidental ACME request cannot reach a
           # real DNS provider. The smoke config does not request certificates.
-          printf ':8443 {\n  auto_https off\n  respond "staging smoke test"\n}\n' > /tmp/homeaway-staging-smoke.Caddyfile
+          printf '{\n  auto_https off\n}\n:8443 {\n  respond "staging smoke test"\n}\n' > /tmp/homeaway-staging-smoke.Caddyfile
           cid=$(docker run -d --cap-drop ALL --security-opt no-new-privileges:true \
             --read-only --network none --tmpfs /tmp --tmpfs /data --tmpfs /config \
             -v "$PWD/secrets/control/cloudflare_dns01_token:/run/secrets/cloudflare_dns01_token:ro" \
