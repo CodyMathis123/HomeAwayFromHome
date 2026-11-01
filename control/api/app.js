@@ -4,14 +4,38 @@ const hosts = $('hosts');
 const status = $('updated');
 let pending = new Set();
 let identity = null;
-function updateCurrentSection() {
-  const local = new Set(['#hosts', '#computer-admin', '#accounts', '#recent-activity']);
-  const target = local.has(location.hash) ? location.hash : '#hosts';
+// These are view-state decisions, never an authorization mechanism.
+// The /control/ document and all /control/api/* endpoints remain authenticated
+// and server-side capabilities determine which admin sections exist.
+const VIEWS = new Set(['hosts', 'computer-admin', 'accounts', 'recent-activity']);
+const main = document.querySelector('main');
+let currentView = 'hosts';
+function updateCurrentSection(focus = false) {
+  const requested = location.hash.slice(1);
+  let target = VIEWS.has(requested) ? requested : 'hosts';
+  const capabilities = identity?.capabilities;
+  if (target === 'computer-admin' && !capabilities?.manageComputers) target = 'hosts';
+  if (target === 'accounts' && !capabilities?.manageUsers) target = 'hosts';
+  currentView = target;
+  main.dataset.activeView = target;
+  document.body.classList.add('control-views-ready');
   for (const link of document.querySelectorAll('.section-nav a[href^="#"]')) {
-    if (!link.hidden && link.getAttribute('href') === target)
+    if (!link.hidden && link.getAttribute('href') === '#' + target)
       link.setAttribute('aria-current', 'location');
     else
       link.removeAttribute('aria-current');
+  }
+  // Never leave the URL pointing to a privileged section after a role check
+  // refuses it. Before identity resolves, retain the requested deep link.
+  if (identity && VIEWS.has(requested) && requested !== target)
+    history.replaceState(history.state, '', '/control/#hosts');
+  window.HomeAwayNavigation?.sync();
+  if (focus) {
+    const section = $(target);
+    if (section) {
+      section.focus({preventScroll: true});
+      section.scrollIntoView({block: 'start', behavior: 'auto'});
+    }
   }
 }
 function updateSectionNavigation(capabilities) {
@@ -134,7 +158,7 @@ async function loadHistory() {
     $('events').replaceChildren(...(rows.length ? rows : [node('p', '', 'No commands yet.')]));
   } catch (error) { $('events').textContent = error.message; }
 }
-window.addEventListener('hashchange', updateCurrentSection);
+window.addEventListener('hashchange', () => updateCurrentSection(true));
 updateCurrentSection();
 $('refresh').addEventListener('click', refresh);
 $('refresh-history').addEventListener('click', loadHistory);
