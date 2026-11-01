@@ -135,9 +135,13 @@
   <p class="detail">Encrypted backup status and recovery readiness.</p>
   <div class="readiness-grid" aria-label="Backup verification boundaries">
     <article class="readiness-item"><h3>Encrypted archive</h3><span id="readiness-backup" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-backup-detail">Backup status not checked</p><p id="readiness-backup-checked">No observation yet</p></article>
+    <article class="readiness-item"><h3>Backup preflight</h3><span id="readiness-maintenance-backupPreflight" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-maintenance-backupPreflight">Not checked</p></article>
+    <article class="readiness-item"><h3>Retention review</h3><span id="readiness-maintenance-retentionReview" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-maintenance-retentionReview">Not checked</p></article>
+    <article class="readiness-item"><h3>Weekly preflight timer</h3><span id="readiness-maintenance-timer" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-maintenance-timer">Not checked</p><p id="readiness-maintenance-checked">No observation yet</p></article>
     <article class="readiness-item"><h3>Recovery verification</h3><span class="readiness-badge" data-state="unknown">Not verified here</span><p>Copy a backup off the Pi, decrypt it with your separately protected identity and test restoration on disposable storage. Never extract a recovery archive over running services.</p></article>
   </div>
   <div class="readiness-manual">
+    <p><strong>Backup maintenance preview</strong> <code>sudo python3 scripts/backup-maintenance.py --plan</code></p>
     <p><strong>Encrypted backup scope (no outage)</strong> <code>sudo bash scripts/backup-full.sh --plan</code></p>
     <p><strong>Local retention review (read-only)</strong> <code>sudo python3 scripts/plan-backup-retention.py --plan --keep-local 3</code></p>
     <p><strong>Permission and deployment audit (read-only)</strong> <code>sudo python3 scripts/audit-production.py</code></p>

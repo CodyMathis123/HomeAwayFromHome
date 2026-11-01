@@ -206,6 +206,42 @@ const HomeAwayReadiness = (() => {
       'Not verified';
   }
 
+  const maintenanceIds = ['backupPreflight', 'retentionReview'];
+  function maintenanceUnknown(message) {
+    for (const id of maintenanceIds) display('maintenance-' + id, 'unknown', 'Unknown', message);
+    display('maintenance-timer', 'unknown', 'Unknown', message);
+    $('readiness-maintenance-checked').textContent = message;
+  }
+  function maintenanceStale() {
+    markStale([...maintenanceIds.map(id => 'maintenance-' + id), 'maintenance-timer']);
+  }
+  function displayMaintenance(data) {
+    if (data?.schemaVersion !== 1 || data.mode !== 'preflight-only' ||
+        !data.checkedAt || !Array.isArray(data.checks)) {
+      maintenanceUnknown('Maintenance status unavailable');
+      return;
+    }
+    const checks = new Map(data.checks.map(item => [item.id, item]));
+    for (const id of maintenanceIds) {
+      const item = checks.get(id);
+      if (!item || !['ok', 'attention', 'unknown'].includes(item.state)) {
+        display('maintenance-' + id, 'unknown', 'Unknown', 'Not checked');
+        continue;
+      }
+      display('maintenance-' + id, item.state === 'ok' ? 'observed' :
+        item.state === 'attention' ? 'attention' : 'unknown',
+        item.state === 'ok' ? 'Passed' : item.state === 'attention' ? 'Attention' : 'Not checked',
+        id === 'backupPreflight' ? 'Backup prerequisites (read-only)' : 'Retention inventory (read-only)');
+    }
+    const enabled = data.scheduleEnabled === true;
+    display('maintenance-timer', enabled ? 'observed' : 'optional',
+      enabled ? 'Enabled' : 'Disabled',
+      'Sunday 03:00 local · preflight only · no automatic backup');
+    const stamp = Date.parse(data.checkedAt);
+    $('readiness-maintenance-checked').textContent = Number.isFinite(stamp)
+      ? 'Checked ' + new Date(stamp).toLocaleString() : 'Not checked';
+  }
+
   async function readJson(path) {
     const controller = new AbortController();
     // A hung internal request should never hold the diagnostics page forever.
@@ -328,6 +364,16 @@ const HomeAwayReadiness = (() => {
         certificatesStale();
       }
         }),
+        readJson('/control/api/admin/maintenance').then(
+          value => ({status: 'fulfilled', value}),
+          () => ({status: 'rejected'})
+        ).then(maintenance => {
+          if (maintenance.status === 'fulfilled') displayMaintenance(maintenance.value);
+          else {
+            failedSections++;
+            maintenanceStale();
+          }
+        }),
         readJson('/control/api/admin/backup-status').then(
           value => ({status: 'fulfilled', value}),
           () => ({status: 'rejected'})
@@ -351,6 +397,7 @@ const HomeAwayReadiness = (() => {
       servicesUnknown('Administrator authorization could not be verified');
       certificatesUnknown('Administrator authorization could not be verified');
       displayBackup(null);
+      maintenanceUnknown('Administrator authorization could not be verified');
       updated.textContent = 'Authorization unavailable; reopen HomeAway Control and sign in';
       allowed = false;
       view.hidden = true;
@@ -378,6 +425,7 @@ const HomeAwayReadiness = (() => {
       servicesUnknown('Not checked in this session');
       certificatesUnknown('Not checked in this session');
       displayBackup(null);
+      maintenanceUnknown('Not checked in this session');
     }
     if (allowed && location.hash === '#setup-readiness' && !checked)
       void refresh();
