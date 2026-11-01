@@ -19,10 +19,11 @@
 4. Independent controller endpoint tests: CSRF, deny-by-default, user/admin role restrictions, stale role versus current directory, offline broker and unauthenticated requests.
 5. Broker tests: last-admin/current-admin protection, revision mismatch, invalid arguments, unavailable directory, minimal audit fields.
 6. The optional Compose overlay is opt-in, has no public or LAN-facing ports for LLDAP or broker, and does not mount the existing Authelia secrets into the broker.
+7. An **entirely synthetic** file-backed `admin` account authenticates with its original password and a real encrypted TOTP enrollment. Switching the first-factor backend to LLDAP while retaining the same username, Authelia SQLite volume, session/encryption secrets and TOTP record permits a fresh login with the **new LLDAP password and original TOTP**. Switching back to the original file backend also permits login with the original file password and TOTP. This proves the test migration/rollback mechanism, **not** compatibility with the Pi's actual encrypted storage snapshot.
 
 ## What must be proven before real cutover
 
-The synthetic tests **do not** migrate a working existing file-backend user and TOTP into LLDAP. LLDAP does not accept the Authelia Argon2 password hash as a drop-in plaintext password. A real migration must preserve the existing **username** and Authelia **storage encryption key + SQLite data**; TOTP registrations may be linked to stable identity but have not been validated with a restored snapshot. No assumption of password portability or session persistence is allowed.
+The synthetic tests **do not** migrate a working existing file-backend user and TOTP into LLDAP. LLDAP does not accept the Authelia Argon2 password hash as a drop-in plaintext password. A real migration must preserve the existing **username** and Authelia **storage encryption key + SQLite data**. Synthetic TOTP continuity and rollback are now validated in disposable CI, but **a restored snapshot of the real Pi state has not been tested**. No assumption of password portability or session persistence is allowed.
 
 Mandatory human-supervised release checklist:
 
