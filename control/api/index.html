@@ -87,6 +87,13 @@
     <article class="readiness-item"><h3>Grafana listener (optional)</h3><span id="readiness-monitor" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-monitor">Not checked in this session</p></article>
     <article class="readiness-item"><h3>Registered computer reachability</h3><span id="readiness-hosts" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-hosts">Not checked in this session</p></article>
   </div>
+  <h3 id="readiness-services-heading">Metrics scrape health</h3>
+  <p class="detail">Observed from the existing internal VictoriaMetrics scrape targets. This verifies whether metrics endpoints responded; it does not prove WireGuard tunnels, client DNS or application login work.</p>
+  <div class="readiness-grid" aria-labelledby="readiness-services-heading">
+    <article class="readiness-item"><h3>Pi-hole exporter</h3><span id="readiness-service-pihole" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-service-pihole">Not checked</p></article>
+    <article class="readiness-item"><h3>WireGuard exporter</h3><span id="readiness-service-wireguard" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-service-wireguard">Not checked</p></article>
+    <article class="readiness-item"><h3>VictoriaMetrics</h3><span id="readiness-service-victoria" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-service-victoria">Not checked</p></article>
+  </div>
   <h3 id="readiness-metrics-heading">Pi and SensorDash telemetry observations</h3>
   <p class="detail">Derived from existing VictoriaMetrics history via an isolated, fixed-query observer. These numbers are observations, not commands or proof of computer power state. No fan-curve settings are read or changed.</p>
   <p id="readiness-metrics-checked" role="status">Metric checks not yet requested</p>
