@@ -42,7 +42,15 @@ backups, privileged helper, or mutation route.
    not mount the root-owned backup directory in the browser service.
 3. Add robust last-known-good/freshness labels and retention status to the
    existing operational view.
-4. Investigate certificate observation hostname drift introduced during the
-   `.house` migration, then verify against the live DNS-01 gateway.
+4. Certificate observer's three TLS SNI names are overridden in the canonical
+   production overlay to `home`, `auth`, and `metrics` under
+   `homeawayfromhome.house`. Prior to this fix the observer still used
+   `HOMEAWAY_*_DOMAIN` from the legacy base Compose/.env, making the new
+   gateway's valid certificates appear `Unknown`. The telemetry receiver's
+   separate private-CA certificate is unaffected. After updating the
+   production overlay, recreate **only** `metrics-diagnostics`, not the
+   gateway or the rest of the stack, and refresh the admin view. This
+   validates SNI and SAN only; actual public trust still depends on the
+   observer container's CA bundle and must not be inferred from this fix.
 5. Review controlled maintenance actions separately with exact authorizations
    and per-action audit logs.
