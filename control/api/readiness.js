@@ -83,6 +83,57 @@ const HomeAwayReadiness = (() => {
       : 'Metrics checked (timestamp unavailable)';
   }
 
+  const certificateIds = ['browser-home', 'browser-auth', 'browser-metrics', 'telemetry-receiver'];
+  function certificatesUnknown(message) {
+    for (const id of certificateIds) {
+      const label = $('readiness-cert-' + id);
+      const detail = $('readiness-cert-detail-' + id);
+      if (!label || !detail) continue;
+      label.dataset.state = 'unknown';
+      label.textContent = 'Unknown';
+      detail.textContent = message;
+    }
+    $('readiness-certificates-checked').textContent = message;
+  }
+  function displayCertificates(data) {
+    if (data?.schemaVersion !== 1 || !Array.isArray(data.certificates)) {
+      certificatesUnknown('Certificate evidence unavailable or invalid');
+      return;
+    }
+    const entries = new Map(data.certificates.filter(item => item &&
+      certificateIds.includes(item.id)).map(item => [item.id, item]));
+    for (const id of certificateIds) {
+      const label = $('readiness-cert-' + id);
+      const detail = $('readiness-cert-detail-' + id);
+      if (!label || !detail) continue;
+      const item = entries.get(id);
+      if (!item || !['observed', 'attention', 'unknown'].includes(item.state) ||
+          (item.daysRemaining != null && !Number.isFinite(item.daysRemaining))) {
+        label.dataset.state = 'unknown';
+        label.textContent = 'Unknown';
+        detail.textContent = 'No valid certificate observation';
+        continue;
+      }
+      label.dataset.state = item.state;
+      label.textContent = item.state === 'unknown' ? 'Unknown'
+        : item.daysRemaining + ' days remaining';
+      const trust = item.publicTrust === 'verified' ? 'Public system roots: verified'
+        : item.publicTrust === 'not_trusted' ? 'Public system roots: not trusted (internal CA expected)'
+        : item.publicTrust === 'not_checked' ? 'Client/CA trust: not checked'
+        : 'System trust check: unavailable';
+      const hostMatch = item.hostnameMatch === true ? 'Hostname SAN: matches'
+        : item.hostnameMatch === false ? 'Hostname SAN: mismatch'
+        : 'Hostname SAN: not checked';
+      const issuer = typeof item.issuer === 'string' ? item.issuer : 'Unknown issuer';
+      detail.textContent = [item.detail || 'No details',
+        'Issuer: ' + issuer, hostMatch, trust].join(' · ');
+    }
+    const checked = Date.parse(data.checkedAt);
+    $('readiness-certificates-checked').textContent = Number.isFinite(checked)
+      ? 'Certificate leaves observed ' + new Date(checked).toLocaleTimeString()
+      : 'Certificate check time unavailable';
+  }
+
   async function readJson(path) {
     const response = await fetch(path, {cache: 'no-store', credentials: 'same-origin'});
     if (!response.ok) throw new Error('Read-only status unavailable');
@@ -99,6 +150,7 @@ const HomeAwayReadiness = (() => {
     checked = true;
     unknown('Checking source…');
     metricsUnknown('Checking existing VictoriaMetrics series…');
+    certificatesUnknown('Checking private TLS endpoints…');
     updated.textContent = 'Checking authorized status…';
     try {
       // /control/api/me must be freshly verified before querying status.
@@ -117,10 +169,11 @@ const HomeAwayReadiness = (() => {
 
       // Each existing API is independently optional. One failure must not
       // misclassify another component or erase independently observed results.
-      const [services, computers, metrics] = await Promise.allSettled([
+      const [services, computers, metrics, certificates] = await Promise.allSettled([
         readJson('/api/status'),
         readJson('/control/api/hosts'),
-        readJson('/control/api/admin/diagnostics')
+        readJson('/control/api/admin/diagnostics'),
+        readJson('/control/api/admin/certificates')
       ]);
       if (services.status === 'fulfilled' && Array.isArray(services.value.checks)) {
         const checks = new Map(services.value.checks
@@ -166,6 +219,10 @@ const HomeAwayReadiness = (() => {
         displayMetrics(metrics.value);
       else
         metricsUnknown('Metrics observer unavailable; existing source state not established');
+      if (certificates.status === 'fulfilled')
+        displayCertificates(certificates.value);
+      else
+        certificatesUnknown('Certificate observer unavailable; issuer/expiry not verified');
       updated.textContent = 'Checked ' + new Date().toLocaleTimeString() +
         ' · Individual statuses have limited scope';
     } catch (_) {
@@ -173,6 +230,7 @@ const HomeAwayReadiness = (() => {
       // hide this view; never leave sensitive control details on screen.
       unknown('Administrator authorization could not be verified');
       metricsUnknown('Administrator authorization could not be verified');
+      certificatesUnknown('Administrator authorization could not be verified');
       updated.textContent = 'Authorization unavailable; reopen HomeAway Control and sign in';
       allowed = false;
       view.hidden = true;
@@ -196,6 +254,7 @@ const HomeAwayReadiness = (() => {
       checked = false;
       unknown('Not checked in this session');
       metricsUnknown('Not checked in this session');
+      certificatesUnknown('Not checked in this session');
     }
     if (allowed && location.hash === '#setup-readiness' && !checked)
       void refresh();

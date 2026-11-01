@@ -46,6 +46,8 @@ PROBES = (
 CACHE_LOCK = threading.Lock()
 CACHE_UNTIL = 0.0
 CACHE_RESULT: dict | None = None
+CERT_CACHE_UNTIL = 0.0
+CERT_CACHE_RESULT: dict | None = None
 
 
 def now_iso(epoch: float | None = None) -> str:
@@ -195,14 +197,29 @@ def cached_snapshot() -> dict:
         return CACHE_RESULT
 
 
+def cached_certificates() -> dict:
+    # Certificate handshake evidence refreshes at most every five minutes.
+    from certificates import snapshot as observe_certificates
+    global CERT_CACHE_UNTIL, CERT_CACHE_RESULT
+    with CACHE_LOCK:
+        if CERT_CACHE_RESULT is None or time.monotonic() >= CERT_CACHE_UNTIL:
+            CERT_CACHE_RESULT = observe_certificates()
+            CERT_CACHE_UNTIL = time.monotonic() + 300
+        return CERT_CACHE_RESULT
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "HomeAwayMetricsObserver/1"
 
     def do_GET(self):
-        if self.path != "/v1/summary":
+        if self.path == "/v1/summary":
+            source = cached_snapshot()
+        elif self.path == "/v1/certificates":
+            source = cached_certificates()
+        else:
             self.send_error(404, "Not found")
             return
-        body = json.dumps(cached_snapshot(), separators=(",", ":")).encode()
+        body = json.dumps(source, separators=(",", ":")).encode()
         self.send_response(200)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
