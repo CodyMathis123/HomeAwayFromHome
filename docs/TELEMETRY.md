@@ -46,35 +46,36 @@ sudo mkdir -p data/grafana data/victoria-metrics
 sudo chown -R 472:472 data/grafana
 ```
 
-5. Build and start the **optional** metrics profile, without redeploying the DNS/VPN core:
+5. Build and start the **optional** metrics profile, without redeploying DNS or VPN:
 
 ```bash
-docker compose --profile metrics up -d --build grafana telemetry-ingest pi-node-exporter
-docker compose --profile metrics ps
-
-   This also starts the **Pi node exporter** used by `HomeAway · System Health`.
-   The previous startup example omitted that service, causing empty Pi CPU,
-   RAM, uptime and thermal panels even when Windows SensorDash telemetry passed.
-   On an existing deployment, safely start only that missing exporter:
-
-   ```bash
-   sudo docker compose --profile metrics up -d --no-deps pi-node-exporter
-   sudo bash scripts/verify-pi-metrics.sh
-   ```
-
-   If `verify-pi-metrics.sh` reports that the scrape target is missing entirely,
-   VictoriaMetrics may be running with an older scrape configuration.
-   Its history is on a bind-mounted volume, so recreate **only** the metrics
-   service to load the current `monitoring/scrape.yml`:
-
-   ```bash
-   sudo docker compose --profile metrics up -d --no-deps --force-recreate victoria-metrics
-   sudo bash scripts/verify-pi-metrics.sh
-   ```
-
-   Do not restart Pi-hole, WireGuard, Authelia or SensorDash for this.
-
+sudo docker compose --profile metrics up -d --build grafana telemetry-ingest pi-node-exporter
+sudo docker compose --profile metrics ps
 ```
+
+   This includes **Pi node exporter**, which supplies the `HomeAway · System Health` dashboard. An older setup command omitted the exporter, so DNS/VPN could work while Pi CPU, RAM and uptime remained blank.
+
+   **For an existing installation with empty Pi panels:** make sure the Pi checkout is on the current `Production` branch with no unexpected tracked modifications, then run:
+
+```bash
+git switch Production
+git pull --ff-only origin Production
+sudo docker compose --profile metrics up -d --no-deps pi-node-exporter
+sudo docker compose --profile metrics up -d --no-deps --force-recreate victoria-metrics
+sleep 40
+sudo bash scripts/verify-pi-metrics.sh
+```
+
+   The second Compose command recreates **only VictoriaMetrics**, preserving its bind-mounted history and loading the latest `monitoring/scrape.yml`. It may briefly interrupt graph ingestion but does not restart Pi-hole, WireGuard, or Windows fan control.
+
+   The verification probes both the exporter's private Docker endpoint and VictoriaMetrics. Interpret its output:
+
+   - **Exporter unreachable:** check `sudo docker compose --profile metrics ps pi-node-exporter` and `sudo docker compose --profile metrics logs --tail=60 pi-node-exporter`.
+   - **Exporter reachable, `pi-node` job absent:** VictoriaMetrics is likely running an older scrape configuration; verify the checkout and recreate only VictoriaMetrics as above.
+   - **`up{job="pi-node"}` is 0:** the VM target is configured but scraping failed; check `sudo docker compose --profile metrics logs --tail=60 victoria-metrics pi-node-exporter`.
+   - **CPU, RAM, and boot-time checks all PASS:** VictoriaMetrics is receiving Pi data. Open `HomeAway · System Health`, select the last 15–60 minutes, refresh the Grafana page, and inspect panel queries/datasource if still empty. Thermal zones and disk-device names are kernel-dependent and can legitimately be absent.
+
+   The troubleshooting script never changes Compose services or Windows hardware controls.
 
 6. Open `http://PI_LAN_IP:3000`, sign in as `admin` using the generated password, and visit **HomeAway → SensorDash · Hardware Telemetry**. The data source and dashboard are provisioned from versioned files. Charts stay empty until the Windows collector is explicitly configured and running.
 
