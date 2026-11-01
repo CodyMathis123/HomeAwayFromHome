@@ -24,6 +24,7 @@ class DNS01StagingContracts(unittest.TestCase):
         staging = (ROOT / "control/gateway/Caddyfile.dns01-staging").read_text()
         self.assertNotIn("import /etc/caddy/Caddyfile.legacy", staging)
         self.assertNotIn("tls internal", staging)
+        self.assertIn("auto_https disable_redirects", staging)
         self.assertIn("forward_auth authelia:9091", live)
         self.assertIn("tls internal", live)
         self.assertNotIn("forward_auth", staging)
