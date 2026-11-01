@@ -7,7 +7,8 @@ const vm = require('node:vm');
 const path = require('node:path');
 const script = fs.readFileSync(path.join(__dirname, '../../control/api/readiness.js'), 'utf8');
 
-function simulate({role = 'admins', servicesFail = false, hostsFail = false, protocol = 'https:'} = {}) {
+function simulate({role = 'admins', servicesFail = false, hostsFail = false,
+  malformedServices = false, malformedHosts = false, protocol = 'https:'} = {}) {
   let currentRole = role;
   const calls = [];
   const elements = new Map();
@@ -35,6 +36,7 @@ function simulate({role = 'admins', servicesFail = false, hostsFail = false, pro
     if (url === '/api/status')
       return servicesFail ? {ok:false,status:503} :
         {ok:true,json:async()=>({checks:[
+          ...(malformedServices ? [null, false, {id:'dns',ok:'yes',detail:null}] : []),
           {id:'dns',ok:true,detail:'DNS lookup succeeded'},
           {id:'wireguard',ok:true,detail:'Admin listener reachable; tunnel not verified'},
           {id:'monitor',ok:false,detail:'Optional Grafana metrics profile may be disabled'}
@@ -42,6 +44,7 @@ function simulate({role = 'admins', servicesFail = false, hostsFail = false, pro
     if (url === '/control/api/hosts')
       return hostsFail ? {ok:false,status:503} :
         {ok:true,json:async()=>({hosts:[
+          ...(malformedHosts ? [null, false] : []),
           {state:'online',name:'Do not disclose hostname',id:'one'},
           {state:'offline',name:'Do not disclose other host',id:'two'}
         ]})};
@@ -102,6 +105,17 @@ function simulate({role = 'admins', servicesFail = false, hostsFail = false, pro
   await missingHosts.settle();
   assert.equal(missingHosts.element('readiness-dns').textContent, 'Responding');
   assert.equal(missingHosts.element('readiness-hosts').textContent, 'Unknown');
+
+  // Malformed entries are treated as invalid/missing evidence, never as
+  // an invalid admin session. The other status source remains independent.
+  const malformed = simulate({malformedServices:true, malformedHosts:true});
+  malformed.readiness.start({capabilities:{role:'admins'}});
+  await malformed.settle();
+  assert.equal(malformed.element('setup-readiness').hidden, false);
+  assert.equal(malformed.element('readiness-dns').textContent, 'Responding');
+  assert.equal(malformed.element('readiness-hosts').textContent, '1 / 4');
+  assert.equal(malformed.element('readiness-refresh').disabled, false);
+  assert.ok(!/Authorization unavailable/.test(malformed.element('readiness-updated').textContent));
 
   const revoked = simulate();
   revoked.readiness.start({capabilities:{role:'admins'}});
