@@ -109,54 +109,28 @@ jobs:
           python3 scripts/integration-grafana.py
 
   dns01-staging:
-    # This opt-in stage is never exercised against the user's real DNS zone.
-    # Do not rebuild Caddy in every future unrelated PR.
+    # Build/test isolated ACME staging without a token or live DNS changes.
     if: github.head_ref == 'feature/phase3-dns01-staging-prep' || github.ref == 'refs/heads/feature/phase3-dns01-staging-prep'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
-      - name: Build exact Caddy and DNS provider versions
+      - name: Build exact pinned Caddy DNS module
         run: |
           docker build -f control/gateway/Dockerfile.dns01 -t homeaway-caddy-dns01:ci ./control/gateway
           docker run --rm --entrypoint caddy homeaway-caddy-dns01:ci list-modules | grep -Fx dns.providers.cloudflare
-      - name: Adapt staging Caddyfile offline without issuance or a real token
+      - name: Adapt staging-only Caddyfile offline (no issuance)
         run: |
           docker run --rm --entrypoint caddy \
             -e CF_API_TOKEN=ci-synthetic-placeholder \
-            -e HOMEAWAY_DOMAIN=homeaway.home.arpa \
-            -e HOMEAWAY_AUTH_DOMAIN=auth.homeaway.home.arpa \
-            -e HOMEAWAY_METRICS_DOMAIN=metrics.homeaway.home.arpa \
-            -e HOMEAWAY_PUBLIC_HOME=home.homeawayfromhome.house \
-            -e HOMEAWAY_PUBLIC_AUTH=auth.homeawayfromhome.house \
-            -e HOMEAWAY_PUBLIC_METRICS=metrics.homeawayfromhome.house \
             -v "$PWD/control/gateway/Caddyfile.dns01-staging:/etc/caddy/Caddyfile:ro" \
-            -v "$PWD/control/gateway/Caddyfile:/etc/caddy/Caddyfile.legacy:ro" \
             homeaway-caddy-dns01:ci adapt --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null
-      - name: Validate optional Compose overlay without starting services
+      - name: Validate isolated Compose project (synthetic token only)
         run: |
-          cp .env.example .env
           mkdir -p secrets/control
-          for secret in pihole_password grafana_admin_password pihole_monitor_password wg_metrics_bearer; do
-            printf 'ci-synthetic-only\n' > "secrets/$secret"
-          done
           printf 'ci-synthetic-not-a-token\n' > secrets/control/cloudflare_dns01_token
-          HOMEAWAY_DOMAIN=homeaway.home.arpa \
-          HOMEAWAY_AUTH_DOMAIN=auth.homeaway.home.arpa \
-          HOMEAWAY_METRICS_DOMAIN=metrics.homeaway.home.arpa \
-          HOMEAWAY_PUBLIC_HOME=home.homeawayfromhome.house \
-          HOMEAWAY_PUBLIC_AUTH=auth.homeawayfromhome.house \
-          HOMEAWAY_PUBLIC_METRICS=metrics.homeawayfromhome.house \
-          PCCTL_GID=999 \
-          docker compose -f compose.yaml -f compose.control.yaml -f compose.dns01-staging.yaml --profile control --profile metrics config -q
-          HOMEAWAY_DOMAIN=homeaway.home.arpa \
-          HOMEAWAY_AUTH_DOMAIN=auth.homeaway.home.arpa \
-          HOMEAWAY_METRICS_DOMAIN=metrics.homeaway.home.arpa \
-          HOMEAWAY_PUBLIC_HOME=home.homeawayfromhome.house \
-          HOMEAWAY_PUBLIC_AUTH=auth.homeawayfromhome.house \
-          HOMEAWAY_PUBLIC_METRICS=metrics.homeawayfromhome.house \
-          PCCTL_GID=999 \
-          docker compose -f compose.yaml -f compose.control.yaml -f compose.dns01-staging.yaml --profile control --profile metrics config --format json | \
+          docker compose -p homeaway-dns01-staging -f compose.dns01-staging.yaml config -q
+          docker compose -p homeaway-dns01-staging -f compose.dns01-staging.yaml config --format json | \
             python3 scripts/check_dns01_resolved.py
 
   identity-lab:
