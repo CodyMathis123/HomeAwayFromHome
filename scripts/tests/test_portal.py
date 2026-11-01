@@ -4,6 +4,7 @@ import socket
 import struct
 import threading
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from portal.app import Handler, ThreadingHTTPServer, dns_probe, tcp_probe
@@ -82,6 +83,38 @@ class HttpTests(unittest.TestCase):
         self.assertEqual(status, 405)
         status, _, _ = self.request("GET", "/.env")
         self.assertEqual(status, 404)
+
+    def test_architecture_is_read_only_and_static(self):
+        status, headers, data = self.request("GET", "/architecture/")
+        self.assertEqual(status, 200)
+        self.assertIn(b"HomeAway architecture", data)
+        self.assertIn(b'href="#component-sensordash"', data)
+        self.assertIn(b'href="#component-pcctl"', data)
+        self.assertIn(b'aria-label="Scrollable HomeAway architecture map"', data)
+        self.assertIn("default-src 'none'", headers["Content-Security-Policy"])
+        self.assertIn("script-src 'self'", headers["Content-Security-Policy"])
+        self.assertEqual(self.request("POST", "/architecture/")[0], 405)
+        self.assertEqual(self.request("GET", "/architecture.js")[0], 200)
+        self.assertEqual(self.request("GET", "/navigation.js")[0], 200)
+
+    def test_portal_shell_assets_are_packaged(self):
+        root = Path(__file__).resolve().parents[2] / "portal"
+        packaged = (root / "Dockerfile").read_text()
+        overview = (root / "index.html").read_text()
+        architecture = (root / "architecture.html").read_text()
+        handler = (root / "app.py").read_text()
+        for filename in ("architecture.html", "architecture.js", "navigation.js"):
+            with self.subTest(filename=filename):
+                self.assertIn(filename, packaged)
+                self.assertIn('"' + filename + '"', handler)
+                self.assertTrue((root / filename).is_file())
+        self.assertIn('id="app-navigation"', overview)
+        self.assertIn('id="app-navigation"', architecture)
+        self.assertIn('id="services"', overview)
+        self.assertIn('href="/architecture/"', (root / "navigation.js").read_text())
+        self.assertIn("fetch('/api/control-config'", (root / "navigation.js").read_text())
+        self.assertIn("control.hidden = true", (root / "navigation.js").read_text())
+        self.assertNotIn("docker.sock", (root / "architecture.js").read_text())
 
     def test_status_is_accurately_scoped(self):
         sample = {"checkedAt": "2026-10-31T12:00:00+00:00", "checks": [
