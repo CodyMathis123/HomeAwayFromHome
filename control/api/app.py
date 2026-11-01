@@ -147,6 +147,7 @@ def computer_request(actor: str, operation: str, payload: dict) -> dict:
 DIAG_URL = "http://metrics-diagnostics:8095/v1/summary"
 DIAG_CHECKS = frozenset(("pi.scrape", "pi.cpu", "pi.memory", "pi.load",
                          "pi.thermal", "vm.free"))
+SERVICE_DIAG_CHECKS = frozenset(("service.pihole", "service.wireguard", "service.victoria"))
 DIAG_STATES = frozenset(("observed", "attention", "unknown", "stale"))
 DIAG_UNITS = frozenset(("boolean", "percent", "load", "celsius", "bytes"))
 TELEM_LABEL = re.compile(r"^[A-Za-z0-9_.:/-]{1,80}$")
@@ -188,6 +189,28 @@ def diagnostics_snapshot() -> dict:
             checks.append({"id": name, "state": state, "value": value,
                            "unit": unit, "label": label, "detail": detail,
                            "checkedAt": checked})
+        raw_service_checks = data.get("serviceChecks")
+        if not isinstance(raw_service_checks, list) or len(raw_service_checks) != len(SERVICE_DIAG_CHECKS):
+            raise ValueError("Invalid service scrape check count")
+        service_checks = []
+        service_ids = set()
+        for item in raw_service_checks:
+            if not isinstance(item, dict):
+                raise ValueError("Invalid service scrape entry")
+            name, state, value = item.get("id"), item.get("state"), item.get("value")
+            label, detail = item.get("label"), item.get("detail")
+            if (name not in SERVICE_DIAG_CHECKS or name in service_ids or
+                    state not in ("observed", "attention", "unknown") or
+                    item.get("unit") != "boolean" or
+                    (value is not None and (type(value) not in (int, float)
+                                             or value not in (0, 1))) or
+                    not isinstance(label, str) or not 1 <= len(label) <= 90 or
+                    not isinstance(detail, str) or not 1 <= len(detail) <= 190):
+                raise ValueError("Invalid service scrape check")
+            service_ids.add(name)
+            service_checks.append({"id": name, "state": state, "value": value,
+                                   "unit": "boolean", "label": label,
+                                   "detail": detail, "checkedAt": checked})
         section = data.get("telemetry")
         if not isinstance(section, dict) or section.get("state") not in ("observed", "unknown"):
             raise ValueError("Invalid telemetry evidence")
@@ -214,6 +237,7 @@ def diagnostics_snapshot() -> dict:
         return {"schemaVersion": 1, "checkedAt": checked,
                 "source": "Internal VictoriaMetrics instant samples",
                 "checks": checks,
+                "serviceChecks": service_checks,
                 "telemetry": {
                     "state": section["state"], "windowHours": 24,
                     "hosts": filtered_hosts,
