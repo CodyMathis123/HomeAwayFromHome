@@ -86,15 +86,19 @@ def certificate_names(cert: x509.Certificate) -> list[str]:
 
 
 def hostname_matches(names: list[str], hostname: str) -> bool:
-    # Match against SANs only. CN fallback is not used.
-    # SSL's hostname verifier correctly handles wildcard limitations.
-    try:
-        ssl.match_hostname({"subjectAltName": [("DNS", n) for n in names
-                                                if not re.fullmatch(r"[0-9:.]+", n)]},
-                           hostname)
-        return True
-    except (ssl.CertificateError, ValueError):
-        return False
+    # Informational SAN match only; never treated as independent proof of
+    # certificate trust. Supports exact DNS names and one-label wildcards.
+    # Python 3.12 removed ssl.match_hostname().
+    host = hostname.lower()
+    for name in names:
+        candidate = name.lower()
+        if candidate == host:
+            return True
+        if (candidate.startswith("*.") and candidate.count("*") == 1 and
+                host.endswith(candidate[1:]) and
+                host.count(".") == candidate.count(".")):
+            return True
+    return False
 
 
 def observe(probe_id: str, target: tuple[str, int],
