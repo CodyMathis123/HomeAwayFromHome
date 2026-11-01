@@ -172,6 +172,51 @@ class DashboardContracts(unittest.TestCase):
             self.assertIn("on(host,sensor) group_left(name,alias,device)", query)
             self.assertEqual(panels[id]["targets"][0]["legendFormat"], "{{name}}")
 
+    def test_static_drive_temperature_limits_never_count_as_live_heat(self):
+        # LHM's NVMe "Warning Temperature" and "Critical Temperature"
+        # are device specifications, not physical/current observations.
+        # The metadata name label uses underscores after line-protocol
+        # sanitization; PromQL regex matching must be case-insensitive.
+        import re
+        pattern = r"(?i).*(warning|critical).*"
+        for name in ("Warning_Temperature", "Critical_Temperature",
+                     "critical temperature", "Temperature Warning"):
+            self.assertRegex(name, pattern)
+        for name in ("Composite_Temperature", "Temperature_1", "Drive_Temperature"):
+            self.assertNotRegex(name, pattern)
+
+        scenarios = (
+            ("storage.json", (2, 5)),
+            ("overview.json", (3, 200)),
+            ("sensordash.json", (1, 111, 112)),
+        )
+        selector = 'name!~"(?i).*(warning|critical).*"'
+        for file, panel_ids in scenarios:
+            d = json.loads((PANELS / file).read_text(encoding="utf-8"))
+            panels = {p["id"]: p for p in d["panels"]}
+            for panel_id in panel_ids:
+                query = panels[panel_id]["targets"][0]["expr"]
+                with self.subTest(dashboard=file, panel=panel_id):
+                    self.assertIn(selector, query)
+                    self.assertIn("sensordash_sensor_info_value", query)
+                    self.assertIn("on(host,sensor)", query)
+                    self.assertIn('kind="Temperature"', query)
+            if file == "storage.json":
+                self.assertIn('device_type="Storage"',
+                              panels[2]["targets"][0]["expr"])
+                self.assertIn('device_type="Storage"',
+                              panels[5]["targets"][0]["expr"])
+            elif file == "overview.json":
+                self.assertIn('device_type="Storage"',
+                              panels[3]["targets"][0]["expr"])
+        # Static/diagnostic limits are not deleted from exporter metadata.
+        storage = json.loads((PANELS / "storage.json").read_text(encoding="utf-8"))
+        self.assertNotIn(selector, next(p for p in storage["panels"]
+                                        if p["id"] == 10)["targets"][0]["expr"])
+        raw = json.loads((PANELS / "sensordash.json").read_text(encoding="utf-8"))
+        self.assertNotIn(selector, next(p for p in raw["panels"]
+                                        if p["id"] == 10)["targets"][0]["expr"])
+
     def test_storage_and_events_are_observational(self):
         storage = json.loads((PANELS / "storage.json").read_text(encoding="utf-8"))
         events = json.loads((PANELS / "events.json").read_text(encoding="utf-8"))
