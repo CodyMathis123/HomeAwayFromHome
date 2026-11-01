@@ -1,0 +1,23 @@
+# OPT-IN ONLY: do not include in existing deploy-ui.sh or other production
+# stacks. Requires explicit operator DNS, token, Caddy and rollback approval.
+# New names are staging validation stubs; current .home.arpa auth is unchanged.
+services:
+  gateway:
+    image: homeaway-caddy-dns01:2.11.7-cloudflare-v0.2.4
+    build:
+      context: ./control/gateway
+      dockerfile: Dockerfile.dns01
+    entrypoint: ["/usr/local/bin/start-dns01"]
+    environment:
+      HOMEAWAY_PUBLIC_HOME: ${HOMEAWAY_PUBLIC_HOME:?Set new private homepage name}
+      HOMEAWAY_PUBLIC_AUTH: ${HOMEAWAY_PUBLIC_AUTH:?Set new private auth name}
+      HOMEAWAY_PUBLIC_METRICS: ${HOMEAWAY_PUBLIC_METRICS:?Set new private metrics name}
+    secrets:
+      - cloudflare_dns01_token
+    volumes:
+      - ./control/gateway/Caddyfile.dns01-staging:/etc/caddy/Caddyfile:ro
+      - ./control/gateway/Caddyfile:/etc/caddy/Caddyfile.legacy:ro
+
+secrets:
+  cloudflare_dns01_token:
+    file: ./secrets/control/cloudflare_dns01_token
