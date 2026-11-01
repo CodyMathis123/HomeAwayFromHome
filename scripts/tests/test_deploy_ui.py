@@ -25,6 +25,14 @@ esac
 SUDO_STUB = r"""#!/usr/bin/env bash
 set -euo pipefail
 printf 'sudo %s\n' "$*" >> "$DEPLOY_TEST_LOG"
+if [[ "${1:-}" == docker && "${2:-}" == ps ]]; then
+  echo gateway-test-cid
+  exit 0
+fi
+if [[ "${1:-}" == docker && "${2:-}" == inspect ]]; then
+  printf '%s\\n' "$PWD/control/gateway/Caddyfile.production"
+  exit 0
+fi
 [[ "${1:-}" == docker && "${2:-}" == compose ]] || exit 88
 if [[ "$*" == *"config --format json"* ]]; then
   printf '{"name":"%s"}\n' "${FAKE_PROJECT:-homeawayfromhome}"
@@ -55,6 +63,11 @@ class TargetedUiDeployTests(unittest.TestCase):
         for name in ("compose.yaml", "compose.control.yaml",
                      "compose.accounts.yaml", "compose.computers.yaml", "compose.production.yaml"):
             (root / name).write_text("services: {}\n", encoding="utf-8")
+        (root / "control/gateway").mkdir(parents=True)
+        (root / "control/gateway/Caddyfile.production").write_text(
+            "# synthetic gateway configuration\\n", encoding="utf-8")
+        (root / "scripts/prepare-gateway-permissions.py").write_text(
+            "# synthetic no-op for deploy test\\n", encoding="utf-8")
         fake = root / "fakebin"
         fake.mkdir()
         for name, body in (("git", GIT_STUB), ("sudo", SUDO_STUB)):
