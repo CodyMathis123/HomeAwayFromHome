@@ -41,7 +41,9 @@ class AuthContracts(unittest.TestCase):
         self.assertIn("/api/authz/forward-auth", caddy)
         self.assertIn("request_header -X-HomeAway-User", caddy)
         self.assertIn("route {", caddy)
-        self.assertIn("copy_headers Remote-User>X-HomeAway-User", caddy)
+        self.assertIn("copy_headers Remote-User>X-HomeAway-User Remote-Groups>X-HomeAway-Groups", caddy)
+        self.assertIn("request_header -X-HomeAway-Groups", caddy)
+        self.assertIn("request_header -X_HomeAway_Groups", caddy)
         self.assertNotIn("header_up X-HomeAway-User {http.request.header.Remote-User}", caddy)
         self.assertLess(caddy.index("request_header -X-HomeAway-User"),
                         caddy.index("forward_auth authelia:9091"))

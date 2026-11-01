@@ -77,7 +77,8 @@ def main():
     auth_pos = order.index("forward_auth")
     backend_pos = order.index("pc_control")
     assert auth_pos < backend_pos, "Backend must run only after Authelia"
-    for untrusted in ("Remote-User", "Remote_User", "X-HomeAway-User", "X_HomeAway_User"):
+    for untrusted in ("Remote-User", "Remote_User", "X-HomeAway-User", "X_HomeAway_User",
+                      "Remote-Groups", "Remote_Groups", "X-HomeAway-Groups", "X_HomeAway_Groups"):
         assert ("delete:" + untrusted) in order[:auth_pos], (
             f"Untrusted identity {untrusted} must be removed before auth: {order!r}"
         )
@@ -86,8 +87,9 @@ def main():
     adapted_control = json.dumps(control)
     assert "{http.reverse_proxy.header.Remote-User}" in adapted_control
     assert "X-Homeaway-User" in adapted_control
+    assert "X-Homeaway-Groups" in adapted_control
     caddy_source = (ROOT / "control/gateway/Caddyfile").read_text()
-    assert "copy_headers Remote-User>X-HomeAway-User" in caddy_source
+    assert "copy_headers Remote-User>X-HomeAway-User Remote-Groups>X-HomeAway-Groups" in caddy_source
     assert "header_up X-HomeAway-User {http.request.header.Remote-User}" not in caddy_source
     print("PASS: Caddy clears spoofed identity before auth and forwards verified username", flush=True)
 

@@ -30,9 +30,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate Python code and unit tests
         run: |
-          python3 -m compileall -q portal ingest monitoring scripts/tests
+          python3 -m compileall -q portal ingest monitoring control/accounts scripts/tests
           node --check portal/app.js
           node --check control/api/app.js
+          node --check control/api/accounts.js
           python3 -m unittest discover -s scripts/tests -v
           python3 scripts/check_doc_links.py
       - name: Validate Bash script syntax
@@ -50,6 +51,15 @@ jobs:
           docker compose config -q
           docker compose --profile metrics config -q
           HOMEAWAY_DOMAIN=homeaway.home.arpa HOMEAWAY_AUTH_DOMAIN=auth.homeaway.home.arpa HOMEAWAY_METRICS_DOMAIN=metrics.homeaway.home.arpa PCCTL_GID=999 docker compose -f compose.yaml -f compose.control.yaml --profile control --profile metrics config -q
+      - name: Validate feature-gated account directory overlay (no services started)
+        run: |
+          mkdir -p secrets/control
+          for name in lldap_admin_password lldap_jwt_secret lldap_key_seed account_broker_token; do
+            printf '%s\n' "synthetic-ci-only-secret-value-for-$name" > "secrets/control/$name"
+          done
+          HOMEAWAY_DOMAIN=homeaway.home.arpa HOMEAWAY_AUTH_DOMAIN=auth.homeaway.home.arpa HOMEAWAY_METRICS_DOMAIN=metrics.homeaway.home.arpa PCCTL_GID=999 \
+            docker compose -f compose.yaml -f compose.control.yaml -f compose.accounts.yaml --profile control --profile accounts --profile metrics config -q
+          python3 scripts/check_accounts_contracts.py
       - name: Build application and wg-easy images without starting VPN
         run: |
           docker compose build portal wg-easy
@@ -85,3 +95,28 @@ jobs:
           trap 'docker rm -f homeaway-grafana-ci >/dev/null 2>&1 || true' EXIT
           python3 scripts/integration-grafana.py
 
+  identity-lab:
+    # Disposable fake users only; never mount the Pi's live Authelia files,
+    # never publish a directory service on a non-loopback interface.
+    if: (github.event_name == 'pull_request' && github.head_ref == 'feature/homeaway-account-management') || (github.event_name == 'push' && github.ref == 'refs/heads/feature/homeaway-account-management')
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe LLDAP account/role mutations with synthetic identities
+        env:
+          HOMEAWAY_LLDAP_LAB: "1"
+        run: python3 scripts/integration-identity-lab.py
+
+  authelia-ldap-session-lab:
+    # Disposable isolated identity store only. Tests two independent real
+    # password + TOTP sessions with role revocation; never mounts live data.
+    if: (github.event_name == 'pull_request' && github.head_ref == 'feature/homeaway-account-management') || (github.event_name == 'push' && github.ref == 'refs/heads/feature/homeaway-account-management')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test Authelia LLDAP role revocation with existing TOTP sessions
+        env:
+          HOMEAWAY_LLDAP_LAB: "1"
+        run: python3 scripts/integration-authelia-lldap.py

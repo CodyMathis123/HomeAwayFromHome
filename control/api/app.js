@@ -3,6 +3,15 @@ const $ = id => document.getElementById(id);
 const hosts = $('hosts');
 const status = $('updated');
 let pending = new Set();
+let identity = null;
+async function loadIdentity() {
+  const response = await fetch('/control/api/me', {cache:'no-store', credentials:'same-origin'});
+  if (!response.ok) throw new Error('Account authorization unavailable');
+  identity = await response.json();
+  $('identity').textContent = identity.user + ' · ' + identity.capabilities.role;
+  if (typeof HomeAwayAccounts !== 'undefined') HomeAwayAccounts.start(identity);
+  return identity;
+}
 const actions = [
   ['wake', 'Wake'],
   ['sleep', 'Sleep'],
@@ -24,7 +33,8 @@ function card(item) {
   top.append(heading, state);
   article.append(top, node('p', 'detail', item.detail));
   const row = node('div', 'buttons');
-  actions.forEach(([action, label]) => {
+  actions.filter(([action]) => identity?.capabilities?.actions?.includes(action))
+    .forEach(([action, label]) => {
     const btn = node('button', action === 'shutdown' ? 'danger' : '', label);
     btn.type = 'button';
     if (pending.has(item.id)) btn.disabled = true;
@@ -39,6 +49,7 @@ async function refresh() {
   button.disabled = true;
   status.textContent = 'Checking SSH reachability…';
   try {
+    await loadIdentity();
     const response = await fetch('/control/api/hosts', {cache: 'no-store', credentials: 'same-origin'});
     if (!response.ok) throw new Error('Could not read computer status');
     const data = await response.json();
@@ -49,7 +60,7 @@ async function refresh() {
   } finally { button.disabled = false; }
 }
 async function doAction(item, action) {
-  if (pending.has(item.id)) return;
+  if (pending.has(item.id) || !identity?.capabilities?.actions?.includes(action)) return;
   const destructive = action === 'restart' || action === 'shutdown';
   if (!window.confirm('Request ' + action + ' for ' + item.name + '? This may interrupt unsaved work.')) return;
   const confirm = destructive ? window.prompt('Enter computer ID "' + item.id + '" to confirm:') : '';
@@ -75,6 +86,11 @@ async function doAction(item, action) {
 }
 async function loadHistory() {
   try {
+    if (!identity) await loadIdentity();
+    if (!identity.capabilities.history) {
+      $('events').textContent = 'Activity is available to administrators.';
+      return;
+    }
     const response = await fetch('/control/api/history', {cache:'no-store'});
     if (!response.ok) throw new Error('History unavailable');
     const data = await response.json();
