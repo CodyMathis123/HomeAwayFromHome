@@ -50,6 +50,7 @@ LLDAP `admins` role**, enforced server-side for every inventory request.
 | Disable | Typed ID, archive snapshot written **first**, then removes host from active command registry; in-flight commands cannot be cancelled |
 | Archive retired host | Keeps private recovery snapshot and audit; host remains disabled |
 | Restore retired host | Typed ID, current revisions, pinned host-key and authenticated SSH **reverified**, then atomic active promotion |
+| Audit history | Admin-only read of the most recent 50 fixed-schema actions across rotated logs; actor, computer ID, timestamp, operation and outcome only |
 | Prepare Windows | Manual local elevated setup and independently verified SSH fingerprint; no remote arbitrary installer |
 
 Viewer and Operator permissions remain unchanged. The original power-control socket is independent. Duplicate IDs, MACs and IPs
@@ -110,8 +111,8 @@ recovery data. The system does **not** revoke already executing SSH/power action
    `-f compose.computers.yaml` to the already working
    `compose.yaml` + `compose.control.yaml` + `compose.accounts.yaml`
    invocation, **recreating only `pc-control`**, never Pi-hole/WireGuard.
-6. Verify admin-only inventory listing, draft creation/discard, and existing
-   PC/Shortcut functionality first. **Do not activate or disable an existing
+6. Verify admin-only inventory listing, draft creation/discard, audit
+   history access, and existing PC/Shortcut functionality first. **Do not activate or disable an existing
    computer in the initial smoke test**. For a truly new test PC, first use
    the reviewed local Windows installer, independently note its ED25519 host
    fingerprint on the Windows console, then run the Pi trust helper:
@@ -167,8 +168,8 @@ and operational acceptance gate is explicitly agreed.
 - C3: polish the reviewed Windows installation handoff and make manual
   fingerprint comparison/SSH trust diagnostics easier; no auto-accept, no
   arbitrary LAN scanning or SSH keys transmitted to a browser.
-- C4: refine mobile/keyboard usability, explain unknown/offline SSH status,
-  and expose bounded administrative audit history.
+- C4: bounded, lazily loaded admin-only audit history is now available.
+  Refine mobile/keyboard usability and clarify offline/SSH status before live rollout.
 - C5: read-only Pi preflight, opt-in host socket smoke and management-only
   rollback scripts are implemented with synthetic CI validation. Next: actual
   Pi/Windows supervised verification and break-glass recovery before merging
