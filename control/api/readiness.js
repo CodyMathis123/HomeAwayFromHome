@@ -58,7 +58,8 @@ const HomeAwayReadiness = (() => {
       ]);
       if (services.status === 'fulfilled' && Array.isArray(services.value.checks)) {
         const checks = new Map(services.value.checks
-          .filter(item => ['dns', 'wireguard', 'monitor'].includes(item.id))
+          .filter(item => item && typeof item === 'object' &&
+          ['dns', 'wireguard', 'monitor'].includes(item.id))
           .map(item => [item.id, item]));
         for (const id of ['dns', 'wireguard', 'monitor']) {
           const check = checks.get(id);
@@ -81,7 +82,8 @@ const HomeAwayReadiness = (() => {
 
       if (computers.status === 'fulfilled' && Array.isArray(computers.value.hosts)) {
         const entries = computers.value.hosts;
-        const reachable = entries.filter(item => item.state === 'online').length;
+        const reachable = entries.filter(item => item && typeof item === 'object' &&
+          item.state === 'online').length;
         display('hosts', 'observed', entries.length ? reachable + ' / ' + entries.length : 'No entries',
           entries.length
             ? 'Computers responding to the existing restricted SSH status check; this does not prove a power command completed'
