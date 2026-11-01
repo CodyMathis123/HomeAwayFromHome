@@ -1,6 +1,8 @@
 # Computer inventory, pairing and management UI — technical implementation plan
 
-> **Implementation status (November 1, 2026):** C1–C4 are implemented on the **draft** feature branch: transactional active inventory, an independent non-root writer, admin-only browser UI, verified SSH draft activation, and disable/archive/SSH-reverified restore. C5 preflight, safe socket smoke and management-only rollback scripts are implemented. Full CI is required; **no new Pi or Windows services have been deployed or physically tested**. Existing `pcctl` controls, iOS Shortcut, SSH credentials and fan control are unchanged. Supervised hardware acceptance remains required before merging PR #10.
+> **Current status (November 1, 2026):** This design is **implemented in `Production`**, merged through [PR #14](https://github.com/CodyMathis123/HomeAwayFromHome/pull/14). The Pi socket, role/UI and inactive draft smoke checks passed, and the operator reported completing the Production container cutover. Real additional Windows pairing, host-key pinning, actual activation, disable/archive/restore and offline recovery on a second PC are **still deferred**; do not describe those capabilities as physically accepted. See the [current roadmap](../ROADMAP.md) and [operator rollout guide](../COMPUTER-ADMIN-ROLLOUT.md).
+
+> **Design-history warning:** The numbered sections below record the pre-implementation baseline and decisions from the original draft PR #10. Statements such as “the current page has no management UI” and “not deployed” are historical, not live Production status. The production implementation is the source of truth; this document is a design/acceptance reference.
 
 ## 1. Verified existing infrastructure
 
