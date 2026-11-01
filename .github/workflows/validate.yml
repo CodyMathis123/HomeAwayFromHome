@@ -189,7 +189,7 @@ jobs:
           docker run --rm --network none --cap-drop ALL \
             --security-opt no-new-privileges:true --read-only \
             --tmpfs /data --tmpfs /config --tmpfs /tmp \
-            -e CF_API_TOKEN=offline-synthetic-no-access \
+            -e CF_API_TOKEN=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA \
             -e HOMEAWAY_DOMAIN=homeaway.home.arpa \
             -e HOMEAWAY_AUTH_DOMAIN=auth.homeaway.home.arpa \
             -e HOMEAWAY_METRICS_DOMAIN=metrics.homeaway.home.arpa \
