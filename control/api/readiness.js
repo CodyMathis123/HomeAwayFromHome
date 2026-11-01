@@ -134,6 +134,29 @@ const HomeAwayReadiness = (() => {
       : 'Certificate check time unavailable';
   }
 
+  function displayBackup(data) {
+    const label = $('readiness-backup');
+    const detail = $('readiness-backup-detail');
+    const checked = $('readiness-backup-checked');
+    if (!label || !detail || !checked) return;
+    const stamp = data?.checkedAt ? Date.parse(data.checkedAt) : NaN;
+    const evidenceAgeHours = Number.isFinite(stamp) ? (Date.now() - stamp) / 3600000 : Infinity;
+    const backupStamp = data?.lastEncryptedBackupAt ? Date.parse(data.lastEncryptedBackupAt) : NaN;
+    const verified = data?.checksumVerified === true &&
+      Number.isFinite(data?.ageHours) && Number.isFinite(backupStamp);
+    const fresh = verified && evidenceAgeHours >= 0 && evidenceAgeHours <= 24;
+    label.dataset.state = fresh ? (data.ageHours <= 168 ? 'observed' : 'stale') : 'unknown';
+    label.textContent = !fresh ? 'Evidence unavailable or stale' :
+      data.ageHours <= 168 ? 'Checksum verified' : 'Backup older than 7 days';
+    detail.textContent = fresh
+      ? 'Encrypted backup created ' + new Date(backupStamp).toLocaleString() +
+        '. SHA-256 matched at observation time. Decryption and clean-host restore are not established.'
+      : 'Run the Pi backup status publisher to refresh local checksum evidence.';
+    checked.textContent = Number.isFinite(stamp) ?
+      'Last local checksum observation ' + new Date(stamp).toLocaleString() :
+      'No local checksum observation available';
+  }
+
   async function readJson(path) {
     const response = await fetch(path, {cache: 'no-store', credentials: 'same-origin'});
     if (!response.ok) throw new Error('Read-only status unavailable');
@@ -151,6 +174,7 @@ const HomeAwayReadiness = (() => {
     unknown('Checking source…');
     metricsUnknown('Checking existing VictoriaMetrics series…');
     certificatesUnknown('Checking private TLS endpoints…');
+    displayBackup(null);
     updated.textContent = 'Checking authorized status…';
     try {
       // /control/api/me must be freshly verified before querying status.
@@ -169,11 +193,12 @@ const HomeAwayReadiness = (() => {
 
       // Each existing API is independently optional. One failure must not
       // misclassify another component or erase independently observed results.
-      const [services, computers, metrics, certificates] = await Promise.allSettled([
+      const [services, computers, metrics, certificates, backup] = await Promise.allSettled([
         readJson('/api/status'),
         readJson('/control/api/hosts'),
         readJson('/control/api/admin/diagnostics'),
-        readJson('/control/api/admin/certificates')
+        readJson('/control/api/admin/certificates'),
+        readJson('/control/api/admin/backup-status')
       ]);
       if (services.status === 'fulfilled' && Array.isArray(services.value.checks)) {
         const checks = new Map(services.value.checks
@@ -223,6 +248,7 @@ const HomeAwayReadiness = (() => {
         displayCertificates(certificates.value);
       else
         certificatesUnknown('Certificate observer unavailable; issuer/expiry not verified');
+      displayBackup(backup.status === 'fulfilled' ? backup.value : null);
       updated.textContent = 'Checked ' + new Date().toLocaleTimeString() +
         ' · Individual statuses have limited scope';
     } catch (_) {
@@ -231,6 +257,7 @@ const HomeAwayReadiness = (() => {
       unknown('Administrator authorization could not be verified');
       metricsUnknown('Administrator authorization could not be verified');
       certificatesUnknown('Administrator authorization could not be verified');
+      displayBackup(null);
       updated.textContent = 'Authorization unavailable; reopen HomeAway Control and sign in';
       allowed = false;
       view.hidden = true;
