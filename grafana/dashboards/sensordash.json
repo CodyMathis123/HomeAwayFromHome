@@ -213,7 +213,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "label_replace(label_replace(label_replace(label_replace(sensordash_reading_value{host=~\"$host\",sensor=~\"$sensor\",kind=\"Temperature\"} * on(host,sensor) group_left(name,alias,device) (sensordash_sensor_info_value{host=~\"$host\"} == 1), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
+          "expr": "label_replace(label_replace(label_replace(label_replace(sensordash_reading_value{host=~\"$host\",sensor=~\"$sensor\",kind=\"Temperature\"} * on(host,sensor) group_left(name,alias,device) (sensordash_sensor_info_value{host=~\"$host\",name!~\"(?i).*(warning|critical).*\"} == 1), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
           "legendFormat": "{{name}}",
           "range": true
         }
@@ -556,7 +556,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max(sensordash_reading_value{host=~\"$host\",sensor=~\"$sensor\",kind=\"Temperature\"})",
+          "expr": "max(sensordash_reading_value{host=~\"$host\",sensor=~\"$sensor\",kind=\"Temperature\"} * on(host,sensor) group_left(name,device,device_type) (sensordash_sensor_info_value{host=~\"$host\",name!~\"(?i).*(warning|critical).*\"} == 1))",
           "instant": true,
           "legendFormat": "Highest temperature · now"
         }
@@ -617,7 +617,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max(max_over_time(sensordash_reading_value{host=~\"$host\",sensor=~\"$sensor\",kind=\"Temperature\"}[$__range]))",
+          "expr": "max(max_over_time(sensordash_reading_value{host=~\"$host\",sensor=~\"$sensor\",kind=\"Temperature\"}[$__range]) * on(host,sensor) group_left(name,device,device_type) (sensordash_sensor_info_value{host=~\"$host\",name!~\"(?i).*(warning|critical).*\"} == 1))",
           "instant": true,
           "legendFormat": "Temperature peak · range"
         }
