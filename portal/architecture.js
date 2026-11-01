@@ -7,7 +7,7 @@ window.HomeAwayArchitecture = (() => {
     if (!view || initializedView === view) return;
     initializedView = view;
       const show = (id, href) => {
-        const link = document.getElementById(id);
+        const link = view.closest('main.shell')?.querySelector('#' + id);
         if (!link) return;
         link.href = href;
         link.hidden = false;
