@@ -6,7 +6,8 @@
   const routeFor = pathname => pathname === '/' || pathname === '/index.html'
     ? '/' : pathname === '/architecture/' || pathname === '/architecture'
       ? '/architecture/' : null;
-  const main = document.querySelector('main.shell');
+  const slot = document.getElementById('page-view-slot');
+  const main = slot?.querySelector('main.shell');
   if (!main) return;
   const initialRoute = routeFor(location.pathname);
   if (!initialRoute) return;
@@ -45,13 +46,21 @@
       views.set(route, next);
     }
     if (thisSequence !== sequence) return false;
-    const active = document.querySelector('main.shell');
-    if (active !== next) active.replaceWith(next);
+    const active = slot.querySelector('main.shell:not([hidden])');
+    if (active !== next) {
+      if (active) {
+        active.hidden = true;
+        active.inert = true;
+      }
+      if (!next.isConnected) slot.append(next);
+      next.hidden = false;
+      next.inert = false;
+    }
     if (writeHistory) history.pushState({homeAwayPage: route}, '', target.pathname + target.search + target.hash);
     document.title = titles[route];
     window.HomeAwayNavigation?.sync();
     if (route === '/architecture/') window.HomeAwayArchitecture?.init();
-    else window.HomeAwayOverview?.init();
+    else window.HomeAwayOverview?.show();
     position(target.hash);
     next.setAttribute('tabindex', '-1');
     next.focus({preventScroll: true});
