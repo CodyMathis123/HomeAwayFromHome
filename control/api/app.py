@@ -142,6 +142,87 @@ def computer_request(actor: str, operation: str, payload: dict) -> dict:
         raise BrokerError(503, "Inventory service unavailable") from exc
 
 
+# Only the authenticated control API may expose fixed, redacted diagnostics.
+# The observer lives on a separate bridge and does not accept arbitrary queries.
+DIAG_URL = "http://metrics-diagnostics:8095/v1/summary"
+DIAG_CHECKS = frozenset(("pi.scrape", "pi.cpu", "pi.memory", "pi.load",
+                         "pi.thermal", "vm.free"))
+DIAG_STATES = frozenset(("observed", "attention", "unknown", "stale"))
+DIAG_UNITS = frozenset(("boolean", "percent", "load", "celsius", "bytes"))
+TELEM_LABEL = re.compile(r"^[A-Za-z0-9_.:/-]{1,80}$")
+
+
+def diagnostics_snapshot() -> dict:
+    """Bounded GET-only adapter. Never forward raw MetricsQL or credentials."""
+    if os.getenv("HOMEAWAY_DIAGNOSTICS_URL") != DIAG_URL:
+        raise BrokerError(503, "Diagnostics observer is not configured")
+    try:
+        request = Request(DIAG_URL, headers={"Accept": "application/json"}, method="GET")
+        with urlopen(request, timeout=7) as response:
+            raw = response.read(32769)
+        if len(raw) > 32768:
+            raise ValueError("Oversized diagnostics response")
+        data = json.loads(raw)
+        if not isinstance(data, dict) or type(data.get("schemaVersion")) is not int or data["schemaVersion"] != 1:
+            raise ValueError("Unsupported diagnostics schema")
+        checked = data.get("checkedAt")
+        if not isinstance(checked, str) or not 10 <= len(checked) <= 48:
+            raise ValueError("Invalid check time")
+        supplied = data.get("checks")
+        if not isinstance(supplied, list) or len(supplied) != len(DIAG_CHECKS):
+            raise ValueError("Invalid probe count")
+        ids = set()
+        checks = []
+        for item in supplied:
+            if not isinstance(item, dict):
+                raise ValueError("Invalid metric entry")
+            name, state, value = item.get("id"), item.get("state"), item.get("value")
+            unit, label, detail = item.get("unit"), item.get("label"), item.get("detail")
+            if (name not in DIAG_CHECKS or name in ids or state not in DIAG_STATES or
+                    unit not in DIAG_UNITS or not isinstance(label, str) or not 1 <= len(label) <= 90 or
+                    not isinstance(detail, str) or not 1 <= len(detail) <= 190 or
+                    (value is not None and
+                     (type(value) not in (int, float) or not -1e20 < value < 1e20))):
+                raise ValueError("Invalid metric entry")
+            ids.add(name)
+            checks.append({"id": name, "state": state, "value": value,
+                           "unit": unit, "label": label, "detail": detail,
+                           "checkedAt": checked})
+        section = data.get("telemetry")
+        if not isinstance(section, dict) or section.get("state") not in ("observed", "unknown"):
+            raise ValueError("Invalid telemetry evidence")
+        hosts = section.get("hosts")
+        if not isinstance(hosts, list) or len(hosts) > 16:
+            raise ValueError("Invalid telemetry hosts")
+        filtered_hosts = []
+        seen = set()
+        for item in hosts:
+            if not isinstance(item, dict):
+                raise ValueError("Invalid telemetry host")
+            label = item.get("host")
+            age = item.get("ageSeconds")
+            last = item.get("lastObservedAt")
+            state = item.get("state")
+            if (not isinstance(label, str) or not TELEM_LABEL.fullmatch(label) or label in seen or
+                    type(age) is not int or not 0 <= age <= 86460 or
+                    not isinstance(last, str) or not 10 <= len(last) <= 48 or
+                    state not in ("observed", "stale")):
+                raise ValueError("Invalid telemetry host")
+            seen.add(label)
+            filtered_hosts.append({"host": label, "ageSeconds": age,
+                                   "lastObservedAt": last, "state": state})
+        return {"schemaVersion": 1, "checkedAt": checked,
+                "source": "Internal VictoriaMetrics instant samples",
+                "checks": checks,
+                "telemetry": {
+                    "state": section["state"], "windowHours": 24,
+                    "hosts": filtered_hosts,
+                }}
+    except (OSError, TimeoutError, ValueError, KeyError, TypeError,
+            json.JSONDecodeError) as exc:
+        raise BrokerError(503, "Metrics diagnostics unavailable") from exc
+
+
 def capabilities(role: str) -> dict:
     return {
         "role": role,
@@ -333,6 +414,13 @@ class Handler(BaseHTTPRequestHandler):
             return
         if path == "/control/api/me":
             return self._json(200, {"user": actor, "capabilities": capabilities(role)})
+        if path == "/control/api/admin/diagnostics":
+            if role != "admins":
+                return self._json(403, {"error": "Insufficient permissions"})
+            try:
+                return self._json(200, diagnostics_snapshot())
+            except BrokerError as exc:
+                return self._json(exc.status, {"error": str(exc)})
         if path == "/control/api/admin/users":
             if not account_admin_enabled(): return self._json(404, {"error":"Not found"})
             if role != "admins":
