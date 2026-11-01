@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 KEYS = ("HOMEAWAY_DOMAIN", "HOMEAWAY_AUTH_DOMAIN", "HOMEAWAY_METRICS_DOMAIN")
-DOMAIN = re.compile(r"^[a-z0-9-]+(?:\.[a-z0-9-]+)+\.home\.arpa$")
+DOMAIN = re.compile(r"^[a-z0-9-]+(?:\.[a-z0-9-]+)*\.home\.arpa$")
 
 
 def get_values(config):
