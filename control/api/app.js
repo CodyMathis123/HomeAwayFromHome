@@ -10,6 +10,7 @@ async function loadIdentity() {
   identity = await response.json();
   $('identity').textContent = identity.user + ' · ' + identity.capabilities.role;
   if (typeof HomeAwayAccounts !== 'undefined') HomeAwayAccounts.start(identity);
+  if (typeof HomeAwayComputers !== 'undefined') HomeAwayComputers.start(identity);
   return identity;
 }
 const actions = [
