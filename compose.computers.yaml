@@ -1,0 +1,13 @@
+# Phase 2 preview. Opt-in ONLY after running install-pcinventory-host.sh
+# and setting PCINV_GID. Do not append to a live compose invocation by default.
+services:
+  pc-control:
+    # No writable inventory, SSH key or Docker socket is mounted here.
+    # The separate non-root host-side writer owns the fixed hosts.json path.
+    environment:
+      HOMEAWAY_COMPUTER_ADMIN_ENABLED: "${HOMEAWAY_COMPUTER_ADMIN_ENABLED:-false}"
+      HOMEAWAY_INVENTORY_SOCKET: /run/homeaway-pcinventory/agent.sock
+    group_add:
+      - "${PCINV_GID:?Set PCINV_GID from the host installer}"
+    volumes:
+      - /run/homeaway-pcinventory:/run/homeaway-pcinventory:ro

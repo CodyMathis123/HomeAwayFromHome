@@ -34,7 +34,7 @@ class InventoryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             path = Path(t) / "hosts.json"
             one = example()
-            two = example("11:22:33:44:55:66", "work")
+            two = {**example("11:22:33:44:55:66", "work"), "address": "192.168.1.173"}
             self.assertEqual(add.add_host(path, one), 1)
             self.assertEqual(add.add_host(path, two), 2)
             self.assertEqual(set(core.load_hosts(str(path))), {"gaming", "work"})

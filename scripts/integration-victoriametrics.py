@@ -40,7 +40,8 @@ POWER_JOIN = (
 
 
 def query(expression: str) -> list:
-    url = BASE + "/api/v1/query?" + urllib.parse.urlencode({"query": expression})
+    # Bypass short-lived query caches for immediate write/read assertions.
+    url = BASE + "/api/v1/query?" + urllib.parse.urlencode({"query": expression, "nocache": "1"})
     with urllib.request.urlopen(url, timeout=3) as response:
         data = json.load(response)
     if data["status"] != "success":
@@ -286,14 +287,36 @@ def main() -> None:
         headers={"Content-Type": "text/plain"}, method="POST",
     ), timeout=10) as response:
         assert 200 <= response.status < 300
-    for _ in range(20):
-        raw_storage = query('sensordash_reading_value{host="CI",kind="Temperature",sensor=~"/hdd/.*"}')
-        if len(raw_storage) == 3:
+    # Query each sensor by its exact identity: a broad regex selector may use
+    # a stale VictoriaMetrics metric-name index immediately after new writes.
+    # This verifies that the original physical reading AND both reference
+    # thresholds are independently retrievable from raw storage.
+    expected_storage = {
+        "/hdd/0/temperature/0": 38.0,
+        "/hdd/0/temperature/1": 89.0,
+        "/hdd/0/temperature/2": 94.0,
+    }
+    for _ in range(30):
+        raw_storage = [
+            item
+            for sensor in expected_storage
+            for item in query(
+                'sensordash_reading_value{host="CI",kind="Temperature",sensor="'
+                + sensor + '"}'
+            )
+        ]
+        observed_storage = {
+            item["metric"].get("sensor"): float(item["value"][1])
+            for item in raw_storage
+        }
+        if observed_storage == expected_storage:
             break
         time.sleep(0.5)
     else:
-        raise AssertionError("All three raw NVMe sensors should remain stored: " + repr(raw_storage))
-    assert {float(x["value"][1]) for x in raw_storage} == {38.0, 89.0, 94.0}, raw_storage
+        raise AssertionError(
+            "Each raw NVMe sensor must remain independently queryable: "
+            + repr(observed_storage)
+        )
     for _ in range(20):
         bound_threshold = query(
             'sensordash_cooling_binding_value{host="CI",'
