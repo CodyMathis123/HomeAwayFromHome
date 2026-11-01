@@ -1,0 +1,15 @@
+[Unit]
+Description=HomeAway backup preflight (read-only; no backup execution)
+ConditionPathExists=/home/codymathis/HomeAwayFromHome/scripts/backup-maintenance.py
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/home/codymathis/HomeAwayFromHome
+ExecStart=/usr/bin/python3 /home/codymathis/HomeAwayFromHome/scripts/backup-maintenance.py --publish
+NoNewPrivileges=true
+PrivateTmp=true
+TimeoutStartSec=240
+
+[Install]
+WantedBy=multi-user.target
