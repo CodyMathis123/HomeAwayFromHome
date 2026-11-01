@@ -143,6 +143,20 @@ class HttpAccounts(unittest.TestCase):
                 {"id":"pending","revision":"0"*24},self.claims("operators"))
             self.assertEqual(code,403)
 
+    def test_duplicate_pending_create_gives_actionable_safe_error(self):
+        # The form used to clear itself even after a 409 and only displayed
+        # "Account operation rejected", making a failed create look successful.
+        with self.config(),patch.object(api.Path,"read_text",return_value="x"*60),\
+             patch.object(api,"urlopen",side_effect=api.HTTPError(
+                 "http://account-broker:8092",409,"private upstream detail",None,None)):
+            with self.assertRaises(api.BrokerError) as failure:
+                api.broker_request("homeowner","create",
+                                   {"id":"testviewer","name":"Permission Test",
+                                    "email":"testing@example.invalid"})
+            self.assertEqual(failure.exception.status,409)
+            self.assertEqual(str(failure.exception),"Username or email is already in use")
+            self.assertNotIn("private",str(failure.exception))
+
     def test_admin_create_requires_csrf_headers(self):
         with self.config(),patch.object(api,"broker_request",side_effect=self.resolved()):
             req={"id":"newmember","name":"New Member","email":"new@home.invalid"}
