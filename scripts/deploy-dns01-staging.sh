@@ -20,7 +20,8 @@ secret=secrets/control/cloudflare_dns01_token
 compose=(sudo docker compose -p homeaway-dns01-staging -f compose.dns01-staging.yaml)
 
 if [[ "$mode" == --status ]]; then
-  "${compose[@]}" ps dns01-staging
+  # Include stopped containers: normal ps hides early exec failures.
+  "${compose[@]}" ps --all dns01-staging
   echo "Recent staging log events (never share any credentials):"
   "${compose[@]}" logs --tail=50 dns01-staging
   exit 0
@@ -60,6 +61,10 @@ echo "NOTE: --apply will create temporary public _acme-challenge TXT records via
 echo "Proceeding with the explicitly requested staging issuance."
 "${compose[@]}" up -d --no-deps --build dns01-staging ||
   die "Staging failed to launch; inspect status/logs."
-"${compose[@]}" ps dns01-staging
+sleep 2
+"${compose[@]}" ps --all dns01-staging
+[[ -n "$("${compose[@]}" ps --status running --quiet dns01-staging)" ]] ||
+  die "Staging container exited early; run bash scripts/deploy-dns01-staging.sh --status for logs."
+echo "Container started; certificate issuance still must be verified via --status."
 echo "Run: bash scripts/deploy-dns01-staging.sh --status"
 echo "After validation run: bash scripts/deploy-dns01-staging.sh --stop"
