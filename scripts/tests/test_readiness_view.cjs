@@ -8,7 +8,8 @@ const path = require('node:path');
 const script = fs.readFileSync(path.join(__dirname, '../../control/api/readiness.js'), 'utf8');
 
 function simulate({role = 'admins', servicesFail = false, hostsFail = false,
-  malformedServices = false, malformedHosts = false, protocol = 'https:'} = {}) {
+  malformedServices = false, malformedHosts = false,
+  metricsFail = false, protocol = 'https:'} = {}) {
   let currentRole = role;
   const calls = [];
   const elements = new Map();
@@ -16,13 +17,16 @@ function simulate({role = 'admins', servicesFail = false, hostsFail = false,
     if (!elements.has(id)) {
       elements.set(id, {
         id, hidden: id === 'setup-readiness' || id === 'nav-readiness',
-        disabled: false, textContent: '', dataset: {}, handlers: {},
+        disabled: false, textContent: '', dataset: {}, handlers: {}, children: [],
+        replaceChildren(...items) {this.children=items;},
+        append(...items) {this.children.push(...items);},
         addEventListener(name, callback) { this.handlers[name] = callback; }
       });
     }
     return elements.get(id);
   }
-  const document = {getElementById: element};
+  const document = {getElementById: element,
+    createElement(tag) {assert.equal(tag,'li');return {textContent:''};}};
   const location = {protocol, hash:'#setup-readiness'};
   const fetch = async (url, opts) => {
     calls.push({url, opts});
@@ -41,6 +45,23 @@ function simulate({role = 'admins', servicesFail = false, hostsFail = false,
           {id:'wireguard',ok:true,detail:'Admin listener reachable; tunnel not verified'},
           {id:'monitor',ok:false,detail:'Optional Grafana metrics profile may be disabled'}
         ]})};
+    if (url === '/control/api/admin/diagnostics')
+      return metricsFail ? {ok:false,status:503} :
+        {ok:true,json:async()=>({
+          schemaVersion:1,checkedAt:'2026-11-01T16:30:00Z',
+          checks:[
+            {id:'pi.scrape',state:'observed',value:1,unit:'boolean',detail:'Scrape endpoint responded'},
+            {id:'pi.cpu',state:'observed',value:12.4,unit:'percent',detail:'Measured CPU usage'},
+            {id:'pi.memory',state:'observed',value:47.2,unit:'percent',detail:'Measured memory usage'},
+            {id:'pi.load',state:'observed',value:0.62,unit:'load',detail:'Measured load'},
+            {id:'pi.thermal',state:'observed',value:44.1,unit:'celsius',detail:'Thermal zone'},
+            {id:'vm.free',state:'observed',value:6442450944,unit:'bytes',detail:'VM storage free'}
+          ],
+          telemetry:{state:'observed',windowHours:24,hosts:[
+            {host:'main-desktop',ageSeconds:45,state:'observed'},
+            {host:'sleeping-pc',ageSeconds:600,state:'stale'}
+          ]}
+        })};
     if (url === '/control/api/hosts')
       return hostsFail ? {ok:false,status:503} :
         {ok:true,json:async()=>({hosts:[
@@ -74,7 +95,8 @@ function simulate({role = 'admins', servicesFail = false, hostsFail = false,
   assert.equal(admin.element('setup-readiness').hidden, false);
   assert.equal(admin.element('nav-readiness').hidden, false);
   assert.deepEqual(admin.calls.map(call=>call.url), [
-    '/control/api/me','/api/status','/control/api/hosts'
+    '/control/api/me','/api/status','/control/api/hosts',
+    '/control/api/admin/diagnostics'
   ]);
   assert.equal(admin.element('readiness-transport').textContent, 'HTTPS in use');
   assert.equal(admin.element('readiness-accounts').textContent, 'Available');
@@ -90,6 +112,14 @@ function simulate({role = 'admins', servicesFail = false, hostsFail = false,
   admin.readiness.show();
   await admin.settle();
   assert.equal(admin.calls.filter(c=>c.url==='/api/status').length, 2);
+
+  assert.equal(admin.element('readiness-pi-cpu').textContent, '12.4%');
+  assert.equal(admin.element('readiness-pi-memory').textContent, '47.2%');
+  assert.equal(admin.element('readiness-pi-thermal').textContent, '44.1 °C');
+  assert.equal(admin.element('readiness-vm-free').textContent, '6.0 GiB free');
+  assert.equal(admin.element('readiness-telemetry').dataset.state, 'stale');
+  assert.equal(admin.element('readiness-telemetry-hosts').children.length, 2);
+  assert.match(admin.element('readiness-telemetry-hosts').children[1].textContent, /sleeping-pc/);
 
   const partial = simulate({servicesFail:true});
   partial.readiness.start({capabilities:{role:'admins'}});
@@ -118,6 +148,16 @@ function simulate({role = 'admins', servicesFail = false, hostsFail = false,
   assert.equal(malformed.element('readiness-refresh').disabled, false);
   assert.ok(!/Authorization unavailable/.test(malformed.element('readiness-updated').textContent));
 
+  // A missing metrics adapter affects only its metrics, not existing
+  // authenticated DNS, VPN manager, or computer status observations.
+  const metricsMissing = simulate({metricsFail:true});
+  metricsMissing.readiness.start({capabilities:{role:'admins'}});
+  await metricsMissing.settle();
+  assert.equal(metricsMissing.element('readiness-pi-cpu').textContent, 'Unknown');
+  assert.equal(metricsMissing.element('readiness-telemetry').textContent, 'Unknown');
+  assert.equal(metricsMissing.element('readiness-dns').textContent, 'Responding');
+  assert.equal(metricsMissing.element('readiness-hosts').textContent, '1 / 2');
+
   const revoked = simulate();
   revoked.readiness.start({capabilities:{role:'admins'}});
   await revoked.settle();
@@ -128,6 +168,8 @@ function simulate({role = 'admins', servicesFail = false, hostsFail = false,
   assert.equal(revoked.element('nav-readiness').hidden, true);
   assert.equal(revoked.location.hash, '#hosts');
   assert.equal(revoked.element('readiness-hosts').textContent, 'Unknown');
+  assert.equal(revoked.element('readiness-pi-thermal').textContent, 'Unknown');
+  assert.equal(revoked.element('readiness-telemetry-hosts').children.length, 0);
   assert.match(revoked.element('readiness-updated').textContent, /Authorization unavailable/);
 
   const plain = simulate({protocol:'http:'});
