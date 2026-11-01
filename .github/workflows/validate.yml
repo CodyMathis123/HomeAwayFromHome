@@ -195,7 +195,7 @@ jobs:
           for name in lldap_admin_password lldap_jwt_secret lldap_key_seed account_broker_token; do
             printf 'ci-synthetic-only\n' > "secrets/control/$name"
           done
-          export HOMEAWAY_DOMAIN=homeaway.home.arpa HOMEAWAY_AUTH_DOMAIN=auth.homeaway.home.arpa HOMEAWAY_METRICS_DOMAIN=metrics.homeaway.home.arpa PCCTL_GID=999 PCINV_GID=999
+          export HOMEAWAY_DOMAIN=homeaway.home.arpa HOMEAWAY_AUTH_DOMAIN=auth.homeaway.home.arpa HOMEAWAY_METRICS_DOMAIN=metrics.homeaway.home.arpa PCCTL_GID=999 PCINV_GID=998
           files=(-f compose.yaml -f compose.control.yaml -f compose.accounts.yaml -f compose.computers.yaml)
           docker compose "${files[@]}" --profile control --profile accounts --profile metrics config --format json > /tmp/homeaway-base.json
           docker compose "${files[@]}" -f compose.dns01-production.yaml --profile control --profile accounts --profile metrics config --format json > /tmp/homeaway-prod.json
