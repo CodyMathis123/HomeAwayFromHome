@@ -22,6 +22,7 @@ FILES = {
     "/": ("index.html", "text/html; charset=utf-8"),
     "/index.html": ("index.html", "text/html; charset=utf-8"),
     "/styles.css": ("styles.css", "text/css; charset=utf-8"),
+    "/theme.css": ("theme.css", "text/css; charset=utf-8"),
     "/app.js": ("app.js", "text/javascript; charset=utf-8"),
     "/navigation.js": ("navigation.js", "text/javascript; charset=utf-8"),
     "/architecture.js": ("architecture.js", "text/javascript; charset=utf-8"),
