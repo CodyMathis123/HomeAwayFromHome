@@ -793,7 +793,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "max((sensordash_reading_value{host=~\"$host\",kind=\"Fan\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Fan\",role=~\"fan-group\"} == 1)) * on(host,sensor) group_left(name,alias,device) (sensordash_sensor_info_value{host=~\"$host\"} == 1))",
-          "instant": true
+          "instant": true,
+          "legendFormat": "Radiator RPM"
         }
       ]
     },
@@ -853,7 +854,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "max((sensordash_reading_value{host=~\"$host\",kind=\"Fan\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Fan\",role=~\"pump\"} == 1)) * on(host,sensor) group_left(name,alias,device) (sensordash_sensor_info_value{host=~\"$host\"} == 1))",
-          "instant": true
+          "instant": true,
+          "legendFormat": "DDC pump RPM"
         }
       ]
     },
@@ -913,7 +915,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "max((sensordash_reading_value{host=~\"$host\",kind=\"Control\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Control\",role=~\"fan-group\"} == 1)) * on(host,sensor) group_left(name,alias,device) (sensordash_sensor_info_value{host=~\"$host\"} == 1))",
-          "instant": true
+          "instant": true,
+          "legendFormat": "Radiator PWM"
         }
       ]
     },
@@ -973,7 +976,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "count(sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\"} == 1)",
-          "instant": true
+          "instant": true,
+          "legendFormat": "Active assignments"
         }
       ]
     },

@@ -108,7 +108,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "100 * (1 - avg(rate(node_cpu_seconds_total{job=\"pi-node\",mode=\"idle\"}[5m])))",
-          "instant": true
+          "instant": true,
+          "legendFormat": "Pi CPU activity"
         }
       ],
       "fieldConfig": {
@@ -168,7 +169,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "max(node_thermal_zone_temp{job=\"pi-node\",type=~\"cpu-thermal|cpu_thermal|soc_thermal|cpu\"})",
-          "instant": true
+          "instant": true,
+          "legendFormat": "Pi CPU / SoC thermal zone"
         }
       ],
       "fieldConfig": {
@@ -228,7 +230,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "100 * (1 - node_memory_MemAvailable_bytes{job=\"pi-node\"} / node_memory_MemTotal_bytes{job=\"pi-node\"})",
-          "instant": true
+          "instant": true,
+          "legendFormat": "Pi RAM used"
         }
       ],
       "fieldConfig": {
@@ -288,7 +291,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "max(vm_free_disk_space_bytes)",
-          "instant": true
+          "instant": true,
+          "legendFormat": "Metrics volume free"
         }
       ],
       "fieldConfig": {
@@ -369,7 +373,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "time() - max(node_boot_time_seconds{job=\"pi-node\"})",
-          "instant": true
+          "instant": true,
+          "legendFormat": "Pi uptime"
         }
       ],
       "fieldConfig": {
@@ -429,7 +434,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "(count(up{job=~\"pi-node|victoria-metrics|pihole|wg-easy\"} == 1) or vector(0))",
-          "instant": true
+          "instant": true,
+          "legendFormat": "Healthy internal scrapes"
         }
       ],
       "fieldConfig": {
@@ -489,7 +495,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "time() - max(timestamp(sensordash_reading_value{host=~\"$host\"}[24h]))",
-          "instant": true
+          "instant": true,
+          "legendFormat": "Windows sample age · 24h"
         }
       ],
       "fieldConfig": {
@@ -549,7 +556,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "sum(vm_data_size_bytes)",
-          "instant": true
+          "instant": true,
+          "legendFormat": "VictoriaMetrics data"
         }
       ],
       "fieldConfig": {
