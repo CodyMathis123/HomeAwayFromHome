@@ -153,6 +153,8 @@ totp:
   disable_reuse_security_policy: true
 authentication_backend:
   refresh_interval: always
+  password_reset:
+    disable: true
   ldap:
     implementation: lldap
     address: ldap://{lldap}:3890
