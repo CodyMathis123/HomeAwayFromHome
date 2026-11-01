@@ -57,7 +57,15 @@ The Storage dashboard now includes VictoriaMetrics' internal data-store size, fi
 ## Pi host health and ingest freshness
 
 **HomeAway · System Health** uses upstream Prometheus Node Exporter v1.12.1
-instead of a second custom Linux collector. Node Exporter runs with no Docker
+instead of a second custom Linux collector. **Deployment:** start the optional `pi-node-exporter` service explicitly on
+existing systems; the initial telemetry-only installation command inadvertently
+omitted it. Run `sudo docker compose --profile metrics up -d --no-deps
+pi-node-exporter` and then `sudo bash scripts/verify-pi-metrics.sh`. If the
+`up{job="pi-node"}` target is missing, recreate VictoriaMetrics only to
+reload the bind-mounted scrape configuration. `verify-telemetry.sh` checks
+Windows measurements, not host exporter availability.
+
+Node Exporter runs with no Docker
 socket, privileges, published port, secrets, host-network or host-PID access.
 Only `/proc` and `/sys` are mounted read-only; the default collector set
 is disabled so the Pi 4 only exports CPU, RAM, load, kernel thermal zone,
