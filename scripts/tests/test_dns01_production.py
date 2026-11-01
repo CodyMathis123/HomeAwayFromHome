@@ -57,7 +57,7 @@ class ProductionDNS01Contracts(unittest.TestCase):
         self.assertIn("scripts/check_dns01_gateway_https.py", script)
         self.assertIn("scripts/extract_dns01_gateway_env.py", script)
         self.assertIn("--network none --cap-drop ALL", script)
-        self.assertIn("CF_API_TOKEN=offline-synthetic-no-access", script)
+        self.assertIn("CF_API_TOKEN=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", script)
         self.assertIn('restart', script.lower())
         self.assertIn("rollback_failed_apply", script)
         self.assertIn("gateway-startup-failed-$stamp.log", script)
