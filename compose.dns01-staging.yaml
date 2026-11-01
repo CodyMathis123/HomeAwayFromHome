@@ -1,23 +1,38 @@
-# OPT-IN ONLY: do not include in existing deploy-ui.sh or other production
-# stacks. Requires explicit operator DNS, token, Caddy and rollback approval.
-# New names are staging validation stubs; current .home.arpa auth is unchanged.
+# OPT-IN STANDALONE staging Compose project; never include in production overlays.
+# DNS-01 staging validates via public TXT records without an inbound port.
+# It does not modify or restart the active HomeAway gateway.
 services:
-  gateway:
+  dns01-staging:
     image: homeaway-caddy-dns01:2.11.7-cloudflare-v0.2.4
     build:
       context: ./control/gateway
       dockerfile: Dockerfile.dns01
     entrypoint: ["/usr/local/bin/start-dns01"]
+    restart: "no"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
     environment:
-      HOMEAWAY_PUBLIC_HOME: ${HOMEAWAY_PUBLIC_HOME:?Set new private homepage name}
-      HOMEAWAY_PUBLIC_AUTH: ${HOMEAWAY_PUBLIC_AUTH:?Set new private auth name}
-      HOMEAWAY_PUBLIC_METRICS: ${HOMEAWAY_PUBLIC_METRICS:?Set new private metrics name}
+      HOMEAWAY_PUBLIC_HOME: ${HOMEAWAY_PUBLIC_HOME:?Set staging homepage name}
+      HOMEAWAY_PUBLIC_AUTH: ${HOMEAWAY_PUBLIC_AUTH:?Set staging auth name}
+      HOMEAWAY_PUBLIC_METRICS: ${HOMEAWAY_PUBLIC_METRICS:?Set staging metrics name}
     secrets:
       - cloudflare_dns01_token
     volumes:
       - ./control/gateway/Caddyfile.dns01-staging:/etc/caddy/Caddyfile:ro
-      - ./control/gateway/Caddyfile:/etc/caddy/Caddyfile.legacy:ro
+      - ./data/control/dns01-staging/data:/data
+      - ./data/control/dns01-staging/config:/config
+    tmpfs:
+      - /tmp:size=16m
+    networks:
+      - dns01-acme
+    # NO ports, external shared network, Docker socket, or live Caddy state.
 
 secrets:
   cloudflare_dns01_token:
     file: ./secrets/control/cloudflare_dns01_token
+
+networks:
+  dns01-acme:
+    driver: bridge
+    # Outbound DNS and Let's Encrypt staging ACME traffic only.
