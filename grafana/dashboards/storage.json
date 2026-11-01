@@ -166,7 +166,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(name,device,device_type) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Storage\"} == 1))",
+          "expr": "max(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(name,device,device_type) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Storage\",name!~\"(?i).*(warning|critical).*\"} == 1))",
           "instant": true,
           "legendFormat": "Highest drive temperature"
         }
@@ -370,7 +370,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(name,device,device_type) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Storage\"} == 1)",
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(name,device,device_type) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Storage\",name!~\"(?i).*(warning|critical).*\"} == 1)",
           "range": true,
           "legendFormat": "{{device}} · {{name}}"
         }
