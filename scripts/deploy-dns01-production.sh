@@ -23,6 +23,18 @@ profiles=(--profile control --profile accounts --profile metrics)
 base=(sudo docker compose "${files[@]}" "${profiles[@]}")
 prod=(sudo docker compose "${files[@]}" -f compose.dns01-production.yaml "${profiles[@]}")
 
+# The certificate-only rollout predates canonical Phase 3 routing. Never let
+# its --apply/--rollback overwrite a gateway already using the final config.
+if [[ "$mode" == --apply || "$mode" == --rollback ]]; then
+  live_cid="$(sudo docker ps -q --filter name=^/homeawayfromhome-gateway-1$ --filter status=running)"
+  if [[ -n "$live_cid" ]]; then
+    live_mount="$(sudo docker inspect --format '{{range .Mounts}}{{if eq .Destination "/etc/caddy/Caddyfile"}}{{.Source}}{{end}}{{end}}' "$live_cid")"
+    if [[ "$live_mount" == "$(realpath control/gateway/Caddyfile.production)" ]]; then
+      die "Canonical production gateway active. Certificate-only script cannot replace it."
+    fi
+  fi
+fi
+
 if [[ "$mode" == --status ]]; then
   "${base[@]}" ps --all gateway
   cid="$("${base[@]}" ps --all --quiet gateway)"

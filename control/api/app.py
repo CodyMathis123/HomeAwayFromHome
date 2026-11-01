@@ -562,11 +562,12 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(403, {"error": "Insufficient permissions"})
         expected_origin = os.getenv("HOMEAWAY_CONTROL_ORIGIN", "")
         alternate_origin = os.getenv("HOMEAWAY_CONTROL_ALT_ORIGIN", "")
-        trusted_origins = set()
-        if expected_origin == "https://homeaway.home.arpa:8443":
-            trusted_origins.add(expected_origin)
-        if (expected_origin and
-                alternate_origin == "https://home.homeawayfromhome.house:8443"):
+        permitted_origins = {
+            "https://homeaway.home.arpa:8443",
+            "https://home.homeawayfromhome.house:8443",
+        }
+        trusted_origins = {expected_origin} if expected_origin in permitted_origins else set()
+        if trusted_origins and alternate_origin in permitted_origins:
             trusted_origins.add(alternate_origin)
         if (self.headers.get("Origin", "") not in trusted_origins or
                 self.headers.get("Sec-Fetch-Site", "same-origin") != "same-origin" or

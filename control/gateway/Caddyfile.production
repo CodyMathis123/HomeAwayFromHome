@@ -1,0 +1,71 @@
+# Canonical private HTTPS routing; only homeawayfromhome.house hostnames.
+# Requires compose.production.yaml and DNS-01 Cloudflare token.
+
+auth.homeawayfromhome.house:8443 {
+  tls {
+    dns cloudflare {env.CF_API_TOKEN}
+    ca https://acme-v02.api.letsencrypt.org/directory
+    resolvers 1.1.1.1 8.8.8.8
+    propagation_delay 15s
+    propagation_timeout 5m
+  }
+  reverse_proxy authelia:9091
+}
+
+home.homeawayfromhome.house:8443 {
+  tls {
+    dns cloudflare {env.CF_API_TOKEN}
+    ca https://acme-v02.api.letsencrypt.org/directory
+    resolvers 1.1.1.1 8.8.8.8
+    propagation_delay 15s
+    propagation_timeout 5m
+  }
+
+  @control path /control /control/*
+  handle @control {
+    # Route preserves the written order: otherwise Caddy applies request_header
+    # AFTER forward_auth, deleting the very identity Authelia just supplied.
+    route {
+      # Never trust identity headers provided by a browser.
+      request_header -Remote-User
+      request_header -Remote_User
+      request_header -Remote-Groups
+      request_header -Remote_Groups
+      request_header -Remote-Name
+      request_header -Remote-Email
+      request_header -X-HomeAway-User
+      request_header -X_HomeAway_User
+      request_header -X-HomeAway-Groups
+      request_header -X_HomeAway_Groups
+
+      forward_auth authelia:9091 {
+        uri /api/authz/forward-auth
+        copy_headers Remote-User>X-HomeAway-User Remote-Groups>X-HomeAway-Groups
+      }
+
+      reverse_proxy pc-control:8081 {
+        header_up -Remote-User
+        header_up -Remote-Groups
+        header_up -Remote-Name
+        header_up -Remote-Email
+        header_up -Cookie
+      }
+    }
+  }
+
+  # Existing read-only portal stays available over HTTP :8088 as before.
+  handle {
+    reverse_proxy portal:8080
+  }
+}
+
+metrics.homeawayfromhome.house:8443 {
+  tls {
+    dns cloudflare {env.CF_API_TOKEN}
+    ca https://acme-v02.api.letsencrypt.org/directory
+    resolvers 1.1.1.1 8.8.8.8
+    propagation_delay 15s
+    propagation_timeout 5m
+  }
+  reverse_proxy grafana:3000
+}

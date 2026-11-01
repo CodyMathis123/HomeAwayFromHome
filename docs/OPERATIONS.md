@@ -46,6 +46,12 @@ Do not invent or commit private encryption keys. Test decryption/restore with a 
 4. Run `bash scripts/doctor.sh`, `docker compose config -q`, start core services, and test both DNS and an existing VPN peer. Check update compatibility before changing image versions.
 5. Restore router DHCP DNS last. Revoke/regenerate VPN peer keys if the archive was ever exposed.
 
+## Current HTTPS production deployment
+
+The supported application domain is `homeawayfromhome.house`. Its three private LAN/VPN-only HTTPS endpoints are `home`, `auth` and `metrics` on port 8443. The **canonical Compose stack** for control/UI work appends `compose.production.yaml` after `compose.yaml`, `compose.control.yaml`, `compose.accounts.yaml`, and `compose.computers.yaml`. Do not use historical `compose.dns01-production.yaml` or `compose.phase3-domain.yaml` for routine updates. See [production consolidation and rollback](PRODUCTION-HOUSE-ONLY.md).
+
+`scripts/deploy-ui.sh` checks that the live gateway is using `Caddyfile.production` before touching portal or pc-control. `scripts/update.sh` now updates only core Pi-hole/WireGuard, not the portal. Do not run an unscoped Compose up command on the production project.
+
 ## Targeted HomeAway UI releases (no DNS/VPN restart)
 
 Use the dedicated, **operator-triggered** helper for changes to the HomeAway
@@ -75,6 +81,7 @@ the clean `Production` checkout, revalidates Compose, and runs only:
 ```bash
 sudo docker compose -f compose.yaml -f compose.control.yaml \
   -f compose.accounts.yaml -f compose.computers.yaml \
+  -f compose.production.yaml \
   --profile control --profile accounts --profile metrics \
   up -d --no-deps --build portal pc-control
 ```
