@@ -1,7 +1,7 @@
 name: Validate Pi infrastructure
 on:
   pull_request:
-    branches: [Production, feature/pi4-home-infrastructure, feature/homeaway-grafana-embed]
+    branches: [Production, feature/pi4-home-infrastructure, feature/homeaway-grafana-embed, feature/homeaway-auth-pc-control]
   push:
     branches: [Production]
   workflow_dispatch:
@@ -21,6 +21,7 @@ jobs:
           node --check portal/app.js
           node --check control/api/app.js
           python3 -m unittest discover -s scripts/tests -v
+          python3 scripts/check_doc_links.py
       - name: Validate Bash script syntax
         run: |
           for script in scripts/*.sh; do bash -n "$script"; done

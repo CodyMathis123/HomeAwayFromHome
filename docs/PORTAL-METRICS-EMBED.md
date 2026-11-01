@@ -44,3 +44,7 @@ Grafana's `GF_SECURITY_ALLOW_EMBEDDING=true` allows iframe rendering for the who
 References:
 - https://grafana.com/docs/grafana/latest/visualizations/dashboards/share-dashboards-panels/shared-dashboards/
 - https://grafana.com/docs/grafana/latest/setup-grafana/configure-grafana/
+
+## With the optional authenticated HTTPS gateway
+
+If you also deploy [PC control and the Caddy/Authelia gateway](PC-CONTROL.md), use the gateway hostname `https://homeaway.home.arpa:8443` for the combined portal. Grafana's proxied shared-dashboard origin becomes `https://metrics.homeaway.home.arpa:8443`, avoiding mixed-content iframes. Use **both** Compose files for recreation (see the PC-control runbook). The original HTTP :8088 procedure above is only for the standalone, read-only portal and must not be mixed with the HTTPS overlay; no second Grafana user login is required for the shared view.

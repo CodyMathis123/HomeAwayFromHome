@@ -91,21 +91,21 @@ First deploy the Pi ingestion updates from HomeAwayFromHome, including the new S
 
 Make a backup of the current C:\\ProgramData\\SensorDash directory (settings, SQLite, approved profiles, and exporter cursors), keep a known-good installer, and check how radiator fans behave if the Windows service is stopped. The Pi never controls those fans.
 
-From the *existing* local SensorDash web UI, open **Settings → Pi telemetry export**. Enter the HTTPS Pi receiver URL (for this installation: https://192.168.1.43:8429/ingest), the stable host label main-desktop, and enable export. Enter the Pi-issued bearer token and public telemetry CA PEM if they are not already installed. These sensitive values are written to Windows by the collector but never returned by a GET; do not post either the token or CA signing private key in chat. Leave both credential fields empty to preserve already installed values.
+From the **current SensorDash controls-only UI** (feature PR #13), open **Settings → Pi telemetry export**. Enter the HTTPS Pi receiver URL (`https://PI_LAN_IP:8429/ingest` with your actual reserved Pi address), choose a stable host label (e.g. `main-desktop`), and enable export. Enter the Pi-issued bearer token and public telemetry CA PEM if they are not already installed. These sensitive values are written to Windows by the collector but never returned by a GET; do not post either the token or CA signing private key in chat. Leave both credential fields empty to preserve already installed values.
 
-Save. The form reports whether the token and CA are installed. A controlled restart of SensorDashCollector is currently required to apply a changed export configuration; the form deliberately cannot restart a privileged fan-controlling service. Confirm the old approved fan profile is present, observe real radiator PWM and RPM and the fixed DDC pump tach before/after the supervised restart.
+Save. The form reports whether the token and CA are installed. In the current exporter implementation, configuration/token/CA changes reopen **only the outbound HTTPS client**; no collector restart is needed just to change telemetry settings. A **Windows MSI upgrade**, by contrast, may restart the collector and must be scheduled for a supervised fan-safety window. Confirm the approved fan profile remains active and observe radiator PWM/RPM and pump tach before and after any installer servicing.
 
 ## Stage 6 — Prove PC → Pi data flow
 
 From the Pi project directory:
 
 ```bash
-bash scripts/verify-telemetry.sh walnut-desktop
+bash scripts/verify-telemetry.sh main-desktop
 ```
 
 It must report recent `sensordash_reading_value` samples. If cooling systems are configured, expect `sensordash_component_info_value` and `sensordash_cooling_binding_value`. If valid electrical instrumentation or calibration exists, expect `sensordash_accessory_power_value`.
 
-Compare the same **30-minute interval** in local SensorDash and Grafana: raw CPU/GPU temperatures, true peak, radiator RPM, PWM, and fan/pump wattage source. Test an alias rename and a component sensor reassignment; old labels should become inactive without losing original raw history. Then briefly **stop only the telemetry receiver**, not SensorDash, to check queued delivery after reconnect. Hardware fan control must remain safe throughout.
+Compare **current readings** (CPU/GPU temperatures, radiator RPM and PWM duty, pump tach, and any available wattage provenance) in SensorDash Sensor Explorer / Cooling Systems against fresh Grafana samples, and inspect the corresponding **30-minute Grafana history** for gaps and recorded peaks. The new SensorDash controls-only UI no longer has duplicate Windows history charts. Test an alias rename and a component sensor reassignment; old labels should become inactive without losing original raw history. Then briefly **stop only the telemetry receiver**, not SensorDash, to check queued delivery after reconnect. Hardware fan control must remain safe throughout.
 
 Do not change household DHCP DNS during this validation. Leave SensorDash hardware control and the Pi viewer operating through at least one ordinary gaming session and one sleep/resume cycle, and compare current readings and gaps in Grafana to Sensor Explorer and hardware feedback.
 
@@ -113,7 +113,7 @@ Do not change household DHCP DNS during this validation. Leave SensorDash hardwa
 
 Only after LAN DNS and VPN tests pass, change your router's DHCP DNS from its current value to the Pi LAN IPv4. Renew one client lease, test Pi-hole query logs, then test the household. Note that if the Pi goes offline, DNS may fail; public secondary DNS can preserve connectivity but may bypass filtering.
 
-To roll back DNS, restore the router's previous DHCP DNS. To roll back SensorDash telemetry only, disable Pi export in SensorDash Settings and restart the collector during a safe window during a safe fan-control maintenance window; the current local dashboard and SQLite history remain.
+To roll back DNS, restore the router's previous DHCP DNS. To roll back **telemetry only**, disable Pi export in SensorDash Settings and verify the sender stops; the current exporter reloads its connection without restarting the collector. Preserve the local SQLite retry archive and approved fan profiles. Reverting the Windows MSI itself is a separate supervised installer/backup operation.
 
 ### Definition of done
 
@@ -124,4 +124,4 @@ To roll back DNS, restore the router's previous DHCP DNS. To roll back SensorDas
 - No secret leaks, public management ports or unexpected data gaps.
 - Storage retention and disk usage understood after a day or two of normal operation.
 
-**If those tests pass**, future iterations can compare existing historical energy calculations with the new archived derived-power samples and consider phasing out duplicate Windows charts. Until then, do not merge or delete the old visualization code.
+**Current migration contract:** the controls-only SensorDash feature branch has already removed duplicate Windows history charts and virtual sensors. This is a staged code change, **not** proof of physical parity. Validate the actual Windows/Pi deployment, confirm the remaining local safety controls and historical Grafana data, and keep a known-good Windows installer until those tests pass.
