@@ -4,6 +4,7 @@ const hosts = $('hosts');
 const status = $('updated');
 let pending = new Set();
 let identity = null;
+let authChecked = false;
 // These are view-state decisions, never an authorization mechanism.
 // The /control/ document and all /control/api/* endpoints remain authenticated
 // and server-side capabilities determine which admin sections exist.
@@ -27,7 +28,7 @@ function updateCurrentSection(focus = false) {
   }
   // Never leave the URL pointing to a privileged section after a role check
   // refuses it. Before identity resolves, retain the requested deep link.
-  if (identity && VIEWS.has(requested) && requested !== target)
+  if (authChecked && requested && requested !== target)
     history.replaceState(history.state, '', '/control/#hosts');
   window.HomeAwayNavigation?.sync();
   if (focus) {
@@ -51,6 +52,7 @@ async function loadIdentity() {
     const nextIdentity = await response.json();
     if (!nextIdentity?.capabilities?.role) throw new Error('Account capabilities unavailable');
     identity = nextIdentity;
+    authChecked = true;
     updateSectionNavigation(identity.capabilities);
     $('identity').textContent = identity.user + ' · ' + identity.capabilities.role;
     if (typeof HomeAwayAccounts !== 'undefined') HomeAwayAccounts.start(identity);
@@ -59,9 +61,14 @@ async function loadIdentity() {
   } catch (error) {
     // A lost connection or revoked session must not leave stale admin UI visible.
     identity = null;
+    authChecked = true;
     updateSectionNavigation(null);
     $('computer-admin').hidden = true;
     $('accounts').hidden = true;
+    // Never leave previously rendered power action buttons on screen when
+    // authorization cannot be refreshed (the API still enforces all actions).
+    hosts.replaceChildren(node('p', 'detail',
+      'Computer controls are unavailable until authorization is restored.'));
     $('identity').textContent = 'Authorization unavailable';
     throw error;
   }
