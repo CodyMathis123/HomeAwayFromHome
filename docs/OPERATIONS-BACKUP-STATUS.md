@@ -76,7 +76,31 @@ An archive can have a valid checksum yet be undecryptable without the proper
 private identity, and a decryptable archive may still fail to restore.
 Off-device copy and isolated restore checks are still manual.
 
-The publisher is deliberately not scheduled and no privileged socket,
-container control API, generic shell access, archive deletion command or
-private key mount has been introduced. Evaluate explicit post-backup
-publishing only after supervising the post-stop recovery flow.
+**After a successful supervised `scripts/backup-full.sh --apply` run,
+the backup now invokes the existing local status publisher automatically,
+but only after the encrypted archive/checksum are committed and the original
+host units/Compose containers have been restored successfully.** If service
+recovery fails, it does not publish a misleading "current" success. If
+publishing fails, it prints a warning and leaves the encrypted archive and
+checksum intact; the operator can run the existing `--publish` command later.
+
+No recurring backup schedule, automatic pruning, cloud transfer, privileged
+browser agent, container control API, generic shell access or private key
+mount is introduced. The dashboard's evidence still becomes stale after
+24 hours without another verification. It does not prove an off-device copy,
+decryption or clean-host restore.
+
+### Post-backup test (no outage)
+
+```bash
+bash -n scripts/backup-full.sh
+bash -n scripts/backup-postprocess.sh
+bash scripts/test-backup-postprocess.sh
+bash scripts/test-backup-recovery.sh
+sudo bash scripts/backup-full.sh --plan
+sudo python3 scripts/plan-backup-retention.py --plan --keep-local 3
+```
+
+These tests use mock restoration/publication functions or read-only
+inventory; none stops services or creates an archive. The next supervised
+backup will provide the first live acceptance of automatic status publishing.
