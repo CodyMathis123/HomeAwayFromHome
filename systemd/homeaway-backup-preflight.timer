@@ -1,0 +1,10 @@
+[Unit]
+Description=HomeAway weekly backup preflight report (no service outage)
+
+[Timer]
+OnCalendar=Sun *-*-* 03:00:00
+Persistent=true
+Unit=homeaway-backup-preflight.service
+
+[Install]
+WantedBy=timers.target
