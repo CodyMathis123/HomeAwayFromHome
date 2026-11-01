@@ -40,7 +40,7 @@ POWER_JOIN = (
 
 
 def query(expression: str) -> list:
-    url = BASE + "/api/v1/query?" + urllib.parse.urlencode({"query": expression})
+    # Bypass short-lived query caches: integration tests write and immediately read series.\n    url = BASE + "/api/v1/query?" + urllib.parse.urlencode({"query": expression, "nocache": "1"})
     with urllib.request.urlopen(url, timeout=3) as response:
         data = json.load(response)
     if data["status"] != "success":
