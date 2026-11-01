@@ -117,7 +117,7 @@ function simulate(initialHash, firstCapabilities) {
           setCapabilities(value) { capabilities = value; }};
 }
 
-const admins = {role: 'admins', actions: [], manageUsers: true, manageComputers: true, history: false};
+const admins = {role: 'admins', actions: [], manageUsers: true, manageComputers: true, history: true};
 const viewers = {role: 'viewers', actions: [], manageUsers: false, manageComputers: false, history: false};
 
 (async () => {
@@ -160,6 +160,11 @@ const viewers = {role: 'viewers', actions: [], manageUsers: false, manageCompute
   assert.equal(viewer.location.hash, '#hosts');
   assert.equal(viewer.element('accounts').hidden, true);
   assert.equal(viewer.element('nav-power').attrs['aria-current'], 'location');
+  viewer.navigate('#recent-activity');
+  assert.equal(viewer.main.dataset.activeView, 'hosts');
+  assert.equal(viewer.location.hash, '#hosts');
+  assert.equal(viewer.element('nav-activity').hidden, true);
+  assert.equal(admin.element('nav-activity').hidden, false);
 
   // A revoked session while on an admin panel must clear the stale fragment,
   // hide the old admin views and remove cached power-action cards.
