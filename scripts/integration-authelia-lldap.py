@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-"""Synthetic Authelia 4.39 + LLDAP session revocation integration test.
+"""Synthetic Authelia file-to-LLDAP migration and session revocation test.
 
-No production accounts, ports, CA, secrets, TOTP credentials, or volumes.
+Proves synthetic SQLite/TOTP continuity across backend change and rollback,
+plus all three group roles and old-session revocation. Uses NO production
+accounts, CA, secrets, TOTP credentials, or volumes.
 Run ONLY as HOMEAWAY_LLDAP_LAB=1 in an ephemeral CI worker.
 """
 from __future__ import annotations
@@ -118,12 +120,14 @@ def main():
     label="hwl-2fa-"+secrets.token_hex(5)
     network=label+"-net"
     volume=label+"-data"
+    auth_volume=label+"-authelia-data"
     password=secrets.token_urlsafe(35)
     totp_secret=base64.b32encode(secrets.token_bytes(20)).decode().rstrip("=")
     temp=tempfile.TemporaryDirectory(prefix="homeaway-synthetic-authelia-")
     try:
         docker("network","create",network)
         docker("volume","create",volume)
+        docker("volume","create",auth_volume)
         lldap=label+"-ldap"
         authelia=label+"-auth"
         docker("run","-d","--rm","--name",lldap,"--network",network,
@@ -202,31 +206,59 @@ notifier:
   filesystem:
     filename: /data/notification.txt
 """
-        path.write_text(cfg,encoding="utf-8")
-        path.chmod(0o644)
-        docker("run","--rm","--network",network,
-               "-v",f"{config}:/config:ro",
-               AUTHELIA_IMAGE,"authelia","config","validate",
-               "--config","/config/configuration.yml")
-        docker("run","-d","--rm","--name",authelia,
-               "--network",network,"-p",f"127.0.0.1:{AUTH_PORT}:9091",
-               "--tmpfs","/data:rw,mode=1777",
-               "-v",f"{config}:/config:ro",
-               AUTHELIA_IMAGE)
-        ready=False
-        for _ in range(90):
-            try:
-                status,_,_=call_auth("GET","/api/health")
-                if 200<=status<300:ready=True;break
-            except (OSError,TimeoutError):pass
-            time.sleep(1)
-        assert ready,"Authelia did not become healthy"
+        # Use a separate disposable file-backed identity first. Its
+        # username, encrypted SQLite storage and TOTP must survive a first-
+        # factor switch to LLDAP, even though the password does not migrate.
+        file_cfg=(cfg[:cfg.index("authentication_backend:")] +
+                  "authentication_backend:\n  password_reset:\n    disable: true\n"
+                  "  file:\n    path: /config/users_database.yml\n" +
+                  cfg[cfg.index("access_control:"):])
+        generated=docker("run","--rm",AUTHELIA_IMAGE,"authelia","crypto",
+                         "hash","generate","argon2","--random",
+                         "--random.length","28","--random.charset","alphanumeric")
+        digest=re.search(r"\$argon2id\$[^\s'\"]+",generated)
+        pw_match=re.search(r"(?im)^\s*(?:random\s+)?password\s*:\s*(\S+)\s*$",generated)
+        assert digest and pw_match, "Synthetic file credential generation failed"
+        file_password=pw_match.group(1)
+        (config/"users_database.yml").write_text(json.dumps({"users":{"admin":{
+            "disabled":False,"displayname":"Synthetic Homeowner",
+            "password":digest.group(0),"email":"admin@lab.home.arpa",
+            "groups":["admins"]}}}),encoding="utf-8")
+        (config/"users_database.yml").chmod(0o644)
 
-        # Authelia's CLI creates a real encrypted TOTP record in its isolated
-        # SQLite store, bypassing e-mail enrollment but not TOTP authentication.
+        def start_auth():
+            docker("run","--rm","--network",network,
+                   "-v",f"{config}:/config:ro",
+                   AUTHELIA_IMAGE,"authelia","config","validate",
+                   "--config","/config/configuration.yml")
+            docker("run","-d","--rm","--name",authelia,
+                   "--network",network,"-p",f"127.0.0.1:{AUTH_PORT}:9091",
+                   "-v",auth_volume+":/data",
+                   "-v",f"{config}:/config:ro",
+                   AUTHELIA_IMAGE)
+            for _ in range(90):
+                try:
+                    status,_,_=call_auth("GET","/api/health")
+                    if 200<=status<300:return
+                except (OSError,TimeoutError):pass
+                time.sleep(1)
+            raise AssertionError("Authelia did not become healthy")
+
+        path.write_text(file_cfg,encoding="utf-8")
+        path.chmod(0o644)
+        start_auth()
+        # Real encrypted TOTP record in a disposable persistent volume.
         docker("exec",authelia,"authelia","storage","user","totp","generate",
                "admin","--config","/config/configuration.yml",
                "--secret",totp_secret)
+        session(file_password,totp_secret,"admins")
+        print("PASS: synthetic existing file-backed user enrolled in TOTP",flush=True)
+
+        # Change only the synthetic first-factor backend, keeping the same
+        # username, storage volume, encryption/session keys and TOTP secret.
+        docker("rm","-f",authelia)
+        path.write_text(cfg,encoding="utf-8")
+        start_auth()
         first=session(password,totp_secret)
         second=session(password,totp_secret)
         print("PASS: two independent sessions authenticated with password + TOTP",flush=True)
@@ -258,10 +290,19 @@ notifier:
         assert graphql(token,mutation,args)["addUserToGroup"]["ok"]
         session(password,totp_secret,"admins")
         print("PASS: fresh administrator login after role restoration",flush=True)
+
+        # A backend rollback must restore file-backed authentication with
+        # the ORIGINAL synthetic password and ORIGINAL 2FA enrollment.
+        docker("rm","-f",authelia)
+        path.write_text(file_cfg,encoding="utf-8")
+        start_auth()
+        session(file_password,totp_secret,"admins")
+        print("PASS: synthetic rollback to original file password and TOTP",flush=True)
     finally:
         docker("rm","-f",label+"-auth",check=False)
         docker("rm","-f",label+"-ldap",check=False)
         docker("volume","rm","-f",volume,check=False)
+        docker("volume","rm","-f",auth_volume,check=False)
         docker("network","rm",network,check=False)
         temp.cleanup()
 
