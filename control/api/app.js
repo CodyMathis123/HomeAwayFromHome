@@ -34,7 +34,7 @@ function updateCurrentSection(focus = false) {
     history.replaceState(history.state, '', '/control/#hosts');
   window.HomeAwayNavigation?.sync();
   if (target === 'setup-readiness' && capabilities?.role === 'admins')
-    window.HomeAwayReadiness?.show();
+    if (typeof HomeAwayReadiness !== 'undefined') HomeAwayReadiness.show();
   if (focus) {
     const section = $(target);
     if (section) {
