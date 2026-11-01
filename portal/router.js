@@ -76,8 +76,16 @@
     const url = new URL(link.href, location.href);
     const route = routeFor(url.pathname);
     if (url.origin !== location.origin || !route) return;
-    if (route === routeFor(location.pathname)) return; // Browser owns same-page anchors.
+    if (route === routeFor(location.pathname) && url.hash) {
+      // Native same-document fragment navigation (including Back/Forward).
+      ++sequence;
+      return;
+    }
     event.preventDefault();
+    if (url.href === location.href) {
+      position(url.hash);
+      return;
+    }
     show(url, true).catch(() => { location.assign(url.href); });
   });
 
