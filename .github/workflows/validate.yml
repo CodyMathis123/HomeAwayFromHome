@@ -39,6 +39,8 @@ jobs:
           node scripts/tests/test_architecture_status.cjs
           node --check control/api/app.js
           node scripts/tests/test_control_views.cjs
+          node --check control/api/readiness.js
+          node scripts/tests/test_readiness_view.cjs
           node --check control/api/accounts.js
           node --check control/api/computers.js
           python3 -m unittest discover -s scripts/tests -v
