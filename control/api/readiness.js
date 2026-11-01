@@ -370,8 +370,9 @@ const HomeAwayReadiness = (() => {
     if (!view) return;
     view.hidden = !allowed;
     $('nav-readiness').hidden = !allowed;
-    if (!allowed) {
-      checked = false;
+    if (!allowed) checked = false;
+    if (!checked) {
+      // Initial state only. Refresh must never erase last known observations.
       unknown('Not checked in this session');
       metricsUnknown('Not checked in this session');
       servicesUnknown('Not checked in this session');

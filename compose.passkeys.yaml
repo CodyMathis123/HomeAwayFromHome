@@ -1,0 +1,10 @@
+# Opt-in Face ID / passkey support on Authelia 4.39+.
+# Append AFTER the canonical five production Compose files.
+# No new service, port, secret, permission or access-control rule is created.
+services:
+  authelia:
+    environment:
+      AUTHELIA_WEBAUTHN_DISABLE: "false"
+      AUTHELIA_WEBAUTHN_ENABLE_PASSKEY_LOGIN: "true"
+      # Do not treat one Face ID event as two factors via experimental behavior.
+      AUTHELIA_WEBAUTHN_EXPERIMENTAL_ENABLE_PASSKEY_UV_TWO_FACTORS: "false"

@@ -160,7 +160,7 @@ class AccountAssets(unittest.TestCase):
         self.assertIn("me?.capabilities?.role !== 'admins'", js)
         self.assertIn("readJson('/api/status')", js)
         self.assertIn("readJson('/control/api/hosts')", js)
-        self.assertIn("Promise.allSettled(", js)
+        self.assertIn("await Promise.all(queries)", js)
         self.assertIn("location.hash = '#hosts'", js)
         self.assertNotIn("fetch('/control/api/admin/", js)
         self.assertNotIn("method: 'POST'", js)
@@ -177,7 +177,8 @@ class AccountAssets(unittest.TestCase):
                      "pi-thermal", "vm-free", "telemetry"):
             self.assertIn('id="readiness-' + slug + '"', markup)
         self.assertIn("readJson('/control/api/admin/diagnostics')", js)
-        self.assertIn("metricsUnknown('Metrics observer unavailable", js)
+        self.assertIn("metricsStale()", js)
+        self.assertIn("markStale(", js)
         self.assertIn("readiness-telemetry-hosts", js)
         self.assertIn('if path == "/control/api/admin/diagnostics":', backend)
         self.assertIn('if role != "admins":', backend)

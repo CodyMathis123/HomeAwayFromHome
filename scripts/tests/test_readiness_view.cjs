@@ -20,7 +20,8 @@ function simulate({role = 'admins', servicesFail = false, hostsFail = false,
         disabled: false, textContent: '', dataset: {}, handlers: {}, children: [],
         replaceChildren(...items) {this.children=items;},
         append(...items) {this.children.push(...items);},
-        addEventListener(name, callback) { this.handlers[name] = callback; }
+        addEventListener(name, callback) { this.handlers[name] = callback; },
+        removeAttribute(name) { delete this[name]; }
       });
     }
     return elements.get(id);
@@ -57,6 +58,9 @@ function simulate({role = 'admins', servicesFail = false, hostsFail = false,
             {id:'pi.thermal',state:'observed',value:44.1,unit:'celsius',detail:'Thermal zone'},
             {id:'vm.free',state:'observed',value:6442450944,unit:'bytes',detail:'VM storage free'}
           ],
+          serviceChecks:['service.pihole','service.wireguard','service.victoria'].map(id=>({
+            id,state:'observed',value:1,unit:'boolean',detail:'Synthetic scrape'
+          })),
           telemetry:{state:'observed',windowHours:24,hosts:[
             {host:'main-desktop',ageSeconds:45,state:'observed'},
             {host:'sleeping-pc',ageSeconds:600,state:'stale'}
@@ -78,6 +82,12 @@ function simulate({role = 'admins', servicesFail = false, hostsFail = false,
               detail:'Synthetic certificate observed'
             }))
         })};
+    if (url === '/control/api/admin/backup-status')
+      return {ok:true,json:async()=>({
+        schemaVersion:1,checkedAt:new Date().toISOString(),state:'observed',
+        lastEncryptedBackupAt:new Date().toISOString(),checksumVerified:true,
+        ageHours:1,detail:'Synthetic checksum match'
+      })};
     if (url === '/control/api/hosts')
       return hostsFail ? {ok:false,status:503} :
         {ok:true,json:async()=>({hosts:[
@@ -89,7 +99,7 @@ function simulate({role = 'admins', servicesFail = false, hostsFail = false,
   };
   const window = {};
   vm.runInNewContext(script + '\nwindow._readinessTest = HomeAwayReadiness;', {
-    window, document, location, fetch, Map, Promise, Date
+    window, document, location, fetch, Map, Promise, Date, setTimeout, clearTimeout, AbortController
   }, {filename:'control/api/readiness.js'});
   const readiness = window._readinessTest;
   const settle = async () => { for (let i = 0; i < 5; i++) await new Promise(setImmediate); };
@@ -112,7 +122,8 @@ function simulate({role = 'admins', servicesFail = false, hostsFail = false,
   assert.equal(admin.element('nav-readiness').hidden, false);
   assert.deepEqual(admin.calls.map(call=>call.url), [
     '/control/api/me','/api/status','/control/api/hosts',
-    '/control/api/admin/diagnostics', '/control/api/admin/certificates'
+    '/control/api/admin/diagnostics', '/control/api/admin/certificates',
+    '/control/api/admin/backup-status'
   ]);
   assert.equal(admin.element('readiness-transport').textContent, 'HTTPS in use');
   assert.equal(admin.element('readiness-accounts').textContent, 'Available');
@@ -123,9 +134,11 @@ function simulate({role = 'admins', servicesFail = false, hostsFail = false,
   assert.equal(admin.element('readiness-monitor').dataset.state, 'optional');
   assert.equal(admin.element('readiness-hosts').textContent, '1 / 2');
   assert.ok(!admin.element('readiness-detail-hosts').textContent.includes('Do not disclose'));
-  assert.match(admin.element('readiness-detail-wireguard').textContent, /not verified/);
+  assert.match(admin.element('readiness-detail-wireguard').textContent, /Admin listener only/);
   assert.equal(admin.element('readiness-refresh').disabled, false);
   admin.readiness.show();
+  // Refresh must preserve current values immediately, not clear cards.
+  assert.equal(admin.element('readiness-pi-cpu').textContent, '12.4%');
   await admin.settle();
   assert.equal(admin.calls.filter(c=>c.url==='/api/status').length, 2);
 
@@ -142,6 +155,8 @@ function simulate({role = 'admins', servicesFail = false, hostsFail = false,
   assert.match(admin.element('readiness-cert-detail-browser-metrics').textContent, /not trusted/);
   assert.match(admin.element('readiness-cert-detail-telemetry-receiver').textContent, /not checked/);
   assert.match(admin.element('readiness-cert-detail-browser-home').textContent, /HomeAway Test CA/);
+  assert.equal(admin.element('readiness-service-pihole').textContent, 'Scraped');
+  assert.equal(admin.element('readiness-backup').textContent, 'Checksum verified');
 
   const partial = simulate({servicesFail:true});
   partial.readiness.start({capabilities:{role:'admins'}});
