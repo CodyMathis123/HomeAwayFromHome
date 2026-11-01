@@ -45,7 +45,7 @@ Suggested states: `draft` → `windows-setup-needed` → `host-key-verification-
 
 **Edits:** display-name-only changes may be immediate; changes to address/SSH port/Windows public key/host fingerprint require a staging + test + approve transaction with rollback. Do not allow renaming an active host `id` in place initially (Shortcuts depend on it). Do not infer broadcast address solely from “private IP”; require network mask or explicit verification of the NIC/subnet.
 
-**C1 implemented:** A shared `inventory_store.update_inventory` performs cooperative Linux lock, optimistic revision, canonical validation, temp-file fsync, owner/mode preservation, atomic replace and a one-deep previous-valid snapshot. `scripts/add-pc.py` now calls it, preventing races between cooperating CLI updates. **Remaining for C2:** Ensure a future dedicated writer uses the same helper and lock; implement safe UI-mediated read-back, broker audit, path protections for its fixed privileged destination, and the activation/rollback workflow. Direct external editors that bypass the lock remain unsupported.
+**C1 implemented:** A shared `inventory_store.update_inventory` performs cooperative Linux lock, optimistic revision, canonical validation, temp-file fsync, owner/mode preservation, atomic replace and a one-deep previous-valid snapshot. `scripts/add-pc.py` now calls it, preventing races between cooperating CLI updates. **C2 preview implemented:** The separate non-root host-side `homeaway-inventory` socket service uses the same helper and locked active path; it provides admin-only active inventory read, display-name rename, and non-active draft create/discard with revisions and bounded audit. The opt-in controller API and Computer Management UI are gated by the current LLDAP admin role. **Remaining:** supervised Windows host-key pairing, verified activation, disable/archive lifecycle and actual Pi deployment. External direct editors that bypass the lock remain unsupported.
 
 ## 4. Least-privilege management path
 
@@ -140,17 +140,17 @@ Phase 3 will eventually change the browser control URL from a private `.home.arp
 
 Refactored `scripts/add-pc.py` and canonical validator and added `control/pcctl/inventory_store.py` for locking, revision conflicts, atomic replacement, previous-file snapshot and preservation of current mode/owner. Tests cover corruption, failed replacement, symlinked path/lock, conflict, permissions and cooperative concurrent writers. **Remaining:** dedicated inventory service, draft metadata, actual admin UI and lock sharing across CLI and service, and real-machine smoke. No change to running inventory until an operator chooses to deploy.
 
-### C2 — authenticated admin APIs
+### C2 — authenticated admin APIs (initial preview implemented)
 
-Add read-only host diagnostics and admin-only CRUD/activate/disable routes behind verified Authelia claims, strict same-origin controls and dedicated writer boundary. Add policy matrix on existing `/control/api/actions`. Review Caddy/Compose group propagation and the Pi host socket ACLs. Tests must ensure no forged forwarded group can edit inventory, no read-only portal admin surface, and no API can read SSH private keys.
+The admin-only, separately feature-gated inventory endpoints use the dedicated `homeaway-inventory` Unix socket, never a web writable mount. `GET /control/api/admin/computers`, POST draft-create, draft-discard and rename exist with existing Authelia/LLDAP role checks and same-origin CSRF protections. Live power-control permissions are unchanged. **Next:** non-destructive authenticated status/host-key diagnostics, carefully verified activate/disable/archive routes, and a supervised Pi/Windows review. The service has no SSH private-key access; an unverifiable Windows host must never be autoactivated.
 
 ### C3 — guided Windows provisioning
 
 Publish reviewed Windows bootstrap package with `-WhatIf`, default non-destructive behavior, signed/hash manifest and operator instructions. Implement a trust-verification handoff and authenticated status check. Detect existing forced command and do not clobber it. CI can exercise PowerShell syntax/mock OpenSSH config, but real Windows needs a supervised VM before the operator's live machines.
 
-### C4 — mobile-friendly UI
+### C4 — mobile-friendly UI (active/draft preview implemented)
 
-Add Computers management screens to the existing `control/api/index.html`, `app.js`, `styles.css`, minimizing new JS frameworks. Each step explains state and next action, handles refresh/resume, works on iPhone Safari, keyboard/screen readers, disables forbidden buttons and uses backend-derived capabilities. Group status, action, configuration and audit separately to avoid an overwhelming single page.
+Added a capability-gated Computer Management section with active host details/rename and separate non-active draft creation/discard; no activation button. Uses existing authenticated page, small framework-free `computers.js` and responsive CSS. The next iteration adds setup progress, diagnostic status, host-key verification, activation/disable/archive and mobile UX/accessibility review.
 
 ### C5 — verification, deployment and rollback
 
