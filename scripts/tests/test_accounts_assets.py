@@ -160,7 +160,7 @@ class AccountAssets(unittest.TestCase):
         self.assertIn("me?.capabilities?.role !== 'admins'", js)
         self.assertIn("readJson('/api/status')", js)
         self.assertIn("readJson('/control/api/hosts')", js)
-        self.assertIn("Promise.allSettled(", js)
+        self.assertIn("await Promise.all(queries)", js)
         self.assertIn("location.hash = '#hosts'", js)
         self.assertNotIn("fetch('/control/api/admin/", js)
         self.assertNotIn("method: 'POST'", js)
