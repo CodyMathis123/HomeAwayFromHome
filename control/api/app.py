@@ -312,6 +312,37 @@ def certificates_snapshot() -> dict:
         raise BrokerError(503, "Certificate diagnostics unavailable") from exc
 
 
+
+def maintenance_status_snapshot() -> dict:
+    """Read a bounded sanitized host preflight report, never run commands."""
+    fallback = {"schemaVersion": 1, "checkedAt": None,
+                "mode": "preflight-only", "scheduleEnabled": False,
+                "checks": [{"id": name, "state": "unknown"}
+                           for name in ("backupPreflight", "retentionReview")]}
+    source = Path("/backup-status/maintenance.json")
+    try:
+        info = source.lstat()
+        if source.is_symlink() or not source.is_file() or info.st_size > 2048:
+            return fallback
+        data = json.loads(source.read_text(encoding="utf-8"))
+        if (not isinstance(data, dict) or set(data) != set(fallback)
+                or data["schemaVersion"] != 1
+                or data["mode"] != "preflight-only"
+                or data["scheduleEnabled"] is not False
+                or not isinstance(data["checkedAt"], str)
+                or len(data["checkedAt"]) > 48
+                or not isinstance(data["checks"], list)
+                or len(data["checks"]) != 2
+                or {x.get("id") for x in data["checks"] if isinstance(x, dict)}
+                   != {"backupPreflight", "retentionReview"}
+                or any(not isinstance(x, dict) or set(x) != {"id", "state"}
+                       or x["state"] not in ("ok", "attention")
+                       for x in data["checks"])):
+            return fallback
+        return data
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        return fallback
+
 def backup_status_snapshot() -> dict:
     """Read a fixed sanitized status file, never archive data or keys."""
     source = Path("/backup-status/status.json")
@@ -543,6 +574,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(200, diagnostics_snapshot())
             except BrokerError as exc:
                 return self._json(exc.status, {"error": str(exc)})
+        if path == "/control/api/admin/maintenance":
+            if role != "admins":
+                return self._json(403, {"error": "Insufficient permissions"})
+            return self._json(200, maintenance_status_snapshot())
         if path == "/control/api/admin/backup-status":
             if role != "admins":
                 return self._json(403, {"error": "Insufficient permissions"})
