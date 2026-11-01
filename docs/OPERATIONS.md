@@ -69,6 +69,17 @@ Do not invent or commit private encryption keys. Test decryption/restore with a 
 4. Run `bash scripts/doctor.sh`, `docker compose config -q`, start core services, and test both DNS and an existing VPN peer. Check update compatibility before changing image versions.
 5. Restore router DHCP DNS last. Revoke/regenerate VPN peer keys if the archive was ever exposed.
 
+## Draft encrypted full-state backup
+
+The existing `scripts/backup.sh` remains the supported Docker-data backup.
+A separate, **not yet Pi-tested** encrypted full-state implementation is under
+review in [the full-state backup guide](ENCRYPTED-FULL-BACKUP.md).
+Its read-only preview is `sudo bash scripts/backup-full.sh --plan`.
+Do not run its outage-causing `--apply` as part of routine maintenance
+until the plan, encryption key custody, active host services and isolated
+restore procedure have been validated. The encrypted output must still be
+copied off the Pi; an on-device archive is not disaster recovery.
+
 ## Current HTTPS production deployment
 
 The supported application domain is `homeawayfromhome.house`. Its three private LAN/VPN-only HTTPS endpoints are `home`, `auth` and `metrics` on port 8443. The **canonical Compose stack** for control/UI work appends `compose.production.yaml` after `compose.yaml`, `compose.control.yaml`, `compose.accounts.yaml`, and `compose.computers.yaml`. Do not use historical `compose.dns01-production.yaml` or `compose.phase3-domain.yaml` for routine updates. See [production consolidation and rollback](PRODUCTION-HOUSE-ONLY.md).
