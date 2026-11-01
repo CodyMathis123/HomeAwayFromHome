@@ -25,6 +25,7 @@ FILES = {
     "/theme.css": ("theme.css", "text/css; charset=utf-8"),
     "/app.js": ("app.js", "text/javascript; charset=utf-8"),
     "/navigation.js": ("navigation.js", "text/javascript; charset=utf-8"),
+    "/router.js": ("router.js", "text/javascript; charset=utf-8"),
     "/architecture.js": ("architecture.js", "text/javascript; charset=utf-8"),
     "/architecture": ("architecture.html", "text/html; charset=utf-8"),
     "/architecture/": ("architecture.html", "text/html; charset=utf-8"),
