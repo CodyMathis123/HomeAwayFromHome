@@ -446,6 +446,40 @@ class InventoryAgentTests(unittest.TestCase):
         self.assertTrue((self.state/"audit.previous.jsonl").is_file())
         self.assertLess(agent.AUDIT.stat().st_size,4096)
 
+    def test_admin_inventory_audit_returns_only_last_fifty_safe_events(self):
+        for i in range(61):
+            agent._audit("homeowner", "gaming", "rename",
+                         "requested" if i % 2 else "committed")
+        answer = self.manager.execute("homeowner", "audit-list", {})
+        self.assertEqual(answer["limit"], 50)
+        self.assertEqual(len(answer["events"]), 50)
+        self.assertEqual(answer["events"][0]["actor"], "homeowner")
+        self.assertEqual(answer["events"][0]["target"], "gaming")
+        self.assertEqual(answer["events"][0]["operation"], "rename")
+        self.assertEqual(answer["events"][0]["outcome"], "committed")
+        for event in answer["events"]:
+            self.assertEqual(set(event), {
+                "time", "actor", "target", "operation", "outcome"})
+            self.assertNotIn("192.168.", str(event))
+            self.assertNotIn("02:11:22:33:44:55", str(event))
+        with self.assertRaises(agent.InventoryFault) as denied:
+            self.manager.execute("homeowner", "audit-list", {"path": "/etc/passwd"})
+        self.assertEqual(denied.exception.status, 400)
+
+    def test_audit_reader_refuses_symlinks_and_bad_history_records(self):
+        target = self.home / "outside.txt"
+        target.write_text("original")
+        agent.AUDIT.symlink_to(target)
+        with self.assertRaises(agent.InventoryFault) as denied:
+            self.manager.execute("homeowner", "audit-list", {})
+        self.assertEqual(denied.exception.status, 503)
+        self.assertEqual(target.read_text(), "original")
+        agent.AUDIT.unlink()
+        agent.AUDIT.write_text('{"actor":"homeowner","operation":"rename","secret":"bad"}\\n')
+        with self.assertRaises(agent.InventoryFault) as denied:
+            self.manager.execute("homeowner", "audit-list", {})
+        self.assertEqual(denied.exception.status, 503)
+
     def test_socket_rpc_only_accepts_fixed_request(self):
         sockpath=str(self.home/"test.sock")
         agent.Handler.manager=self.manager
@@ -508,6 +542,30 @@ class ComputerApiTests(unittest.TestCase):
             if op=="resolve": return {"role":role}
             raise AssertionError("Account mutation should not be called")
         return mock
+
+    def test_inventory_audit_endpoint_requires_current_admin_role(self):
+        path="/control/api/admin/computers/audit"
+        with self.config(),patch.object(api,"broker_request",
+              side_effect=self.identity("operators")),patch.object(api,"computer_request") as writer:
+            code,_=self.request("GET",path)
+            self.assertEqual(code,403)
+            writer.assert_not_called()
+        with self.config(False),patch.object(api,"broker_request",
+              side_effect=self.identity("admins")),patch.object(api,"computer_request") as writer:
+            code,_=self.request("GET",path)
+            self.assertEqual(code,404)
+            writer.assert_not_called()
+        expected={"events":[{"time":"2026-11-01T09:00:00+00:00",
+                            "actor":"homeowner","target":"gaming",
+                            "operation":"disable","outcome":"committed"}],
+                  "limit":50}
+        with self.config(),patch.object(api,"broker_request",
+              side_effect=self.identity("admins")),patch.object(api,"computer_request",
+              return_value=expected) as writer:
+            code,body=self.request("GET",path)
+            self.assertEqual(code,200)
+            self.assertEqual(body,expected)
+            writer.assert_called_once_with("homeowner","audit-list",{})
 
     def test_only_admin_sees_computer_manager(self):
         with self.config(),patch.object(api,"broker_request",
