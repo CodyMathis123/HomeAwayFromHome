@@ -12,10 +12,6 @@ services:
     read_only: true
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
-    environment:
-      HOMEAWAY_PUBLIC_HOME: ${HOMEAWAY_PUBLIC_HOME:?Set staging homepage name}
-      HOMEAWAY_PUBLIC_AUTH: ${HOMEAWAY_PUBLIC_AUTH:?Set staging auth name}
-      HOMEAWAY_PUBLIC_METRICS: ${HOMEAWAY_PUBLIC_METRICS:?Set staging metrics name}
     secrets:
       - cloudflare_dns01_token
     volumes:
