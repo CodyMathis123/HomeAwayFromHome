@@ -27,8 +27,14 @@ def _mode(info: os.stat_result) -> str:
     return f"{stat.S_IMODE(info.st_mode):04o}"
 
 
-def check_file(path: Path, *, allow_missing: bool = False) -> os.stat_result | None:
-    """Verify the inode itself; never dereference a symlink or accept hardlinks."""
+def check_file(path: Path, *, allow_missing: bool = False,
+               require_private_writes: bool = True) -> os.stat_result | None:
+    """Reject unsafe inodes; enforce non-writable group/other for sensitive files.
+
+    A checkout's *source code* can legitimately be group-writable depending
+    on the user's Git checkout permissions. That is separate from the
+    protections required for live inventory and SSH trust files.
+    """
     try:
         fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
     except FileNotFoundError:
@@ -41,7 +47,7 @@ def check_file(path: Path, *, allow_missing: bool = False) -> os.stat_result | N
         info = os.fstat(fd)
         if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
             raise PreflightError(f"{path.name}: must be an ordinary singly-linked file")
-        if stat.S_IMODE(info.st_mode) & 0o022:
+        if require_private_writes and stat.S_IMODE(info.st_mode) & 0o022:
             raise PreflightError(f"{path.name}: group/world writable")
         return info
     finally:
@@ -58,7 +64,11 @@ def check_inventory(path: Path, core_path: Path) -> tuple[int, str]:
     assert info is not None
     if info.st_size > 65536:
         raise PreflightError("Active inventory exceeds the accepted size limit")
-    core_info = check_file(core_path)
+    # Validate that the checkout source is an ordinary file; do not apply
+    # live-inventory permissions to a Git worktree (often mode 0664).
+    # The operator explicitly trusts the checked-out script when invoking
+    # the preflight; the protected inventory and key checks stay strict.
+    core_info = check_file(core_path, require_private_writes=False)
     assert core_info is not None
     spec = importlib.util.spec_from_file_location("_homeaway_pcctl_preflight_core", core_path)
     if spec is None or spec.loader is None:
