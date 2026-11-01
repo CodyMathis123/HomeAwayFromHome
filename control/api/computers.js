@@ -53,6 +53,36 @@ const HomeAwayComputers = (() => {
       make('p','account-detail',formatDetail(item)),
       make('p','account-detail',
         'DRAFT · not active; no WOL, SSH commands, or browser power controls'));
+    const guide = make('details','computer-setup');
+    guide.append(make('summary','','Windows setup checklist (manual, no activation)'));
+    const steps = make('ol','');
+    const items = [
+      'On the target Windows PC, confirm the correct Ethernet adapter and IPv4 settings:',
+      'In an Administrator PowerShell window, check that Windows OpenSSH Server is installed:',
+      'Use the reviewed HomeAway Windows setup script with -WhatIf first. Never rerun it blindly when a pcctl SSH Match block already exists.',
+      'On Windows, record its SSH server host-key fingerprint. Compare that value with the fingerprint observed from the Pi over an independent, trusted channel.',
+      'After explicit SSH host-key verification and restricted pcctl key setup, test an authenticated status command from the Pi. Do not use StrictHostKeyChecking=no.',
+      'Activation from HomeAway is intentionally unavailable until this trust-verification process is implemented.'
+    ];
+    const commands = [
+      'Get-NetAdapter; Get-NetIPAddress -AddressFamily IPv4',
+      'Get-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0',
+      '',
+      'ssh-keygen.exe -lf C:\\ProgramData\\ssh\\ssh_host_ed25519_key.pub',
+      '',
+      ''
+    ];
+    for (let i=0;i<items.length;i++) {
+      const li=make('li','',items[i]);
+      if (commands[i]) li.append(make('pre','computer-command',commands[i]));
+      steps.append(li);
+    }
+    const source = make('a','','Review Windows setup script and instructions');
+    source.href='https://github.com/CodyMathis123/HomeAwayFromHome/blob/Production/docs/PC-CONTROL.md';
+    source.target='_blank';
+    source.rel='noopener noreferrer';
+    guide.append(steps,source);
+    card.append(guide);
     const discard = make('button','danger','Discard draft');
     discard.type='button';
     discard.addEventListener('click', async () => {
