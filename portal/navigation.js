@@ -47,7 +47,7 @@
     // whether privileged links can be revealed by control/app.js.
     add('Manage computers', '#computer-admin', 'computer-admin', 'nav-computers', true);
     add('Users and permissions', '#accounts', 'accounts', 'nav-accounts', true);
-    add('Activity', '#recent-activity', 'recent-activity');
+    add('Activity', '#recent-activity', 'recent-activity', 'nav-activity', true);
   } else {
     const control = add('Computers & users', '/control/', 'control', null, true);
     // Do not expose an unvalidated/unconfigured link on a public LAN page.
