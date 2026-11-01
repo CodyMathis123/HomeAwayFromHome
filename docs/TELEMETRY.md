@@ -49,8 +49,31 @@ sudo chown -R 472:472 data/grafana
 5. Build and start the **optional** metrics profile, without redeploying the DNS/VPN core:
 
 ```bash
-docker compose --profile metrics up -d --build grafana telemetry-ingest
+docker compose --profile metrics up -d --build grafana telemetry-ingest pi-node-exporter
 docker compose --profile metrics ps
+
+   This also starts the **Pi node exporter** used by `HomeAway · System Health`.
+   The previous startup example omitted that service, causing empty Pi CPU,
+   RAM, uptime and thermal panels even when Windows SensorDash telemetry passed.
+   On an existing deployment, safely start only that missing exporter:
+
+   ```bash
+   sudo docker compose --profile metrics up -d --no-deps pi-node-exporter
+   sudo bash scripts/verify-pi-metrics.sh
+   ```
+
+   If `verify-pi-metrics.sh` reports that the scrape target is missing entirely,
+   VictoriaMetrics may be running with an older scrape configuration.
+   Its history is on a bind-mounted volume, so recreate **only** the metrics
+   service to load the current `monitoring/scrape.yml`:
+
+   ```bash
+   sudo docker compose --profile metrics up -d --no-deps --force-recreate victoria-metrics
+   sudo bash scripts/verify-pi-metrics.sh
+   ```
+
+   Do not restart Pi-hole, WireGuard, Authelia or SensorDash for this.
+
 ```
 
 6. Open `http://PI_LAN_IP:3000`, sign in as `admin` using the generated password, and visit **HomeAway → SensorDash · Hardware Telemetry**. The data source and dashboard are provisioned from versioned files. Charts stay empty until the Windows collector is explicitly configured and running.
