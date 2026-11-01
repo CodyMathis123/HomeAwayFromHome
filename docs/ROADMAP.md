@@ -2,6 +2,17 @@
 
 **Updated November 1, 2026.** This is the current status index for the live project, rather than a claim that every feature has undergone full physical-device acceptance. The [root README](../README.md) is the entry point for new installs; the [operations guide](OPERATIONS.md) covers the deployed system.
 
+> **Implementation status correction (November 1, 2026):** The historical
+> Phase 3 and Phase 4 statuses below were written before the HTTPS and
+> encrypted-backup milestones. Production now includes Cloudflare DNS-01
+> private HTTPS on `homeawayfromhome.house`, read-only diagnostics and
+> certificate observations, and a full-state encrypted backup with a
+> sanitized admin-only checksum status view. The off-device decrypt/listing
+> check succeeded; **isolated restoration remains untested**. See
+> [current phase status and component ownership](PHASE-STATUS-AND-OWNERSHIP.md)
+> for the reconciled view and remaining gates. This historical inventory is
+> retained for branch traceability, not as the current feature checklist.
+>
 ## Current baseline and gates
 
 | Stage | Code/merge status | Operator acceptance | Outstanding |
