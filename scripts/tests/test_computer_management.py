@@ -126,6 +126,26 @@ class InventoryAgentTests(unittest.TestCase):
                     "revision":self.manager.execute("homeowner","list",{})["revision"]})
         self.assertEqual(json.loads(self.live.read_text())["hosts"][0]["name"],"Gaming")
 
+    def test_audit_symlink_is_rejected_without_touching_target(self):
+        target=self.home/"outside.txt"
+        target.write_text("original")
+        agent.AUDIT.symlink_to(target)
+        with self.assertRaises(agent.InventoryFault) as error:
+            self.manager.execute("homeowner","rename",{
+                "id":"gaming","name":"New name",
+                "revision":self.manager.execute("homeowner","list",{})["revision"]})
+        self.assertEqual(error.exception.status,503)
+        self.assertEqual(target.read_text(),"original")
+        self.assertEqual(json.loads(self.live.read_text())["hosts"][0]["name"],"Gaming")
+
+    def test_audit_rotates_at_bounded_size(self):
+        agent.AUDIT.write_bytes(b"a"*1_000_001)
+        self.manager.execute("homeowner","rename",{
+            "id":"gaming","name":"New name",
+            "revision":self.manager.execute("homeowner","list",{})["revision"]})
+        self.assertTrue((self.state/"audit.previous.jsonl").is_file())
+        self.assertLess(agent.AUDIT.stat().st_size,4096)
+
     def test_socket_rpc_only_accepts_fixed_request(self):
         sockpath=str(self.home/"test.sock")
         agent.Handler.manager=self.manager
