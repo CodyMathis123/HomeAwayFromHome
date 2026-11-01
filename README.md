@@ -12,7 +12,7 @@
 | Read-only metrics embed | Dedicated Grafana portal dashboard and single opt-in iframe | `feature/homeaway-grafana-embed` ([PR #2](https://github.com/CodyMathis123/HomeAwayFromHome/pull/2)) | [Grafana embed](docs/PORTAL-METRICS-EMBED.md) |
 | Authenticated computer control | Private HTTPS, local Authelia 2FA, multi-PC WOL/SSH actions and audit history | `feature/homeaway-auth-pc-control` ([PR #3](https://github.com/CodyMathis123/HomeAwayFromHome/pull/3)) | [PC onboarding / rollback](docs/PC-CONTROL.md) |
 
-These PRs are intentionally stacked **#1 → #2 → #3**. For the combined, unmerged feature set, use the tip of `feature/homeaway-auth-pc-control`; for core-only setup, use `feature/pi4-home-infrastructure`. Do not cherry-pick partial files between incompatible Compose or telemetry schema revisions. Review and merge the chain in order after the requisite checks.
+The implementation and housekeeping PRs are stacked **#1 → #2 → #3 → #4**. For a complete end-to-end test, use **`chore/docs-and-legacy-cleanup`** in this repository together with **`chore/sensordash-telemetry-docs`** in SensorDash; both tips include all earlier stacked work. Follow the [two-repository integration test guide](docs/INTEGRATION-TEST.md). For core-only setup use `feature/pi4-home-infrastructure`. Do not cherry-pick partial files between incompatible Compose or telemetry schema revisions, and do not merge to `Production` before the operator's live validation.
 
 ## Service boundaries
 
@@ -36,7 +36,7 @@ For the simplified architecture and intended trust boundaries, read [security](d
 2. For the **combined staged feature set**, clone the top review branch shown below; for core-only deployment use `feature/pi4-home-infrastructure`. Then create the local configuration and secret:
 
    ```bash
-   git clone -b feature/homeaway-auth-pc-control https://github.com/CodyMathis123/HomeAwayFromHome.git
+   git clone -b chore/docs-and-legacy-cleanup https://github.com/CodyMathis123/HomeAwayFromHome.git
    cd HomeAwayFromHome
    bash scripts/init.sh
    nano .env
