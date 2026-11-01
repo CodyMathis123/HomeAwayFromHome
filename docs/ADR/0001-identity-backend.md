@@ -1,6 +1,6 @@
 # ADR 0001 — HomeAway identity ownership (provisional)
 
-Status: **Accepted as the development direction; production migration NOT approved**  
+Status: **Development implementation validated in disposable CI; production migration NOT approved**  
 Date: 2026-11-01
 
 ## Context
@@ -43,9 +43,15 @@ network. Authelia's LDAP traffic stays on a private isolated network; use
 TLS for any hop outside that protected trust boundary. Never expose LDAP
 3890 or the directory web UI to the WAN.
 
+## Verified since the provisional decision
+
+The isolated CI job `scripts/integration-authelia-lldap.py` now exercises Authelia 4.39.28 with an actual LLDAP directory and two independent **password + TOTP** sessions. With `authentication_backend.refresh_interval: always`, revoking the membership used by a `two_factor` resource causes both old cookies to lose forward-auth access immediately in the synthetic test. The control API also independently checks current directory membership for **every request** and fails closed on mismatch/outage, so session refresh is not its only revocation boundary.
+
+The separate LLDAP CI job tests directory mutations and the actual HomeAway account broker. The draft Users interface includes pending identities, group changes and **HomeAway-access** revocation, not full LDAP login disablement. No real account migration or credential invitation flow has been tested. The [supervised cutover runbook](../ACCOUNT-ADMIN-ROLLOUT.md) records the remaining gates.
+
 ## Critical unfinished security requirements
 
-1. **Immediate suspend/revoke**. Authelia's LLDAP integration does not
+1. **Immediate suspend/revoke — synthetic cookie and role removal PASS; real migration still pending**. Authelia's LLDAP integration does not
    currently document a suitable standard account-disabled attribute.
    Removing a user's `admins`, `operators`, and `viewers` memberships must
    deny future actions, including with a previously issued 2FA session.
