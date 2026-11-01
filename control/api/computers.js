@@ -28,7 +28,7 @@ const HomeAwayComputers = (() => {
 
   function formatDetail(item) {
     return item.id + ' · ' + item.address + ' · ' + item.mac + ' · ' +
-      item.ssh_user + ':' + item.ssh_port;
+      (item.ssh_user || 'pcctl') + ':' + (item.ssh_port || 22);
   }
 
   function activeCard(item, revision) {
