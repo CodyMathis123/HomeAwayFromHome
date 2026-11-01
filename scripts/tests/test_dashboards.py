@@ -167,10 +167,55 @@ class DashboardContracts(unittest.TestCase):
             self.assertIn("label_replace(", query)
             self.assertIn('"name", "$1 $2", "name"', query)
             self.assertIn('sensor=~"$sensor"', query)
-            self.assertNotIn("alias=", query)
+            # Alias selectors apply to the presentation metadata, never to
+            # the raw reading series: identity remains the stable sensor ID.
+            raw_selector = query.split("sensordash_reading_value{", 1)[1].split("}", 1)[0]
+            self.assertNotIn("alias=", raw_selector)
             self.assertIn("sensordash_sensor_info_value", query)
             self.assertIn("on(host,sensor) group_left(name,alias,device)", query)
             self.assertEqual(panels[id]["targets"][0]["legendFormat"], "{{name}}")
+
+    def test_user_alias_is_display_name_with_raw_fallback(self):
+        # The exporter always emits alias=unassigned when no user alias exists.
+        # PromQL's label_replace runs on a separate metadata branch for real
+        # aliases; a disjoint fallback retains the original name and sensor ID.
+        # This is presentation only: never relabel stored raw measurements.
+        targets = {
+            "sensordash.json": (1, 2, 3, 4),
+            "cooling-systems.json": tuple(range(2, 10)),
+            "overview.json": (200, 201, 301),
+            "storage.json": (5, 6, 7, 8, 17),
+            "portal-metrics.json": (9,),
+        }
+        for filename, ids in targets.items():
+            dashboard = json.loads((PANELS / filename).read_text(encoding="utf-8"))
+            panels = {panel["id"]: panel for panel in dashboard["panels"]}
+            for pid in ids:
+                with self.subTest(dashboard=filename, panel=pid):
+                    query = panels[pid]["targets"][0]["expr"]
+                    self.assertIn('alias!="unassigned"', query)
+                    self.assertIn('alias="unassigned"', query)
+                    self.assertIn('label_replace(sensordash_sensor_info_value', query)
+                    self.assertIn('"name", "$1", "alias", "(.+)"', query)
+                    self.assertIn(" on(host,sensor) ", query)
+                    self.assertIn(" or (sensordash_sensor_info_value", query)
+                    self.assertIn("== 1", query)
+                    self.assertNotIn("sensor=CPU_Watts", query)
+        # Metadata reference tables intentionally retain the separately
+        # exported original name and configured alias.
+        for filename, pid in (
+            ("sensordash.json", 10),
+            ("cooling-systems.json", 1),
+            ("storage.json", 10),
+        ):
+            dashboard = json.loads((PANELS / filename).read_text(encoding="utf-8"))
+            expr = next(p for p in dashboard["panels"] if p["id"] == pid)["targets"][0]["expr"]
+            self.assertNotIn('alias!="unassigned"', expr)
+        # Fixed SSD warning/critical limits are still filtered BEFORE
+        # changing display labels for physical-drive temperature charts.
+        storage = json.loads((PANELS / "storage.json").read_text(encoding="utf-8"))
+        drive = next(p for p in storage["panels"] if p["id"] == 5)["targets"][0]["expr"]
+        self.assertIn('name!~"(?i).*(warning|critical).*"', drive)
 
     def test_static_drive_temperature_limits_never_count_as_live_heat(self):
         # LHM's NVMe "Warning Temperature" and "Critical Temperature"

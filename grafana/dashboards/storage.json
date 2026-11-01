@@ -370,7 +370,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(name,device,device_type) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Storage\",name!~\"(?i).*(warning|critical).*\"} == 1)",
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(name,device,device_type) (label_replace(sensordash_sensor_info_value{host=~\"$host\",device_type=\"Storage\",name!~\"(?i).*(warning|critical).*\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Storage\",name!~\"(?i).*(warning|critical).*\",alias=\"unassigned\"} == 1))",
           "range": true,
           "legendFormat": "{{device}} · {{name}}"
         }
@@ -438,7 +438,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Load\"} * on(host,sensor) group_left(name,device,device_type) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Storage\"} == 1)",
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Load\"} * on(host,sensor) group_left(name,device,device_type) (label_replace(sensordash_sensor_info_value{host=~\"$host\",device_type=\"Storage\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Storage\",alias=\"unassigned\"} == 1))",
           "range": true,
           "legendFormat": "{{device}} · {{name}}"
         }
@@ -506,7 +506,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Throughput\"} * on(host,sensor) group_left(name,device,device_type) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Storage\"} == 1)",
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Throughput\"} * on(host,sensor) group_left(name,device,device_type) (label_replace(sensordash_sensor_info_value{host=~\"$host\",device_type=\"Storage\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Storage\",alias=\"unassigned\"} == 1))",
           "range": true,
           "legendFormat": "{{device}} · {{name}}"
         }
@@ -574,7 +574,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Data\"} * on(host,sensor) group_left(name,device,device_type) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Storage\"} == 1)",
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Data\"} * on(host,sensor) group_left(name,device,device_type) (label_replace(sensordash_sensor_info_value{host=~\"$host\",device_type=\"Storage\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Storage\",alias=\"unassigned\"} == 1))",
           "range": true,
           "legendFormat": "{{device}} · {{name}}"
         }
@@ -1168,7 +1168,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "topk(25, count_over_time(sensordash_reading_value{host=~\"$host\"}[$__range])) * on(host,sensor) group_left(name,device) (sensordash_sensor_info_value{host=~\"$host\"} == 1)",
+          "expr": "topk(25, count_over_time(sensordash_reading_value{host=~\"$host\"}[$__range])) * on(host,sensor) group_left(name,device) (label_replace(sensordash_sensor_info_value{host=~\"$host\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",alias=\"unassigned\"} == 1))",
           "instant": true,
           "format": "table"
         }
