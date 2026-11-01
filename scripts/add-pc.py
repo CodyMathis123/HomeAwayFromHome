@@ -6,39 +6,29 @@ Requires a real MAC, private IPv4, and broadcast; does not create credentials.
 """
 from __future__ import annotations
 import argparse
-import json
-import os
-import re
 import sys
-import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "control/pcctl"))
-from core import load_hosts  # noqa: E402
+from inventory_store import update_inventory  # noqa: E402
 
 
 def add_host(path: Path, item: dict) -> int:
-    data = {"hosts": []}
-    if path.exists():
-        data = json.loads(path.read_text(encoding="utf-8"))
-    current = data.get("hosts", [])
-    if any(h.get("id") == item["id"] for h in current):
-        raise ValueError(f"Computer {item['id']} already exists")
-    candidate = {"hosts": current + [item]}
-    path.parent.mkdir(parents=True, exist_ok=True)
-    # Validate all hosts with the same parser used by the actual Pi service.
-    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent, delete=False) as temp:
-        tmp = Path(temp.name)
-        json.dump(candidate, temp, indent=2)
-        temp.write("\n")
-    try:
-        load_hosts(str(tmp))
-        os.chmod(tmp, 0o644)
-        os.replace(tmp, path)
-    finally:
-        tmp.unlink(missing_ok=True)
-    return len(candidate["hosts"])
+    # Same transaction helper will be used by the narrow computer-management
+    # broker. CLI and browser edits must never overwrite one another.
+    def append(document: dict) -> dict:
+        hosts = document["hosts"]
+        if any(host["id"] == item["id"] for host in hosts):
+            raise ValueError(f"Computer {item['id']} already exists")
+        if any(host["address"] == item["address"] for host in hosts):
+            raise ValueError("A computer already uses that IP address")
+        if any(host["mac"].lower() == item["mac"].lower() for host in hosts):
+            raise ValueError("A computer already uses that MAC address")
+        return {**document, "hosts": hosts + [item]}
+
+    updated, _revision = update_inventory(path, append)
+    return len(updated["hosts"])
 
 
 def main():
@@ -62,5 +52,5 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except (ValueError, KeyError, OSError, json.JSONDecodeError) as error:
+    except (ValueError, KeyError, OSError) as error:
         raise SystemExit(f"Cannot register computer: {error}")
