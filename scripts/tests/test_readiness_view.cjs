@@ -82,6 +82,13 @@ function simulate({role = 'admins', servicesFail = false, hostsFail = false,
               detail:'Synthetic certificate observed'
             }))
         })};
+    if (url === '/control/api/admin/maintenance')
+      return {ok:true,json:async()=>({
+        schemaVersion:1,checkedAt:'2026-11-01T16:30:00Z',
+        mode:'preflight-only',scheduleEnabled:false,
+        checks:[{id:'backupPreflight',state:'ok'},
+                {id:'retentionReview',state:'attention'}]
+      })};
     if (url === '/control/api/admin/backup-status')
       return {ok:true,json:async()=>({
         schemaVersion:1,checkedAt:new Date().toISOString(),state:'observed',
@@ -123,6 +130,7 @@ function simulate({role = 'admins', servicesFail = false, hostsFail = false,
   assert.deepEqual(admin.calls.map(call=>call.url), [
     '/control/api/me','/api/status','/control/api/hosts',
     '/control/api/admin/diagnostics', '/control/api/admin/certificates',
+    '/control/api/admin/maintenance',
     '/control/api/admin/backup-status'
   ]);
   assert.equal(admin.element('readiness-transport').textContent, 'HTTPS in use');
@@ -157,6 +165,9 @@ function simulate({role = 'admins', servicesFail = false, hostsFail = false,
   assert.match(admin.element('readiness-cert-detail-browser-home').textContent, /HomeAway Test CA/);
   assert.equal(admin.element('readiness-service-pihole').textContent, 'Scraped');
   assert.equal(admin.element('readiness-backup').textContent, 'Checksum verified');
+  assert.equal(admin.element('readiness-maintenance-backupPreflight').textContent, 'Passed');
+  assert.equal(admin.element('readiness-maintenance-retentionReview').textContent, 'Attention');
+  assert.equal(admin.element('readiness-maintenance-timer').textContent, 'Disabled');
 
   const partial = simulate({servicesFail:true});
   partial.readiness.start({capabilities:{role:'admins'}});
