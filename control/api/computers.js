@@ -11,6 +11,7 @@ const HomeAwayComputers = (() => {
   };
   let started = false;
   let busy = false;
+  let auditBusy = false;
   // Browser state is UX only. The host writer verifies SSH again on activate.
   const recentlyVerified = new Set();
   const message = value => { $('computer-admin-message').textContent = value; };
@@ -213,6 +214,35 @@ const HomeAwayComputers = (() => {
     return card;
   }
 
+  async function refreshAudit() {
+    if (auditBusy) return;
+    const details=$('computer-admin-audit');
+    if (!details?.open) return;
+    auditBusy=true;
+    const status=$('computer-admin-audit-message');
+    const events=$('computer-admin-audit-events');
+    status.textContent='Loading recent administrative events…';
+    try {
+      const result=await api('/audit');
+      if (!Array.isArray(result.events)) throw new Error('Unexpected audit format');
+      const rows=result.events.map(event=>{
+        const item=make('li','');
+        // textContent is required: admin identity/targets are never HTML.
+        item.textContent=event.time + ' · ' + event.actor + ' · ' +
+          event.operation + ' · ' + event.target + ' · ' + event.outcome;
+        return item;
+      });
+      events.replaceChildren(...rows);
+      status.textContent=result.events.length ?
+        'Showing '+result.events.length+' most recent events (newest first).' :
+        'No computer-management activity recorded.';
+    } catch(error) {
+      status.textContent='Could not load audit history: '+error.message;
+    } finally {
+      auditBusy=false;
+    }
+  }
+
   async function refresh() {
     const button=$('computer-admin-refresh');
     if (busy) return false;
@@ -228,6 +258,7 @@ const HomeAwayComputers = (() => {
       if (!drafts.length) $('computer-admin-drafts').textContent='No unconfigured drafts.';
       $('computer-admin-retired').replaceChildren(...retired.map(r=>retiredCard(r,data.revision)));
       if (!retired.length) $('computer-admin-retired').textContent='No disabled or archived computers.';
+      if ($('computer-admin-audit')?.open) void refreshAudit();
       return true;
     } catch (err) {
       message('Cannot load computer inventory: ' + err.message);
@@ -261,6 +292,9 @@ const HomeAwayComputers = (() => {
     if (started) return;
     started=true;
     $('computer-admin-refresh').addEventListener('click',()=>{ void refresh(); });
+    $('computer-admin-audit')?.addEventListener('toggle',event=>{
+      if (event.currentTarget.open) void refreshAudit();
+    });
     $('computer-admin-create').addEventListener('submit',async event=>{
       event.preventDefault();
       const form=event.currentTarget;
