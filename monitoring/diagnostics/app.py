@@ -29,6 +29,9 @@ HOST_LABEL = re.compile(r"^[A-Za-z0-9_.:/-]{1,80}$")
 # label selector, endpoint path, query-time window, or VictoriaMetrics URL.
 PROBES = (
     ("pi.scrape", "Pi exporter", 'up{job="pi-node"}', "boolean"),
+    ("service.pihole", "Pi-hole metrics exporter", 'up{job="pihole"}', "boolean"),
+    ("service.wireguard", "WireGuard metrics exporter", 'up{job="wg-easy"}', "boolean"),
+    ("service.victoria", "VictoriaMetrics metrics", 'up{job="victoria-metrics"}', "boolean"),
     ("pi.cpu", "Pi CPU utilization (5-minute rate)",
      '100 * (1 - avg(rate(node_cpu_seconds_total{job="pi-node",mode="idle"}[5m])))',
      "percent"),
@@ -144,7 +147,7 @@ def telemetry_hosts(rows: list[dict], checked_epoch: float) -> list[dict]:
 def snapshot() -> dict:
     checked_epoch = time.time()
     checked = now_iso(checked_epoch)
-    with ThreadPoolExecutor(max_workers=4) as pool:
+    with ThreadPoolExecutor(max_workers=6) as pool:
         futures = [
             pool.submit(read_vector, expression)
             for _, _, expression, _ in PROBES
@@ -158,6 +161,7 @@ def snapshot() -> dict:
                     AttributeError, json.JSONDecodeError):
                 results.append((item, [], "Metric query unavailable"))
     checks = []
+    service_checks = []
     hosts: list[dict] = []
     telemetry_status = "unknown"
     for (probe_id, label, _, units), rows, error in results:
@@ -171,12 +175,23 @@ def snapshot() -> dict:
         check = summarized_probe(probe_id, label, units, rows, checked)
         if error:
             check.update(state="unknown", detail=error, value=None)
-        checks.append(check)
+        if probe_id.startswith("service."):
+            # A scrape proves only that the metrics endpoint answered;
+            # it cannot establish VPN handshake or Pi-hole client DNS.
+            check["detail"] = (
+                "Metrics endpoint was scraped" if check["state"] == "observed"
+                else "Metrics scrape failed" if check["state"] == "attention"
+                else "Metrics scrape evidence unavailable"
+            )
+            service_checks.append(check)
+        else:
+            checks.append(check)
     return {
         "schemaVersion": SCHEMA_VERSION,
         "checkedAt": checked,
         "source": "VictoriaMetrics (existing internal series)",
         "checks": checks,
+        "serviceChecks": service_checks,
         "telemetry": {
             "state": telemetry_status,
             "windowHours": 24,
