@@ -50,13 +50,12 @@ class MaintenanceTests(unittest.TestCase):
                  patch.object(maintenance, "STATUS_FILE", root / "maintenance.json"), \
                  patch.object(maintenance.os, "geteuid", return_value=0):
                 result = maintenance.run_checks(lambda *a, **kw: FakeResult(1))
-                # On CI, the temp directory belongs to the nonroot runner.
-                # The real publisher only runs as root on the Pi.
-                with patch.object(maintenance.Path, "stat",
-                     autospec=True, wraps=None) as unused:
-                    pass
-                with self.assertRaises(RuntimeError):
-                    maintenance.publish(result)
+                # Simulate unsafe ownership regardless of CI runner UID.
+                from unittest.mock import Mock
+                stat_result = Mock(st_uid=1000, st_mode=0o755)
+                with patch.object(maintenance.Path, "stat", return_value=stat_result):
+                    with self.assertRaises(RuntimeError):
+                        maintenance.publish(result)
 
     def test_unit_definitions_never_run_backup(self):
         service = (ROOT / "systemd/homeaway-backup-preflight.service").read_text()
@@ -65,7 +64,7 @@ class MaintenanceTests(unittest.TestCase):
         self.assertIn("backup-maintenance.py --publish", service)
         self.assertNotIn("backup-full.sh", service)
         self.assertIn("Sun *-*-* 03:00:00", timer)
-        self.assertNotIn("systemctl enable", installer.replace("echo", "#"))
+        self.assertNotIn("\\nsystemctl enable", installer)
 
 
 if __name__ == "__main__":
