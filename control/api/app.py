@@ -81,7 +81,15 @@ def broker_request(actor: str, operation: str, payload: dict) -> dict:
             if not isinstance(result, dict): raise ValueError("Invalid response")
             return result
     except HTTPError as exc:
-        if exc.code in (400, 403, 404, 409, 413):
+        # Distinguish expected admin-side validation conflicts without leaking
+        # directory internals or echoing user-controlled fields.
+        if exc.code == 409:
+            msg = ("Username or email is already in use" if operation == "create"
+                   else "Account record changed; refresh users and try again")
+            raise BrokerError(409, msg) from exc
+        if exc.code == 400 and operation == "create":
+            raise BrokerError(400, "Invalid username, display name, or email") from exc
+        if exc.code in (400, 403, 404, 413):
             raise BrokerError(exc.code, "Account operation rejected") from exc
         raise BrokerError(503, "Account broker unavailable") from exc
     except (OSError, URLError, ValueError, json.JSONDecodeError, TimeoutError) as exc:
