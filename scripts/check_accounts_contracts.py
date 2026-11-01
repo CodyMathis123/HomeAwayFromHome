@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Static deployment barriers for the disabled-by-default account directory."""
 from pathlib import Path
+import json
+import os
+import subprocess
 
 ROOT=Path(__file__).resolve().parents[1]
 
@@ -34,6 +37,26 @@ def main():
     assert "fingerprint(target)!=revision" in broker
     assert "Cannot remove the last administrator" in broker
     assert 'if uid==actor or uid=="admin":' in broker
-    print("PASS: account directory is opt-in, internal-only, and denies stale grants")
+    env = {**os.environ,
+           "HOMEAWAY_DOMAIN":"homeaway.home.arpa",
+           "HOMEAWAY_AUTH_DOMAIN":"auth.homeaway.home.arpa",
+           "HOMEAWAY_METRICS_DOMAIN":"metrics.homeaway.home.arpa",
+           "PCCTL_GID":"999"}
+    output = subprocess.run(
+        ["docker","compose","-f","compose.yaml","-f","compose.control.yaml",
+         "-f","compose.accounts.yaml","--profile","control",
+         "--profile","accounts","--profile","metrics",
+         "config","--format","json"],
+        cwd=ROOT, env=env, check=True, capture_output=True, text=True)
+    services=json.loads(output.stdout)["services"]
+    assert set(services["authelia"]["networks"]) == {"pc-control","account-directory"}
+    assert set(services["lldap"]["networks"]) == {"account-directory"}
+    assert set(services["account-broker"]["networks"]) == {"pc-control","account-directory"}
+    assert set(services["pc-control"]["networks"]) == {"pc-control"}
+    for name in ("lldap","account-broker","authelia","pc-control"):
+        assert not services[name].get("ports"), name+" must not expose a host port"
+    assert not services["lldap"].get("privileged", False)
+    assert "lldap_admin_password" not in services["pc-control"].get("secrets",[])
+    print("PASS: account directory is opt-in, internal-only, reachable from Authelia, and denies stale grants")
 
 if __name__=="__main__":main()
