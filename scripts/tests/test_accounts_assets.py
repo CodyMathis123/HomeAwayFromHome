@@ -50,6 +50,26 @@ class AccountAssets(unittest.TestCase):
         self.assertIn("Change failed:", js)
         self.assertIn("No HomeAway access · pending or revoked", js)
 
+    def test_control_uses_shared_navigation_with_auth_boundaries_and_fallback(self):
+        html = (API / "index.html").read_text()
+        portal_nav = (ROOT / "portal/navigation.js").read_text()
+        gateway = (ROOT / "control/gateway/Caddyfile").read_text()
+        control = (API / "app.js").read_text()
+        self.assertIn('src="/navigation.js"', html)
+        self.assertLess(html.index('src="/navigation.js"'), html.index('src="/control/app.js"'))
+        self.assertIn('id="app-navigation"', html)
+        self.assertIn('<nav class="section-nav"', html,
+                      "The local control menu must work if the portal is down")
+        self.assertIn('id="nav-computers" href="#computer-admin" hidden', html)
+        self.assertIn('id="nav-accounts" href="#accounts" hidden', html)
+        self.assertIn("isControl ? 'Control page sections'", portal_nav)
+        self.assertIn("'nav-computers', true", portal_nav)
+        self.assertIn("'nav-accounts', true", portal_nav)
+        self.assertIn("updateSectionNavigation(identity.capabilities)", control)
+        self.assertIn("forward_auth authelia:9091", gateway)
+        self.assertIn("reverse_proxy pc-control:8081", gateway)
+        self.assertNotIn("reverse_proxy portal:8080 {", gateway)
+
     def test_authenticated_pages_use_shared_visual_theme_with_local_fallback(self):
         html = (API / "index.html").read_text()
         css = (API / "styles.css").read_text()
