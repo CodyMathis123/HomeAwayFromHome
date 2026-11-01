@@ -177,7 +177,8 @@ class AccountAssets(unittest.TestCase):
                      "pi-thermal", "vm-free", "telemetry"):
             self.assertIn('id="readiness-' + slug + '"', markup)
         self.assertIn("readJson('/control/api/admin/diagnostics')", js)
-        self.assertIn("metricsUnknown('Metrics observer unavailable", js)
+        self.assertIn("metricsStale()", js)
+        self.assertIn("markStale(", js)
         self.assertIn("readiness-telemetry-hosts", js)
         self.assertIn('if path == "/control/api/admin/diagnostics":', backend)
         self.assertIn('if role != "admins":', backend)
