@@ -1,0 +1,34 @@
+# OPT-IN PRODUCTION CERTIFICATE VALIDATION ONLY.
+# Import the existing .home.arpa gateway completely unchanged: authenticated
+# controls continue ONLY at the original homeaway.home.arpa endpoint.
+import /etc/caddy/Caddyfile.legacy
+
+# The three new names obtain public Let's Encrypt certs using Cloudflare TXT
+# DNS-01 validation, but DO NOT route to the portal, Authelia or Grafana yet.
+# Production authentication and browser-origin migration is a separate PR.
+home.homeawayfromhome.house:8443 {
+  tls {
+    dns cloudflare {env.CF_API_TOKEN}
+    ca https://acme-v02.api.letsencrypt.org/directory
+    resolvers 1.1.1.1
+  }
+  respond "HomeAway public HTTPS certificate ready; application routing not yet enabled" 503
+}
+
+auth.homeawayfromhome.house:8443 {
+  tls {
+    dns cloudflare {env.CF_API_TOKEN}
+    ca https://acme-v02.api.letsencrypt.org/directory
+    resolvers 1.1.1.1
+  }
+  respond "HomeAway public HTTPS certificate ready; application routing not yet enabled" 503
+}
+
+metrics.homeawayfromhome.house:8443 {
+  tls {
+    dns cloudflare {env.CF_API_TOKEN}
+    ca https://acme-v02.api.letsencrypt.org/directory
+    resolvers 1.1.1.1
+  }
+  respond "HomeAway public HTTPS certificate ready; application routing not yet enabled" 503
+}
