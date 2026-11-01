@@ -123,7 +123,7 @@ const HomeAwayComputers = (() => {
       'Use the reviewed HomeAway Windows setup script with -WhatIf first. Never rerun it blindly when a pcctl SSH Match block already exists.',
       'On Windows, record its SSH server host-key fingerprint. Compare that value with the fingerprint observed from the Pi over an independent, trusted channel.',
       'After explicit SSH host-key verification and restricted pcctl key setup, test an authenticated status command from the Pi. Do not use StrictHostKeyChecking=no.',
-      'Run Verify SSH below after manually pinning the independently checked Windows host key. Only then activate; the server repeats the authenticated SSH test.'
+      'On the Pi, compare the independently recorded fingerprint with the scanned host key using the preview command shown below. Pin only after the values match; then run Verify SSH and Activate. The server repeats SSH verification at activation.'
     ];
     const commands = [
       'Get-NetAdapter; Get-NetIPAddress -AddressFamily IPv4',
@@ -142,7 +142,15 @@ const HomeAwayComputers = (() => {
     source.href='https://github.com/CodyMathis123/HomeAwayFromHome/blob/Production/docs/PC-CONTROL.md';
     source.target='_blank';
     source.rel='noopener noreferrer';
-    guide.append(steps,source);
+    const piNote = make('p','account-detail',
+      'On the Pi, substitute the fingerprint read directly from Windows. ' +
+      'Use --plan first, then repeat with --apply only after independently confirming the match.');
+    const base = 'python3 scripts/pin-pc-hostkey.py --ip ' + item.address +
+      ' --port ' + item.ssh_port +
+      " --expected 'SHA256:REPLACE_WITH_WINDOWS_CONSOLE_VALUE'";
+    const pinCommands=make('pre','computer-command',
+      base + ' --plan' + '\n' + 'sudo ' + base + ' --apply');
+    guide.append(steps,piNote,pinCommands,source);
     card.append(guide);
     if (!item.cleanupPending) {
       const marker = item.id + ':' + item.revision;
