@@ -54,7 +54,7 @@ function browser(initialPath) {
   };
   const window = {
     HomeAwayNavigation: {sync() { calls.push('nav:sync'); }},
-    HomeAwayArchitecture: {init() { calls.push('init:architecture'); }},
+    HomeAwayArchitecture: {show() { calls.push('show:architecture'); }},
     HomeAwayOverview: {show() { calls.push('show:overview'); }},
     addEventListener(type, handler) { handlers[type] = handler; },
     scrollTo() {}
