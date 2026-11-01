@@ -103,8 +103,29 @@
     <p id="readiness-detail-telemetry">No samples checked. An idle or sleeping PC can legitimately stop exporting; this cannot establish whether it is powered on.</p>
     <ul id="readiness-telemetry-hosts" aria-label="Per-host last observed export" class="readiness-telemetry-list"></ul>
   </div>
+  <h3 id="certificate-heading">TLS certificate observations</h3>
+  <p class="detail">Fixed internal TLS handshakes check the leaf certificate for the three Caddy browser names and the separate SensorDash receiver. Public-root trust below is the observer container's trust only: it does not establish iPhone, Windows, or collector trust, or prove automatic renewal succeeded.</p>
+  <p id="readiness-certificates-checked" role="status">Certificates not yet checked</p>
+  <div class="readiness-grid" aria-labelledby="certificate-heading">
+    <article class="readiness-item">
+      <h3>HomeAway browser certificate</h3><span id="readiness-cert-browser-home" class="readiness-badge" data-state="unknown">Unknown</span>
+      <p id="readiness-cert-detail-browser-home">Not checked</p>
+    </article>
+    <article class="readiness-item">
+      <h3>Authelia browser certificate</h3><span id="readiness-cert-browser-auth" class="readiness-badge" data-state="unknown">Unknown</span>
+      <p id="readiness-cert-detail-browser-auth">Not checked</p>
+    </article>
+    <article class="readiness-item">
+      <h3>Grafana browser certificate</h3><span id="readiness-cert-browser-metrics" class="readiness-badge" data-state="unknown">Unknown</span>
+      <p id="readiness-cert-detail-browser-metrics">Not checked</p>
+    </article>
+    <article class="readiness-item">
+      <h3>SensorDash telemetry receiver certificate</h3><span id="readiness-cert-telemetry-receiver" class="readiness-badge" data-state="unknown">Unknown</span>
+      <p id="readiness-cert-detail-telemetry-receiver">Not checked; separate telemetry CA, not part of Let's Encrypt browser migration</p>
+    </article>
+  </div>
   <h3>Checks that still require the Pi</h3>
-  <p class="detail">HTTPS certificate expiration and renewal, external WireGuard/DNS connectivity, and backup recoverability are not verified by these checks. Pi metrics and export freshness now use the dedicated read-only metrics observer when deployed.</p>
+  <p class="detail">Certificate expiry is observed separately above; renewal attempts and success, client-side TLS trust, external WireGuard/DNS connectivity, and backup recoverability are not verified by these checks. Pi metrics and export freshness now use the dedicated read-only metrics observer when deployed.</p>
   <div class="readiness-manual">
     <p><strong>Pi host metrics</strong> <code>sudo bash scripts/verify-pi-metrics.sh</code></p>
     <p><strong>Windows telemetry</strong> <code>sudo bash scripts/verify-telemetry.sh</code></p>
