@@ -127,6 +127,7 @@ const viewers = {role: 'viewers', actions: [], manageUsers: false, manageCompute
   await admin.settle();
   assert.equal(admin.main.dataset.activeView, 'accounts');
   assert.equal(admin.element('accounts').hidden, false);
+  assert.equal(admin.element('nav-activity').hidden, false);
   assert.equal(admin.element('nav-accounts').attrs['aria-current'], 'location');
   admin.navigate('#computer-admin');
   assert.equal(admin.main.dataset.activeView, 'computer-admin');
@@ -164,7 +165,6 @@ const viewers = {role: 'viewers', actions: [], manageUsers: false, manageCompute
   assert.equal(viewer.main.dataset.activeView, 'hosts');
   assert.equal(viewer.location.hash, '#hosts');
   assert.equal(viewer.element('nav-activity').hidden, true);
-  assert.equal(admin.element('nav-activity').hidden, false);
 
   // A revoked session while on an admin panel must clear the stale fragment,
   // hide the old admin views and remove cached power-action cards.
