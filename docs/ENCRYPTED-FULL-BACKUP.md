@@ -54,7 +54,19 @@ sudo python3 scripts/plan-host-backup.py --plan
 sudo bash scripts/backup-full.sh --plan
 ```
 
-Neither command stops services, writes data nor creates backups.
+Neither command stops services or creates backups. The plan is read-only.
+
+Once `age` and `age-keygen` are installed, test the cryptographic tools
+without an outage or accessing any HomeAway secrets:
+
+```bash
+bash scripts/test-backup-encryption.sh
+```
+
+It creates one temporary local test key and synthetic payload, encrypts,
+decrypts, verifies their SHA-256 hashes, and removes the temporary files.
+This smoke test is **not** a backup or a recovery-key custody check; the
+production key must be generated and kept on another trusted device.
 
 ## Explicit operator apply — NOT YET ACCEPTED
 
