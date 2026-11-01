@@ -18,3 +18,15 @@
 .computer-setup ol{padding-left:22px;display:grid;gap:12px;line-height:1.5}
 .computer-command{font-size:11px;white-space:pre-wrap;overflow-wrap:anywhere;background:#0c1e2a;padding:9px;border-radius:6px}
 .computer-setup a{color:var(--accent)}
+
+/* Section shortcuts: scrollable on narrow phones, never reveal gated links. */
+.section-nav{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0 0;padding:0}
+.section-nav a{display:inline-flex;align-items:center;min-height:44px;padding:10px 14px;color:#e6fff9;text-decoration:none;background:#143444;border:1px solid #3c7785;border-radius:9px;font-size:13px}
+.section-nav a:hover{background:#205364}
+.section-nav [hidden]{display:none}
+#hosts,#computer-admin,#accounts,#recent-activity{scroll-margin-top:18px}
+@media(max-width:700px){
+  .section-nav{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;padding:0 0 10px;scrollbar-width:thin}
+  .section-nav a{flex:0 0 auto;white-space:nowrap}
+  .hero{padding-top:30px}
+}

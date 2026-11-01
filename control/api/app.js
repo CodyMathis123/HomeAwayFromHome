@@ -4,10 +4,22 @@ const hosts = $('hosts');
 const status = $('updated');
 let pending = new Set();
 let identity = null;
+function updateSectionNavigation(capabilities) {
+  // Navigation only reflects server-provided capabilities; APIs enforce roles.
+  $('nav-computers').hidden = !capabilities?.manageComputers;
+  $('nav-accounts').hidden = !capabilities?.manageUsers;
+}
 async function loadIdentity() {
   const response = await fetch('/control/api/me', {cache:'no-store', credentials:'same-origin'});
-  if (!response.ok) throw new Error('Account authorization unavailable');
+  if (!response.ok) {
+    identity = null;
+    updateSectionNavigation(null);
+    $('computer-admin').hidden = true;
+    $('accounts').hidden = true;
+    throw new Error('Account authorization unavailable');
+  }
   identity = await response.json();
+  updateSectionNavigation(identity.capabilities);
   $('identity').textContent = identity.user + ' · ' + identity.capabilities.role;
   if (typeof HomeAwayAccounts !== 'undefined') HomeAwayAccounts.start(identity);
   if (typeof HomeAwayComputers !== 'undefined') HomeAwayComputers.start(identity);
