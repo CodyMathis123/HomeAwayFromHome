@@ -1,0 +1,232 @@
+/*
+ * HomeAway shared presentation layer.
+ *
+ * Read-only /theme.css is served by portal and can also be loaded on /control/
+ * through the same-origin Caddy gateway. Both pages retain their own local CSS
+ * so loss of the portal never prevents PC-control from rendering or operating.
+ * This file changes appearance only; it must never contain authorization logic.
+ */
+:root {
+  color-scheme: dark;
+  --bg: #09131e;
+  --panel: #102033;
+  --subtle: #14293a;
+  --line: #264257;
+  --ink: #eff8fa;
+  --muted: #91aaba;
+  --accent: #72e6ce;
+  --good: #8be3ad;
+  --bad: #f79d92;
+  --warn: #f4ce8c;
+  --radius-card: 14px;
+  --radius-control: 9px;
+  --rail-width: 228px;
+}
+html { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+body { background: var(--bg); color: var(--ink); font-size: 15px; }
+.ambient {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background: radial-gradient(ellipse at 18% 5%,#116b7450,transparent 48%),
+              radial-gradient(ellipse at 87% 40%,#124d6b36,transparent 46%);
+}
+.app-layout {
+  display: grid;
+  grid-template-columns: var(--rail-width) minmax(0,1fr);
+  max-width: 1520px;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+.app-layout main {
+  max-width: 1120px;
+  min-width: 0;
+  width: 100%;
+  margin: 0 auto;
+  padding: 28px 25px 45px;
+}
+.app-sidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 29px 14px 24px 18px;
+  background: #0a1a28;
+  border-right: 1px solid var(--line);
+}
+.sidebar-title,.sidebar-section {
+  padding: 13px 12px 8px;
+  font-size: 10px;
+  letter-spacing: 1.8px;
+  font-weight: 800;
+  color: #92b8c6;
+}
+.sidebar-section { margin-top: 22px; color: #81a5b3; }
+.app-sidebar nav { display: flex; flex-direction: column; gap: 5px; }
+.app-sidebar nav a {
+  display: block;
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 11px 12px;
+  color: #afc8d3;
+  text-decoration: none;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  font-size: 13px;
+  line-height: 1.55;
+  font-weight: 400;
+}
+.app-sidebar nav a:hover { color: #f0faff; background: #17394a; }
+.app-sidebar nav a[aria-current] { background: #194c55; color: #9ffff0; font-weight: 750; }
+.app-sidebar nav a[hidden] { display: none; }
+
+.masthead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.masthead .brand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  text-decoration: none;
+  font-size: 20px;
+  letter-spacing: -.6px;
+  font-weight: 800;
+}
+.masthead a.brand, .masthead a.brand > span:last-child { color: var(--ink); }
+.masthead .brand-accent { color: var(--accent); }
+.masthead .brand-mark {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  background: #143b43;
+  border: 1px solid #316975;
+  border-radius: 11px;
+  color: var(--accent);
+  font-size: 28px;
+}
+.masthead .brand small {
+  display: block;
+  margin-top: 3px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: #8baab4;
+}
+.masthead .environment {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  letter-spacing: .8px;
+  font-weight: 700;
+  color: #a6bfcc;
+}
+.masthead .led {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  background: #70d4b4;
+  border-radius: 50%;
+  box-shadow: 0 0 11px #70d4b499;
+}
+.hero {
+  padding: 64px 0 40px;
+  max-width: 780px;
+}
+.hero .eyebrow {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 2.3px;
+  line-height: 1.5;
+}
+.hero h1 {
+  margin: 16px 0 19px;
+  font-size: clamp(37px,6vw,64px);
+  line-height: 1.11;
+  letter-spacing: -1.6px;
+  font-weight: 750;
+}
+.hero .intro,.hero > p:not(.eyebrow) {
+  max-width: 690px;
+  color: #b6c8d2;
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: normal;
+  line-height: 1.65;
+}
+.service-card,.component-card,.host-card,.history,.architecture-panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--panel);
+  color: var(--ink);
+}
+.account-user {
+  border: 1px solid var(--line);
+  background: #0c2030;
+  border-radius: 10px;
+}
+.history { margin-top: 26px; }
+.detail,.account-detail,.account-id { color: var(--muted); line-height: 1.6; }
+button {
+  min-height: 42px;
+  border-radius: var(--radius-control);
+  color: #d9fff7;
+  background: #1b3f4b;
+  border: 1px solid #3b7480;
+}
+button:hover:not(:disabled) { background: #25515a; }
+button.danger {
+  background: #532a35;
+  border-color: #99485b;
+  color: #ffdce3;
+}
+button.danger:hover:not(:disabled) { background: #673242; }
+button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,
+textarea:focus-visible,summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+footer { color: #718e9f; }
+@media (min-width:901px) and (max-width:1120px) {
+  .app-layout { --rail-width: 190px; }
+}
+@media (max-width:900px) {
+  .app-layout { display: block; }
+  .app-layout main { padding: 20px 15px 30px; }
+  .app-sidebar {
+    position: sticky;
+    z-index: 10;
+    top: 0;
+    height: auto;
+    overflow: hidden;
+    padding: 6px 10px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    background: #091b29ed;
+    backdrop-filter: blur(12px);
+  }
+  .app-sidebar nav {
+    flex-direction: row;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    gap: 4px;
+  }
+  .sidebar-title,.sidebar-section { display: none; }
+  .app-sidebar nav a { padding: 10px 12px; white-space: nowrap; }
+  .hero { padding: 34px 0 28px; }
+}
