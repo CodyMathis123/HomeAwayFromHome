@@ -222,15 +222,38 @@ def main() -> None:
 
     root = Path(__file__).resolve().parents[1]
     panels = json.loads((root / "grafana/dashboards/overview.json").read_text())["panels"]
-    power_expr = next(p for p in panels if p["id"] == 201)["targets"][0]["expr"]
-    power_expr = power_expr.replace('host=~"$host"', 'host="CI"')
-    for _ in range(20):
-        series = query(power_expr)
-        if len(series) == 2:
+    # VictoriaMetrics ingestion is asynchronous. Wait for BOTH underlying
+    # datasets before validating the joined, alias-first dashboard expression,
+    # so a delayed raw/metadata import isn't mistaken for a PromQL failure.
+    expected_power_ids = {"/amdcpu/0/power/0", "/amdcpu/0/power/1"}
+    raw_power = []
+    power_metadata = []
+    for _ in range(60):
+        raw_power = query('sensordash_reading_value{host="CI",kind="Power"}')
+        power_metadata = query(
+            'sensordash_sensor_info_value{host="CI",kind="Power"} == 1')
+        if ({x["metric"].get("sensor") for x in raw_power} == expected_power_ids and
+                {x["metric"].get("sensor") for x in power_metadata} == expected_power_ids):
             break
         time.sleep(0.5)
     else:
-        raise AssertionError("Live alias/fallback power series missing: " + repr(series))
+        raise AssertionError(
+            "Power samples/metadata did not ingest: raw=" + repr(raw_power) +
+            ", metadata=" + repr(power_metadata))
+
+    power_expr = next(p for p in panels if p["id"] == 201)["targets"][0]["expr"]
+    power_expr = power_expr.replace('host=~"$host"', 'host="CI"')
+    for _ in range(40):
+        series = query(power_expr)
+        if {x["metric"].get("sensor") for x in series} == expected_power_ids:
+            break
+        time.sleep(0.5)
+    else:
+        raise AssertionError(
+            "Live alias/fallback power series missing: " + repr(series) +
+            "; raw=" + repr(query('sensordash_reading_value{host="CI",kind="Power"}')) +
+            "; metadata=" + repr(query(
+                'sensordash_sensor_info_value{host="CI",kind="Power"} == 1')))
     names = {x["metric"]["sensor"]: x["metric"]["name"] for x in series}
     assert names == {
         "/amdcpu/0/power/0": "CPU Watts",
