@@ -161,7 +161,7 @@ jobs:
 
   dns01-production:
     # Offline CI only; no ACME issuance, production DNS writes or live Pi.
-    if: github.head_ref == 'feature/phase3-production-dns01-certificates' || github.ref == 'refs/heads/feature/phase3-production-dns01-certificates'
+    if: github.head_ref == 'feature/phase3-production-dns01-certificates' || github.head_ref == 'fix/phase3-production-gateway-health-rollback' || github.ref == 'refs/heads/feature/phase3-production-dns01-certificates' || github.ref == 'refs/heads/fix/phase3-production-gateway-health-rollback'
     runs-on: ubuntu-latest
     timeout-minutes: 18
     steps:
@@ -184,6 +184,20 @@ jobs:
             -v "$PWD/control/gateway/Caddyfile:/etc/caddy/Caddyfile.legacy:ro" \
             homeaway-caddy-dns01:ci adapt --config /etc/caddy/Caddyfile --adapter caddyfile > /tmp/homeaway-caddy-dns01.json
           python3 scripts/check_dns01_caddy_routes.py /tmp/homeaway-caddy-dns01.json
+      - name: Validate combined six-host Caddy at runtime with network disabled
+        run: |
+          docker run --rm --network none --cap-drop ALL \
+            --security-opt no-new-privileges:true --read-only \
+            --tmpfs /data --tmpfs /config --tmpfs /tmp \
+            -e CF_API_TOKEN=offline-synthetic-no-access \
+            -e HOMEAWAY_DOMAIN=homeaway.home.arpa \
+            -e HOMEAWAY_AUTH_DOMAIN=auth.homeaway.home.arpa \
+            -e HOMEAWAY_METRICS_DOMAIN=metrics.homeaway.home.arpa \
+            -v "$PWD/control/gateway/Caddyfile.dns01-production:/etc/caddy/Caddyfile:ro" \
+            -v "$PWD/control/gateway/Caddyfile:/etc/caddy/Caddyfile.legacy:ro" \
+            --entrypoint /usr/local/bin/homeaway-caddy \
+            homeaway-caddy-dns01:ci \
+            validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null
       - name: Verify resolved Compose only changes the gateway
         run: |
           cp .env.example .env
