@@ -62,9 +62,11 @@ def read_vector(expression: str) -> list[dict]:
     if len(raw) > MAX_REPLY_BYTES:
         raise ValueError("Oversized VictoriaMetrics response")
     doc = json.loads(raw)
-    if doc.get("status") != "success" or doc.get("data", {}).get("resultType") != "vector":
+    data = doc.get("data") if isinstance(doc, dict) else None
+    if (not isinstance(data, dict) or doc.get("status") != "success" or
+            data.get("resultType") != "vector"):
         raise ValueError("Invalid VictoriaMetrics response")
-    rows = doc["data"]["result"]
+    rows = data.get("result")
     if not isinstance(rows, list) or len(rows) > 1024:
         raise ValueError("Unbounded metric response")
     return rows
@@ -150,7 +152,8 @@ def snapshot() -> dict:
             try:
                 rows = future.result()
                 results.append((item, rows, None))
-            except (OSError, TimeoutError, ValueError, KeyError, json.JSONDecodeError):
+            except (OSError, TimeoutError, ValueError, TypeError, KeyError, IndexError,
+                    AttributeError, json.JSONDecodeError):
                 results.append((item, [], "Metric query unavailable"))
     checks = []
     hosts: list[dict] = []
