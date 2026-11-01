@@ -1,6 +1,6 @@
 'use strict';
 // Admin-only computer inventory UI. No browser access to host files or keys.
-// Activation intentionally absent until Windows identity/SSH trust is verified.
+// Activation and restore must pass fresh SSH trust checks on the host writer.
 const HomeAwayComputers = (() => {
   const $ = id => document.getElementById(id);
   const make = (tag, cls, content) => {
@@ -46,6 +46,64 @@ const HomeAwayComputers = (() => {
         'Updated display name for ' + item.id + '. Existing Shortcut IDs are unchanged.');
     });
     card.append(rename);
+    if (item.lifecyclePending) {
+      card.append(make('p','account-detail',
+        'Attention: a retirement recovery record exists for this active computer. ' +
+        'Review before making further lifecycle changes.'));
+    }
+    const disable=make('button','danger','Disable computer controls');
+    disable.type='button';
+    disable.addEventListener('click',async()=>{
+      const typed=prompt('Type "'+item.id+'" to DISABLE all new power commands for this computer:');
+      if(typed!==item.id) return;
+      if(!confirm('Disable '+item.id+'? Existing iOS Shortcuts for this ID will stop controlling it. ' +
+        'Already-running commands cannot be cancelled. Its configuration will be saved for recovery.')) return;
+      await mutate('/disable',{id:item.id,revision,confirm:typed},
+        'Disabled '+item.id+'. It is no longer an active power-command target; its configuration was retained.');
+    });
+    card.append(disable);
+    return card;
+  }
+
+  function retiredCard(record,inventoryRevision) {
+    const item=record.host;
+    const card=make('article','account-user');
+    card.append(make('strong','',item.name),
+      make('p','account-detail',formatDetail(item)),
+      make('p','account-detail',
+        (record.archived?'ARCHIVED':'DISABLED')+' · Recorded: '+record.retiredAt+
+        ' · by '+record.retiredBy));
+    if(record.cleanupPending) {
+      card.append(make('p','account-detail',
+        'Attention: this recovery record overlaps an active computer. '+
+        'Its state is ambiguous; inspect the inventory and audit before modifying it.'));
+      return card;
+    }
+    if(!record.archived) {
+      const archive=make('button','','Archive (retain recovery record)');
+      archive.type='button';
+      archive.addEventListener('click',async()=>{
+        const typed=prompt('Type "'+item.id+'" to archive this disabled computer:');
+        if(typed!==item.id) return;
+        if(!confirm('Archive '+item.id+'? No keys or historical data will be deleted.')) return;
+        await mutate('/archive',{id:item.id,revision:record.revision,confirm:typed},
+          'Archived '+item.id+'. Recovery details and audit history remain available.');
+      });
+      card.append(archive);
+    }
+    const restore=make('button','','Restore with SSH verification');
+    restore.type='button';
+    restore.addEventListener('click',async()=>{
+      const typed=prompt('Type "'+item.id+'" to restore this computer to live power controls:');
+      if(typed!==item.id) return;
+      if(!confirm('Restore '+item.id+'? The Pi must verify its pinned SSH host key and '+
+        'restricted Windows status command again. The original address and key must still match.')) return;
+      await mutate('/restore',{id:item.id,revision:record.revision,
+        inventoryRevision,confirm:typed},
+        'Restored '+item.id+' after a new authenticated Windows SSH verification. '+
+        'Review status before issuing power commands.');
+    });
+    card.append(restore);
     return card;
   }
 
@@ -155,10 +213,13 @@ const HomeAwayComputers = (() => {
       const data=await api('');
       const active=data.active || [];
       const drafts=data.drafts || [];
+      const retired=data.retired || [];
       $('computer-admin-active').replaceChildren(...active.map(item=>activeCard(item,data.revision)));
       if (!active.length) $('computer-admin-active').textContent='No active computers.';
       $('computer-admin-drafts').replaceChildren(...drafts.map(d=>draftCard(d,data.revision)));
       if (!drafts.length) $('computer-admin-drafts').textContent='No unconfigured drafts.';
+      $('computer-admin-retired').replaceChildren(...retired.map(r=>retiredCard(r,data.revision)));
+      if (!retired.length) $('computer-admin-retired').textContent='No disabled or archived computers.';
       return true;
     } catch (err) {
       message('Cannot load computer inventory: ' + err.message);
