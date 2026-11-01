@@ -61,6 +61,33 @@ cross-origin/login-redirect, asset lifecycle, and fail-closed authorization
 test plan. No new Caddy routes, exposed ports or Docker capabilities are
 introduced in this step.
 
+## Step 2: focused authenticated management views
+
+The existing `/control/` document now renders **Power Controls, Computer
+Management, Users & Permissions and Activity** as distinct, fragment-addressable
+views (`#hosts`, `#computer-admin`, `#accounts`, `#recent-activity`).
+The authenticated document, shared HomeAway navigation, and header remain
+mounted while switching views; browser Back/Forward uses normal hash history.
+Both direct links and initial sign-in return to the selected view when
+authorized. Each section stays mounted, preserving unsaved input and current
+inventory/role selection while navigating among views.
+
+View changes are **not authorization**. Admin views remain hidden unless the
+live `/control/api/me` capabilities allow them, and all account/computer
+operations remain protected by Caddy's existing Authelia forward-auth plus
+backend permission checks. A denied/revoked admin deep link falls back to
+`#hosts`; access is never inferred from hash or nav markup. If JavaScript
+is unavailable the original control document layout remains as a fallback,
+with privileged sections still marked hidden.
+
+A single persistent browser document for the entire HomeAway application
+is **not implemented** yet: read-only portal views and authenticated control
+are still separate documents. This preserves sign-in redirects, deny-by-default
+routes and independence from read-only portal availability. Consolidating the
+two documents requires separate auth/redirect and privacy review; it is not
+safe to embed `/control/` into the unprivileged portal by bypassing
+`X-Frame-Options` or to fetch privileged data for anonymous visitors.
+
 ## UX audit plan, in small PRs
 
 1. **Portal shell and architecture map (implemented)** — responsive desktop left rail / mobile horizontal links, route `/architecture/`, service descriptions and navigation; preserve the current `/control/` boundary. Verify all static pages return correct CSP and HTTP 405 for mutation methods.
