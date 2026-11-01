@@ -89,11 +89,23 @@ def session(password,secret):
     cookie=set_cookie.split(";",1)[0]
     # Synthetic environment only: disabling reused-code rejection allows two
     # independent browser cookies without sleeping for 30 seconds.
-    status,_,_=call_auth("POST","/api/secondfactor/totp",
+    status,totp_headers,totp_body=call_auth("POST","/api/secondfactor/totp",
                         {"token":totp(secret)},cookie)
-    assert status==200, "Synthetic TOTP second factor failed: "+str(status)
-    status,auth_headers,_=forward_auth(cookie)
-    assert 200<=status<300, "Two-factor session was not authorized: "+str(status)
+    assert status==200, "Synthetic TOTP endpoint rejected request: "+str(status)
+    body=json.loads(totp_body or b"{}")
+    assert body.get("status")=="OK", (
+        "Synthetic TOTP server rejected token: "+str(body.get("status")))
+    # Authelia may rotate the session cookie on factor elevation.
+    upgraded=totp_headers.get("Set-Cookie") or totp_headers.get("set-cookie")
+    if upgraded:
+        cookie=upgraded.split(";",1)[0]
+    status,auth_headers,auth_body=forward_auth(cookie)
+    assert 200<=status<300, (
+        "Two-factor session was not authorized: "+str(status)+
+        " location="+str(auth_headers.get("Location",""))+
+        " auth="+str(auth_headers.get("WWW-Authenticate",""))+
+        " bodyStatus="+str(json.loads(auth_body).get("status")) if auth_body.startswith(b"{") else
+        "Two-factor session was not authorized: "+str(status))
     assert auth_headers.get("Remote-User")=="admin", \
         "Forward-auth didn't provide expected verified username"
     assert "admins" in auth_headers.get("Remote-Groups","").split(","), \
