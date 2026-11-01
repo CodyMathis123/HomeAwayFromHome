@@ -66,6 +66,34 @@ class HttpAccounts(unittest.TestCase):
             self.assertEqual(code,404)
             call.assert_not_called()
 
+    def test_auth_rejection_logs_only_fixed_reason_codes(self):
+        with self.config(),patch("builtins.print") as log:
+            code,_=self.request("GET","/control/api/me",headers={})
+            self.assertEqual(code,401)
+            self.assertIn("HOMEAWAY_AUTH_REJECT missing_or_invalid_user_header",
+                          [str(c.args[0]) for c in log.call_args_list])
+        with self.config(),patch("builtins.print") as log:
+            code,_=self.request("GET","/control/api/me",
+                                headers={"X-HomeAway-User":"homeowner"})
+            self.assertEqual(code,401)
+            entries=[str(c.args[0]) for c in log.call_args_list]
+            self.assertIn("HOMEAWAY_AUTH_REJECT missing_or_invalid_role_header",entries)
+            self.assertNotIn("homeowner"," ".join(entries))
+        with self.config(),patch.object(api,"broker_request",
+                 side_effect=api.BrokerError(503,"synthetic token should not print")),\
+             patch("builtins.print") as log:
+            code,_=self.request("GET","/control/api/me",headers=self.claims())
+            self.assertEqual(code,401)
+            entries=[str(c.args[0]) for c in log.call_args_list]
+            self.assertIn("HOMEAWAY_AUTH_REJECT account_broker_unavailable",entries)
+            self.assertNotIn("synthetic token"," ".join(entries))
+        with self.config(),patch.object(api,"broker_request",
+                 side_effect=self.resolved("viewers")),patch("builtins.print") as log:
+            code,_=self.request("GET","/control/api/me",headers=self.claims())
+            self.assertEqual(code,401)
+            self.assertIn("HOMEAWAY_AUTH_REJECT directory_role_mismatch",
+                          [str(c.args[0]) for c in log.call_args_list])
+
     def test_stale_authelia_role_rejected_even_for_current_session(self):
         with self.config(),patch.object(api,"broker_request",side_effect=self.resolved("viewers")):
             code,_=self.request("GET","/control/api/me",headers=self.claims("admins"))
