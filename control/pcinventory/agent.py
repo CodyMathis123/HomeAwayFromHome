@@ -307,10 +307,19 @@ class InventoryManager:
                     raise InventoryFault(400, "Invalid list request")
                 active, revision = self._active()
                 drafts = _read_drafts()["drafts"]
-                return {"active": active["hosts"], "revision": revision,
+                retired = _read_retired()["retired"]
+                active_ids = {h["id"] for h in active["hosts"]}
+                return {"active": [
+                            {**host, "lifecyclePending": host["id"] in
+                             {r["host"]["id"] for r in retired}}
+                            for host in active["hosts"]],
+                        "revision": revision,
                         "drafts": [{**d, "revision": revision_of(d),
-                                    "cleanupPending": any(h["id"] == d["id"] for h in active["hosts"])}
+                                    "cleanupPending": d["id"] in active_ids}
                                    for d in drafts],
+                        "retired": [{**r, "revision": revision_of(r),
+                                    "cleanupPending": r["host"]["id"] in active_ids}
+                                   for r in retired],
                         "activationAvailable": True}
 
             if op == "draft-create":
@@ -325,7 +334,8 @@ class InventoryManager:
                 state = _read_drafts()
                 if len(state["drafts"]) >= MAX_DRAFTS:
                     raise InventoryFault(409, "Draft limit reached")
-                if _collision(payload, active["hosts"] + state["drafts"]):
+                retired = [r["host"] for r in _read_retired()["retired"]]
+                if _collision(payload, active["hosts"] + state["drafts"] + retired):
                     raise InventoryFault(409, "ID, IP address or MAC already used")
                 _audit(actor, payload["id"], op, "requested")
                 state["drafts"].append(copy.deepcopy(payload))
@@ -362,8 +372,9 @@ class InventoryManager:
                 state = _read_drafts()
                 draft = self._draft_with_revision(payload, state)
                 active, revision = self._active()
-                if _collision(draft, active["hosts"]):
-                    raise InventoryFault(409, "Computer ID, IP or MAC is already active")
+                if _collision(draft, active["hosts"] +
+                              [r["host"] for r in _read_retired()["retired"]]):
+                    raise InventoryFault(409, "Computer ID, IP or MAC is already active or reserved")
                 if len(active["hosts"]) >= 64:
                     raise InventoryFault(409, "Active inventory is full")
                 if op == "activate" and payload["inventoryRevision"] != revision:
@@ -404,6 +415,141 @@ class InventoryManager:
                 except InventoryFault:
                     cleanup_pending = True
                 return {"activated": draft["id"], "revision": final_revision,
+                        "cleanupPending": cleanup_pending,
+                        "verification": checked["code"]}
+
+            if op == "disable":
+                if (set(payload) != {"id", "revision", "confirm"} or
+                        not isinstance(payload.get("id"), str) or
+                        not ID.fullmatch(payload["id"]) or
+                        payload["confirm"] != payload["id"] or
+                        not isinstance(payload.get("revision"), str) or
+                        not re.fullmatch(r"[0-9a-f]{24}", payload["revision"])):
+                    raise InventoryFault(400, "Confirm exact computer ID and inventory revision")
+                active, revision = self._active()
+                if revision != payload["revision"]:
+                    raise InventoryFault(409, "Active inventory changed; refresh")
+                current = next((h for h in active["hosts"] if h["id"] == payload["id"]), None)
+                if current is None:
+                    raise InventoryFault(404, "Computer is not active")
+                state = _read_retired()
+                record = next((r for r in state["retired"] if r["host"]["id"] == payload["id"]), None)
+                if record is not None and record["host"] != current:
+                    raise InventoryFault(409, "Retirement snapshot conflicts; manual review required")
+                if record is None:
+                    if len(state["retired"]) >= MAX_RETIRED:
+                        raise InventoryFault(409, "Retirement registry is full")
+                    _audit(actor, current["id"], op, "requested")
+                    record = {"host": copy.deepcopy(current), "archived": False,
+                              "retiredAt": datetime.now(timezone.utc).isoformat(),
+                              "retiredBy": actor}
+                    # Commit recovery snapshot BEFORE touching the active file.
+                    # If the actual removal fails, this entry remains visibly
+                    # pending and retrying Disable will safely finish removal.
+                    state["retired"].append(record)
+                    _save_retired(state)
+                else:
+                    _audit(actor, current["id"], op, "retry")
+
+                def remove(document: dict) -> dict:
+                    if not any(h["id"] == current["id"] and h == current
+                               for h in document["hosts"]):
+                        raise InventoryFault(409, "Computer changed; refresh")
+                    document["hosts"] = [h for h in document["hosts"]
+                                         if h["id"] != current["id"]]
+                    return document
+
+                try:
+                    _, final_revision = update_inventory(
+                        self.path, remove, expected_revision=payload["revision"])
+                except InventoryConflict as exc:
+                    raise InventoryFault(409, "Inventory changed; refresh") from exc
+                # This is the commit point: the pcctl agent and Shortcut can no
+                # longer route newly requested actions to the retired host.
+                try:
+                    _audit(actor, current["id"], op, "committed")
+                    audited = True
+                except InventoryFault:
+                    audited = False
+                return {"disabled": current["id"], "revision": final_revision,
+                        "archived": False, "auditPending": not audited}
+
+            if op in ("archive", "restore", "retired-cleanup"):
+                allowed = {"id", "revision", "confirm"}
+                if op == "restore":
+                    allowed.add("inventoryRevision")
+                if set(payload) != allowed:
+                    raise InventoryFault(400, "Invalid lifecycle request fields")
+                state = _read_retired()
+                record = _retired_record({k: payload[k] for k in
+                                          ("id", "revision", "confirm")}, state)
+                current, revision = self._active()
+                uid = record["host"]["id"]
+                in_active = next((h for h in current["hosts"] if h["id"] == uid), None)
+
+                if op == "retired-cleanup":
+                    # Only a completed restore may clear an obsolete record,
+                    # never silently erase disabled-host recovery metadata.
+                    if in_active is None or in_active != record["host"]:
+                        raise InventoryFault(409, "Retirement snapshot still required")
+                    _audit(actor, uid, op, "requested")
+                    state["retired"] = [r for r in state["retired"]
+                                        if r["host"]["id"] != uid]
+                    _save_retired(state)
+                    _audit(actor, uid, op, "committed")
+                    return {"cleaned": uid}
+
+                if in_active is not None:
+                    raise InventoryFault(409, "Computer is still active")
+                if op == "archive":
+                    if record["archived"]:
+                        return {"archived": uid, "revision": revision_of(record)}
+                    _audit(actor, uid, op, "requested")
+                    record["archived"] = True
+                    _save_retired(state)
+                    _audit(actor, uid, op, "committed")
+                    return {"archived": uid, "revision": revision_of(record)}
+
+                # Restoring never trusts an old connection/fingerprint.
+                if (not isinstance(payload.get("inventoryRevision"), str) or
+                        not re.fullmatch(r"[0-9a-f]{24}", payload["inventoryRevision"]) or
+                        payload["inventoryRevision"] != revision):
+                    raise InventoryFault(409, "Active inventory changed; refresh")
+                if _collision(record["host"], current["hosts"] +
+                              _read_drafts()["drafts"]):
+                    raise InventoryFault(409, "ID, address or MAC already in use")
+                if len(current["hosts"]) >= 64:
+                    raise InventoryFault(409, "Active computer limit reached")
+                checked = _probe(record["host"])
+                if not checked["verified"]:
+                    raise InventoryFault(409, "Restore requires verified SSH: " + checked["code"])
+                _audit(actor, uid, op, "requested")
+
+                def restore(document: dict) -> dict:
+                    if _collision(record["host"], document["hosts"]):
+                        raise InventoryFault(409, "Computer identity is in use")
+                    document["hosts"].append(copy.deepcopy(record["host"]))
+                    return document
+
+                try:
+                    _, final_revision = update_inventory(
+                        self.path, restore, expected_revision=payload["inventoryRevision"])
+                except InventoryConflict as exc:
+                    raise InventoryFault(409, "Inventory changed; refresh") from exc
+                # The restored PC is now active. Failure to clear the private
+                # record must not cause a retry to report the action as failed.
+                cleanup_pending = False
+                state["retired"] = [r for r in state["retired"]
+                                    if r["host"]["id"] != uid]
+                try:
+                    _save_retired(state)
+                except (OSError, InventoryFault):
+                    cleanup_pending = True
+                try:
+                    _audit(actor, uid, op, "committed")
+                except InventoryFault:
+                    cleanup_pending = True
+                return {"restored": uid, "revision": final_revision,
                         "cleanupPending": cleanup_pending,
                         "verification": checked["code"]}
 
