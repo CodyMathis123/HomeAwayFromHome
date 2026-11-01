@@ -158,7 +158,7 @@ Rebuild the portal once to enable the Computer Controls link and secure Grafana 
 docker compose -f compose.yaml -f compose.control.yaml --profile control up -d --no-deps --build portal
 ```
 
-Caddy listens on private LAN TCP **8443**, not the WAN. The existing :8088 status dashboard is still read-only. Grafana remains password-protected for administration. To also make the previously implemented Grafana embedded view work on HTTPS, the **metrics hostname** proxies to Grafana, and the overlay changes Grafana's canonical root URL. When the metrics stack is installed, apply that deliberately using:
+Caddy listens on private LAN TCP **8443**, not the WAN. The official Caddy image carries a `cap_net_bind_service=+ep` executable file capability; with `cap_drop: [ALL]` and no matching bounding-set entry, the container may crash-loop with `exec /usr/bin/caddy: operation not permitted` before parsing any config. The gateway therefore adds back **only** `NET_BIND_SERVICE` while retaining dropped other capabilities and `no-new-privileges:true`. Do not fix this by making the gateway privileged or removing the security boundary. The existing :8088 status dashboard is still read-only. Grafana remains password-protected for administration. To also make the previously implemented Grafana embedded view work on HTTPS, the **metrics hostname** proxies to Grafana, and the overlay changes Grafana's canonical root URL. When the metrics stack is installed, apply that deliberately using:
 ```bash
 docker compose -f compose.yaml -f compose.control.yaml --profile metrics up -d --no-deps --force-recreate grafana
 ```

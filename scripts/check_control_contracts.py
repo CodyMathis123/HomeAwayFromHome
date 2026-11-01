@@ -19,6 +19,11 @@ def check(config: dict, private_ip: str):
     assert port["target"] == 8443 and port["published"] == "8443"
     assert port["host_ip"] == private_ip and port["protocol"] == "tcp"
     assert ipaddress.ip_address(private_ip).is_private
+    # Official Caddy's file capability needs to be in its bounding set for exec.
+    # Keep only NET_BIND_SERVICE; do not relax other gateway isolation.
+    assert gateway.get("cap_drop") == ["ALL"]
+    assert gateway.get("cap_add") == ["NET_BIND_SERVICE"]
+    assert "no-new-privileges:true" in gateway.get("security_opt", [])
     for name in ("pc-control", "authelia"):
         service = services[name]
         assert not service.get("ports"), name + " must never publish a host port"
