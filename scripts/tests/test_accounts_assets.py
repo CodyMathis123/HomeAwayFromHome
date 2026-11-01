@@ -50,6 +50,26 @@ class AccountAssets(unittest.TestCase):
         self.assertIn("Change failed:", js)
         self.assertIn("No HomeAway access · pending or revoked", js)
 
+    def test_unified_control_navigation_and_stale_state(self):
+        html = (API / "index.html").read_text()
+        js = (API / "app.js").read_text()
+        css = (API / "styles.css").read_text()
+        self.assertIn('class="app-layout"', html)
+        self.assertIn('class="app-sidebar"', html)
+        self.assertIn('href="/architecture/"', html)
+        self.assertIn('href="/#metrics-heading"', html)
+        self.assertIn('href="/#services"', html)
+        self.assertIn('id="nav-power" href="#hosts"', html)
+        self.assertIn('aria-label="Primary navigation"', html)
+        self.assertIn("window.addEventListener('hashchange', updateCurrentSection)", js)
+        self.assertIn("link.setAttribute('aria-current', 'location')", js)
+        self.assertIn("identity = null;", js)
+        self.assertIn("hosts.dataset.stale = 'true'", js)
+        self.assertIn("Previously shown results may be stale", js)
+        self.assertIn('.hosts[data-stale="true"]', css)
+        self.assertIn('grid-template-columns:228px minmax(0,1fr)', css)
+        self.assertIn('position:sticky', css)
+
     def test_navigation_hides_admin_links_until_capabilities_arrive(self):
         html = (API / "index.html").read_text()
         js = (API / "app.js").read_text()
