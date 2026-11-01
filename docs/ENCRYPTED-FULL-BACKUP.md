@@ -13,6 +13,8 @@ requirements are reviewed.
 `/var/lib/homeaway-pcinventory`, three installed /opt agent directories,
 their six systemd service/socket units and two tmpfiles configurations.
 
+**Recovery-first scope:** `data/victoria-metrics/` is deliberately excluded from all new full-state archives. VictoriaMetrics sample history is disposable and starts fresh on the recovered host. This does **not** exclude `data/grafana/` (dashboard preferences and Grafana local configuration), `data/pihole/`, `data/control/`, or other persistent application state. The repository's provisioned dashboards are restored from Git.
+
 It records a small version/commit metadata file within the encrypted archive,
 uses tar's ACL/xattr/numeric-owner preservation, and streams tar directly
 into `age` encryption. **No plaintext archive is written to disk.**
@@ -98,6 +100,24 @@ sudo python3 scripts/plan-backup-retention.py --plan --keep-local 3
 ```
 
 This lists encrypted full-state archives in the root-only directory, labels the newest three KEEP, and flags older archives for review **without deleting anything**. It checks whether corresponding checksum files exist, not their contents. Before deleting an old local archive, independently verify a secure off-device copy and decryption with the saved recovery identity. There is deliberately no automatic pruning or deletion command.
+
+## Fast rebuild after storage/host failure
+
+Target recovery: restore core services and access, not historical graphs.
+
+1. Prepare a replacement Pi/boot drive with Raspberry Pi OS Lite arm64, Docker Compose, `age`, Git, and LAN connectivity. Use a LAN-side SSH session and restore the reserved Pi LAN address before switching clients over.
+2. Clone `HomeAwayFromHome` from GitHub. The archive contains a commit identifier in `backup-metadata.txt`; use the corresponding reviewed Production code. **Source code and the OS are not inside the archive.**
+3. Transfer the encrypted archive and checksum from **off-device** storage. Verify checksum before decryption. The private `age` identity must be available separately.
+4. With HomeAway containers and host management sockets **stopped**, decrypt and extract the archive into the proper repository root and absolute host paths. Verify owners, service account UIDs/GIDs, executable permissions and unit locations first. **Never extract over the live Pi.** The archive uses numeric ownership and contains private credentials.
+5. Run the project host-agent installers/recovery checks and Compose validation against the restored state. Start the Compose services, restore the configured Caddy/TLS, LLDAP/Authelia, DNS and VPN state, and test login and a known WireGuard peer. Restore PC-control inventory/trust and test a known host.
+6. VictoriaMetrics starts with an empty storage directory and ingests new samples. Do not attempt to recover previous metrics. Check dashboard availability, not historical graph completeness.
+7. Point router DHCP/DNS to the new Pi only **after** verifying DNS resolves, remote access and the portal work.
+
+The exact isolated-restore exercise is **not yet complete**. The existing
+backup script still pauses the services for a consistent snapshot. To reduce
+future backup time and outage duration, investigate an app-consistent backup of
+the small databases without stopping the full stack; do not assume this is safe
+without a restore test.
 
 ## Restore validation (separate milestone)
 
