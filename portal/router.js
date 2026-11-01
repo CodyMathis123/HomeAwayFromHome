@@ -61,7 +61,7 @@
     if (writeHistory) history.pushState({homeAwayPage: route}, '', target.pathname + target.search + target.hash);
     document.title = titles[route];
     window.HomeAwayNavigation?.sync();
-    if (route === '/architecture/') window.HomeAwayArchitecture?.init();
+    if (route === '/architecture/') window.HomeAwayArchitecture?.show();
     else window.HomeAwayOverview?.show();
     position(target.hash);
     next.setAttribute('tabindex', '-1');
