@@ -1,0 +1,73 @@
+# EXPERIMENTAL. Do not combine with the live Pi deployment until the
+# Authelia first-factor migration, TOTP preservation and rollback gates pass.
+# Must be used with compose.yaml + compose.control.yaml when explicitly ready.
+services:
+  lldap:
+    profiles: [accounts]
+    image: ghcr.io/lldap/lldap:2026-09-22-debian
+    restart: unless-stopped
+    environment:
+      LLDAP_LDAP_BASE_DN: dc=homeaway,dc=home,dc=arpa
+      LLDAP_LDAP_USER_EMAIL: admin@homeaway.home.arpa
+      LLDAP_LDAP_USER_PASS_FILE: /run/secrets/lldap_admin_password
+      LLDAP_JWT_SECRET_FILE: /run/secrets/lldap_jwt_secret
+      LLDAP_KEY_SEED_FILE: /run/secrets/lldap_key_seed
+    volumes:
+      - ./data/control/lldap:/data
+    secrets:
+      - lldap_admin_password
+      - lldap_jwt_secret
+      - lldap_key_seed
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks: [account-directory]
+    # No host ports, not even the directory UI. No WAN exposure.
+
+  account-broker:
+    profiles: [accounts]
+    build: ./control/accounts
+    restart: unless-stopped
+    depends_on:
+      - lldap
+    user: "65534:65534"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    environment:
+      HOMEAWAY_LLDAP_URL: http://lldap:17170
+      HOMEAWAY_LLDAP_USER: admin
+      HOMEAWAY_LLDAP_ADMIN_PASSWORD_FILE: /run/secrets/lldap_admin_password
+      HOMEAWAY_BROKER_SECRET_FILE: /run/secrets/homeaway_account_broker_token
+    secrets:
+      - lldap_admin_password
+      - homeaway_account_broker_token
+    volumes:
+      - ./data/control/account-audit:/data
+    networks:
+      - account-directory
+      - pc-control
+    # Only pc-control can call fixed, authenticated account RPCs.
+
+  pc-control:
+    # All new account endpoints remain off unless this explicit operator
+    # switch is true. The controller must not have LLDAP admin credentials.
+    environment:
+      HOMEAWAY_ACCOUNT_ADMIN_ENABLED: "${HOMEAWAY_ACCOUNT_ADMIN_ENABLED:-false}"
+      HOMEAWAY_ACCOUNT_BROKER_URL: http://account-broker:8092
+    secrets:
+      - homeaway_account_broker_token
+
+networks:
+  account-directory:
+    driver: bridge
+    internal: true
+
+secrets:
+  lldap_admin_password:
+    file: ./secrets/control/lldap_admin_password
+  lldap_jwt_secret:
+    file: ./secrets/control/lldap_jwt_secret
+  lldap_key_seed:
+    file: ./secrets/control/lldap_key_seed
+  homeaway_account_broker_token:
+    file: ./secrets/control/account_broker_token
