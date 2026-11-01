@@ -82,12 +82,17 @@ const HomeAwayReadiness = (() => {
 
       if (computers.status === 'fulfilled' && Array.isArray(computers.value.hosts)) {
         const entries = computers.value.hosts;
-        const reachable = entries.filter(item => item && typeof item === 'object' &&
-          item.state === 'online').length;
-        display('hosts', 'observed', entries.length ? reachable + ' / ' + entries.length : 'No entries',
-          entries.length
-            ? 'Computers responding to the existing restricted SSH status check; this does not prove a power command completed'
-            : 'No registered active computer targets; this is not a failed reachability test');
+        if (!entries.every(item => item && typeof item === 'object' &&
+          typeof item.state === 'string')) {
+          display('hosts', 'unknown', 'Unknown',
+            'Computer status response contained invalid records; reachability not verified');
+        } else {
+          const reachable = entries.filter(item => item.state === 'online').length;
+          display('hosts', 'observed', entries.length ? reachable + ' / ' + entries.length : 'No entries',
+            entries.length
+              ? 'Computers responding to the existing restricted SSH status check; this does not prove a power command completed'
+              : 'No registered active computer targets; this is not a failed reachability test');
+        }
       } else {
         display('hosts', 'unknown', 'Unknown', 'Computer inventory or reachability check unavailable');
       }
