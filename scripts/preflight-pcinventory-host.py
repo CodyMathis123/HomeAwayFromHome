@@ -96,8 +96,15 @@ def inspect_ssh(ssh_dir: Path, pcctl_uid: int) -> list[str]:
             continue
         if result.st_uid not in (pcctl_uid, 0):
             raise PreflightError(f"{name}: ownership unexpected")
-        if stat.S_IMODE(result.st_mode) & 0o077:
-            raise PreflightError(f"{name}: permissions must be private")
+        if name == "id_ed25519":
+            if result.st_uid != pcctl_uid or stat.S_IMODE(result.st_mode) & 0o077:
+                raise PreflightError("pcctl SSH private key must be owned by pcctl and unreadable by other users")
+        else:
+            # known_hosts contains public server keys, commonly mode 0644.
+            # The SSH verifier still needs to be able to read it as pcctl.
+            if result.st_uid == 0 and not (stat.S_IMODE(result.st_mode) & 0o004):
+                raise PreflightError("pcctl cannot read root-owned known_hosts")
+
     return notes
 
 
