@@ -85,3 +85,20 @@ permissions. Rebuild/recreate only `metrics-diagnostics`; check its logs and
 HTTP endpoints from `pc-control`. The separate `serviceChecks` control-API
 schema propagation is also fixed on this branch. Avoid merging until the
 read-only metrics and certificate cards populate without 503 errors.
+
+## Last-known diagnostics during refresh
+
+The admin page now uses **stale-while-revalidate** rendering: pressing Refresh
+keeps existing cards and their last-observed values in place. Each independent
+request replaces only its section once completed. If a request times out or
+returns an error, the prior values remain visible with an explicit dashed
+**last known** label and the summary counts unavailable sources. A successful
+request clears the marker. Revocation/session loss still clears protected
+status and hides the admin page rather than preserving privileged observations.
+
+Browser acceptance: first capture known populated readings; click Refresh
+and verify cards do not flip to `Unknown`/`Checking`; simulate a diagnostics
+request failure and verify the original value remains but acquires
+`last known`; restore connectivity and verify a successful refresh clears
+that marker. This is not durable server-side caching; reloading the entire
+browser page starts from initial unknowns until observations return.
