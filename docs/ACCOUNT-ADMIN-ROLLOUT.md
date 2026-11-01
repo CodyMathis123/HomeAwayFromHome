@@ -2,6 +2,90 @@
 
 **Status: developed on PR #5; not deployed to HomeAway production.**
 
+## Greenfield developer walkthrough (operator-run, not deployed automatically)
+
+The early full-system restore/SMTP checklist below documents a stricter hardening
+path, but it is **not a blocker to this greenfield, supervised dev rollout**.
+The operator already made a consistent local backup; checksum and restart
+of all 11 HomeAway containers were verified on November 1, 2026.
+Use a direct LAN SSH session so an auth restart cannot cut off the operator.
+The commands below do **not restart Pi-hole or WireGuard**.
+
+**1. Check out the review branch and initialize new secrets (no service changes):**
+
+```bash
+cd ~/HomeAwayFromHome
+git fetch origin feature/homeaway-account-management
+git switch -c test-pr5 --track origin/feature/homeaway-account-management
+sudo python3 scripts/init-accounts.py
+sudo docker compose -f compose.yaml -f compose.control.yaml -f compose.accounts.yaml \
+  --profile control --profile accounts --profile metrics config -q
+```
+
+**2. Start LLDAP and broker only; keep real Authelia file backend running:**
+
+```bash
+sudo docker compose -f compose.yaml -f compose.control.yaml -f compose.accounts.yaml \
+  --profile control --profile accounts --profile metrics up -d --build lldap account-broker
+sudo docker compose -f compose.yaml -f compose.control.yaml -f compose.accounts.yaml \
+  --profile control --profile accounts --profile metrics exec -T account-broker \
+  python3 -B /app/bootstrap.py
+```
+
+A loopback-only LLDAP web interface is available on the Pi at
+127.0.0.1:17170 (not exposed to LAN/WAN). On your **own computer**, open
+an SSH tunnel with `ssh -N -L 17170:127.0.0.1:17170 codymathis@PI_LAN_IP`
+(replace PI_LAN_IP), then browse `http://127.0.0.1:17170`.
+Sign in as LLDAP `admin` using the password stored in
+`secrets/control/lldap_admin_password` (read it **on the Pi** with
+`sudo cat secrets/control/lldap_admin_password`; never paste it into chat).
+Create a matching `homeowner` user with a **new** password; add that
+user to the `admins` group. Use the identical username to retain
+the existing Authelia SQLite TOTP enrollment, assuming the existing Authelia
+user is named `homeowner`. Existing password hashes cannot be imported.
+
+Creating new users through the HomeAway Users UI is supported, but in this dev
+version they start as *pending*. Use LLDAP's SSH-tunneled UI to provision
+their initial passwords; then assign a HomeAway role from the Users UI.
+No SMTP/invitation setup is required for testing.
+
+**3. After confirming the LLDAP account and groups, switch only authentication:**
+
+```bash
+cd ~/HomeAwayFromHome
+sudo python3 scripts/switch-control-auth.py --apply
+# Make the optional account management endpoints visible to admins:
+if grep -q '^HOMEAWAY_ACCOUNT_ADMIN_ENABLED=' .env; then
+  sed -i 's/^HOMEAWAY_ACCOUNT_ADMIN_ENABLED=.*/HOMEAWAY_ACCOUNT_ADMIN_ENABLED=true/' .env
+else
+  printf '\nHOMEAWAY_ACCOUNT_ADMIN_ENABLED=true\n' >> .env
+fi
+sudo docker compose -f compose.yaml -f compose.control.yaml -f compose.accounts.yaml \
+  --profile control --profile accounts --profile metrics up -d --build \
+  --no-deps --force-recreate authelia pc-control
+```
+
+Authelia validates the candidate first, retains its existing
+encryption/session secrets and SQLite/TOTP records, and snapshots the original
+file backend config. Verify `authelia` becomes healthy and test a fresh
+HomeAway login with the **new LLDAP password** and existing TOTP, or re-enroll
+the factor if necessary. Verify Users UI, role changes, and an existing
+viewer/operator session after revocation. Pi-hole and WireGuard are unaffected.
+
+**Simple rollback (if login fails):**
+
+```bash
+sudo python3 scripts/switch-control-auth.py --rollback
+sed -i 's/^HOMEAWAY_ACCOUNT_ADMIN_ENABLED=.*/HOMEAWAY_ACCOUNT_ADMIN_ENABLED=false/' .env
+sudo docker compose -f compose.yaml -f compose.control.yaml -f compose.accounts.yaml \
+  --profile control --profile accounts --profile metrics up -d --no-deps \
+  --force-recreate authelia pc-control
+```
+
+The original file-backed password and existing TOTP data should work again.
+Do not delete the original backup, rotate Authelia encryption keys, expose LDAP
+port 3890, or publish LLDAP 17170 to the LAN/WAN.
+
 ## What is implemented
 
 - The existing secured HomeAway control UI now includes an **admin-only Users** section when the server's account-admin feature switch is explicitly enabled.
