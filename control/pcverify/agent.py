@@ -54,11 +54,16 @@ def probe(candidate: dict) -> dict:
             "ssh", "-F", "/dev/null", "-i", SSH_KEY,
             "-o", "BatchMode=yes", "-o", "IdentitiesOnly=yes",
             "-o", "StrictHostKeyChecking=yes",
+            # The enrollment helper pins an independently checked ED25519
+            # host key. Do not silently fall back to a different key type.
+            "-o", "HostKeyAlgorithms=ssh-ed25519",
             "-o", "GlobalKnownHostsFile=/dev/null",
             "-o", f"UserKnownHostsFile={KNOWN_HOSTS}",
             "-o", "UpdateHostKeys=no", "-o", "VerifyHostKeyDNS=no",
             "-o", "PasswordAuthentication=no",
             "-o", "KbdInteractiveAuthentication=no",
+            "-o", "PreferredAuthentications=publickey",
+            "-o", "HostbasedAuthentication=no",
             "-o", "ConnectTimeout=5",
             "-o", "ConnectionAttempts=1",
             "-o", "ClearAllForwardings=yes",
