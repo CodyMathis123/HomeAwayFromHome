@@ -52,7 +52,9 @@
         active.hidden = true;
         active.inert = true;
       }
-      if (!next.isConnected) slot.append(next);
+      // DOMParser yields nodes connected to a *different* Document. A node
+      // may report isConnected=true while still outside our visible slot.
+      if (next.parentElement !== slot) slot.append(next);
       next.hidden = false;
       next.inert = false;
     }
