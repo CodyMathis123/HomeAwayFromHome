@@ -1,0 +1,20 @@
+[Unit]
+Description=HomeAway restricted PC control host agent
+Requires=pcctl-agent.socket
+After=pcctl-agent.socket
+[Service]
+Type=simple
+User=pcctl
+Group=pcctl
+ExecStart=/usr/bin/python3 -B /opt/homeaway-pcctl/agent.py
+Environment=HOMEAWAY_HOSTS_FILE=/etc/homeaway-pcctl/hosts.json
+Environment=PCCTL_AGENT_SOCKET=/run/homeaway-pcctl/agent.sock
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=read-only
+ProtectSystem=strict
+ReadOnlyPaths=/etc/homeaway-pcctl
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+SystemCallArchitectures=native
+[Install]
+WantedBy=multi-user.target

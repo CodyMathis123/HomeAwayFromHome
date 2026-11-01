@@ -49,7 +49,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "max(sensordash_reading_value{host=~\".+\",kind=\"Temperature\",sensor=~\".*cpu.*/temperature/.*\"})",
-          "range": true
+          "range": true,
+          "legendFormat": "CPU temperature"
         }
       ],
       "fieldConfig": {
@@ -109,7 +110,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "max(sensordash_reading_value{host=~\".+\",kind=\"Temperature\",sensor=~\".*/gpu.*/temperature/.*\"})",
-          "range": true
+          "range": true,
+          "legendFormat": "GPU temperature"
         }
       ],
       "fieldConfig": {
@@ -169,7 +171,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "max((sensordash_reading_value{host=~\".+\",kind=\"Fan\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\".+\",role=\"fan-group\",kind=\"Fan\"} == 1)))",
-          "range": true
+          "range": true,
+          "legendFormat": "Radiator fans"
         }
       ],
       "fieldConfig": {
@@ -229,7 +232,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "max((sensordash_reading_value{host=~\".+\",kind=\"Fan\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\".+\",role=\"pump\",kind=\"Fan\"} == 1)))",
-          "range": true
+          "range": true,
+          "legendFormat": "DDC pump tachometer"
         }
       ],
       "fieldConfig": {
@@ -289,7 +293,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "100 * (1 - avg(rate(node_cpu_seconds_total{job=\"pi-node\",mode=\"idle\"}[5m])))",
-          "instant": true
+          "instant": true,
+          "legendFormat": "Pi CPU activity"
         }
       ],
       "fieldConfig": {
@@ -349,7 +354,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "100 * (1 - node_memory_MemAvailable_bytes{job=\"pi-node\"} / node_memory_MemTotal_bytes{job=\"pi-node\"})",
-          "instant": true
+          "instant": true,
+          "legendFormat": "Pi RAM used"
         }
       ],
       "fieldConfig": {
@@ -441,7 +447,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "homeaway_pihole_blocked_percent",
-          "instant": true
+          "instant": true,
+          "legendFormat": "DNS blocked (%)"
         }
       ]
     },
@@ -500,7 +507,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "sum(wireguard_connected_peers)",
-          "instant": true
+          "instant": true,
+          "legendFormat": "WireGuard connected peers"
         }
       ]
     },

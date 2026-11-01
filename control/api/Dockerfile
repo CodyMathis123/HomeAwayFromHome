@@ -1,0 +1,6 @@
+FROM python:3.13-alpine
+WORKDIR /app
+COPY app.py index.html app.js styles.css ./
+USER 65534:65534
+EXPOSE 8081
+CMD ["python", "-B", "app.py"]

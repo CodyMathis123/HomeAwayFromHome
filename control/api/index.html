@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark"><title>HomeAway · Computers</title>
+<link rel="stylesheet" href="/control/styles.css"><script defer src="/control/app.js"></script></head>
+<body><main>
+<header><a href="/">⌂ Home<span>Away</span></a><small>AUTHENTICATED COMPUTER CONTROL</small></header>
+<section class="hero"><p>YOUR COMPUTERS</p><h1>Power and presence.</h1>
+<div class="intro">Wake your computers or request Windows power actions. The PC must be configured for SSH and Wake-on-LAN. Status is an SSH reachability check, not a guarantee of system health.</div>
+<button id="refresh" type="button">Refresh status</button><span id="updated" role="status">Loading computers…</span>
+<p id="last-action" class="action-feedback" aria-live="polite"></p></section>
+<section id="hosts" class="hosts" aria-label="Computer controls"></section>
+<section class="history"><div class="heading"><h2>Recent activity</h2><button id="refresh-history" type="button">Refresh log</button></div>
+<div id="events" class="events">No commands yet.</div></section>
+<footer><span>Private network · Verified sign-in required</span><span>Commands are allowlisted and audited · Your iOS Shortcut remains independent</span></footer>
+</main></body></html>

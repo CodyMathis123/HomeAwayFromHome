@@ -21,6 +21,21 @@ class DashboardContracts(unittest.TestCase):
             self.assertTrue(all(p["datasource"]["uid"] == "homeaway-vm"
                                 for p in d["panels"]), name)
 
+    def test_stat_tooltips_use_readable_series_names_not_promql(self):
+        # Grafana's Stat hover uses the Prometheus legend as the field name.
+        # Without legendFormat, it displays the entire raw PromQL expression.
+        for path in PANELS.glob("*.json"):
+            dashboard = json.loads(path.read_text(encoding="utf-8"))
+            for panel in dashboard["panels"]:
+                if panel["type"] != "stat":
+                    continue
+                self.assertEqual(len(panel["targets"]), 1, (path.name, panel["id"]))
+                target = panel["targets"][0]
+                self.assertEqual(target["legendFormat"], panel["title"],
+                                 (path.name, panel["id"]))
+                self.assertNotIn("sensordash_", target["legendFormat"])
+                self.assertLessEqual(len(target["legendFormat"]), 80)
+
     def test_cooling_panels_use_binding_metadata_not_copied_raw_series(self):
         d = json.loads((PANELS / "cooling-systems.json").read_text(encoding="utf-8"))
         panels = {p["id"]: p for p in d["panels"]}

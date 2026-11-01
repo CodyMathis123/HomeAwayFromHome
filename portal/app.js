@@ -62,7 +62,8 @@ async function setupEmbeddedMetrics() {
     // Defense in depth: never load an arbitrary origin or admin path.
     // HomeAway may be opened by a local DNS name while Grafana uses the Pi's LAN IP.
     // The server has already validated and constructed that private LAN origin.
-    if (url.protocol !== 'http:' || url.port !== '3000' ||
+    if (!((url.protocol === 'http:' && url.port === '3000') ||
+          (url.protocol === 'https:' && url.port === '8443')) ||
         !url.pathname.startsWith('/public-dashboards/') ||
         !/^[a-fA-F0-9]{32,128}$/.test(url.pathname.slice('/public-dashboards/'.length))) {
       throw new Error('Embedded URL must use this Pi host and a shared-dashboard link');
@@ -102,3 +103,20 @@ async function setupEmbeddedMetrics() {
   }
 }
 void setupEmbeddedMetrics();
+
+async function setupPcControls() {
+  try {
+    const response = await fetch('/api/control-config', {cache: 'no-store'});
+    if (!response.ok) return;
+    const data = await response.json();
+    if (!data.enabled || !data.url) return;
+    const parsed = new URL(data.url);
+    if (parsed.protocol !== 'https:' || parsed.port !== '8443' ||
+        parsed.pathname !== '/control/' || parsed.search || parsed.hash) return;
+    const link = byId('link-pc-control');
+    link.href = (location.protocol === 'https:' && location.host === parsed.host)
+      ? '/control/' : parsed.href;
+    byId('pc-access').hidden = false;
+  } catch (_) { /* Optional control stack can be stopped. */ }
+}
+void setupPcControls();

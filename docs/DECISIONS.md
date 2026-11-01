@@ -9,3 +9,7 @@
 7. **Grafana + VictoriaMetrics optional.** Grafana owns historical visualization, while SensorDash retains collection, cooling topology and physical control. A small TLS-token intake publishes only a restricted metric schema; no direct VM port is exposed.
 8. **Offline, consistent backups.** Data includes keys and must be encrypted off-device. Prefer a controlled brief outage over silently copying live databases in an inconsistent state.
 9. **Review before applying.** GitHub PRs and tests, separate operator-controlled install/update, and a clear router DNS rollback plan.
+
+10. **Optional authenticated PC management:** keep :8088 status-only; a separate private LAN/VPN HTTPS :8443 Caddy gateway provides the single HomeAway /control page. Authelia local 2FA authorizes that path. Do not put arbitrary commands or Windows SSH credentials into the portal; an isolated controller talks to a socket-activated non-root Pi agent.
+11. **Extensible computer registry:** a single Pi-host JSON inventory is read by the `pcctl` CLI, agent and dashboard. Host labels, IPs, MACs and strict Windows SSH keys are configured per computer. Preserve the iOS Shortcut forced-dispatch interface and never silently replace legacy scripts.
+12. **Local HTTPS trust:** Caddy's private CA must be installed and trusted explicitly on clients before browser PC control. Never expose TCP 8443 to WAN or bypass 2FA for mutations.

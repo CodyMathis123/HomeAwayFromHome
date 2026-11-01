@@ -1,4 +1,7 @@
-# Cooling-system metadata in Grafana (milestone 2)
+# Cooling-system metadata in Grafana (historical milestone 2)
+
+> **Milestone snapshot, not the current operating contract.** The archive-time electrical export and controls-only SensorDash cleanup have since been implemented in the feature branches. For current setup use [TELEMETRY.md](TELEMETRY.md) and [SensorDash ADR 0008](https://github.com/CodyMathis123/SensorDash/blob/feature/telemetry-grafana-export/docs/adr/0008-local-control-observability.md). The discussion below records the incremental migration design.
+
 
 The [Windows exporter branch](https://github.com/CodyMathis123/SensorDash/tree/feature/telemetry-grafana-export) now synchronizes a **read-only catalog** of discovered sensors and each configured Cooling System's component-to-sensor bindings **including RPM, PWM and power sensor references stored in a component's electrical configuration**. This is *metadata*, not a second hardware poller, control interface, or cooling configuration database. SensorDash still defines all sensor IDs, names, aliases, cooling system roles, fan/PWM mappings and approvals.
 
@@ -41,9 +44,9 @@ Metadata exists only **from its first successful synchronization forward**; it c
 
 - **Cooling-system editor, sensor assignments, electrical calibration and fan/pump presets:** remain in SensorDash's local configuration.
 - **Fan curves, UAC authorization, PWM output and fail-safe handling:** remain exclusively on Windows.
-- **Estimated watts and energy:** not yet exported as derived measurements. They require provenance/revision semantics and parity tests with existing SensorDash calculations.
+- **Estimated watts:** exported as archive-time, source/revision-labeled measurements in the later milestones (see below). **Historical watt-hours/coverage** remain out of scope until gap-aware integration has been validated.
 - **Aliases:** metadata-only display information; metadata labels can churn temporarily with edits but cannot split raw sensor identity.
-- **Historical raw peak/energy/correlation:** not yet audited for Grafana parity. Keep existing SensorDash UI/history until comparison is complete.
+- **Historical peak/energy/correlation:** Grafana now owns the history viewer in the controls-only branch; historical energy/coverage parity still needs real hardware validation. The earlier instruction to keep duplicate Windows history charts applied only to the initial side-by-side phase.
 
 Access Grafana over private LAN or WireGuard; never port-forward its management UI or the restricted telemetry receiver. See [TELEMETRY.md](TELEMETRY.md) for setup and TLS bootstrap.
 

@@ -1,7 +1,7 @@
 name: Validate Pi infrastructure
 on:
   pull_request:
-    branches: [Production, feature/pi4-home-infrastructure]
+    branches: [Production, feature/pi4-home-infrastructure, feature/homeaway-grafana-embed, feature/homeaway-auth-pc-control]
   push:
     branches: [Production]
   workflow_dispatch:
@@ -19,7 +19,9 @@ jobs:
         run: |
           python3 -m compileall -q portal ingest monitoring scripts/tests
           node --check portal/app.js
+          node --check control/api/app.js
           python3 -m unittest discover -s scripts/tests -v
+          python3 scripts/check_doc_links.py
       - name: Validate Bash script syntax
         run: |
           for script in scripts/*.sh; do bash -n "$script"; done
@@ -34,6 +36,7 @@ jobs:
           mkdir -p secrets/telemetry
           docker compose config -q
           docker compose --profile metrics config -q
+          HOMEAWAY_DOMAIN=homeaway.home.arpa HOMEAWAY_AUTH_DOMAIN=auth.homeaway.home.arpa HOMEAWAY_METRICS_DOMAIN=metrics.homeaway.home.arpa PCCTL_GID=999 docker compose -f compose.yaml -f compose.control.yaml --profile control --profile metrics config -q
       - name: Build application and wg-easy images without starting VPN
         run: |
           docker compose build portal wg-easy
@@ -44,6 +47,10 @@ jobs:
             'iptables --version | grep -q nf_tables && ip6tables --version | grep -q nf_tables'
       - name: Enforce security and deployment contracts
         run: python3 scripts/check_contracts.py
+      - name: Validate resolved PC control network and container isolation
+        run: python3 scripts/check_control_contracts.py
+      - name: Verify optional Caddy and Authelia gateway configuration
+        run: python3 scripts/integration-control-gateway.py
       - name: Verify real VictoriaMetrics ingestion and cooling join
         run: |
           docker run --rm -d --name homeaway-vm-ci -p 127.0.0.1:18428:8428 \

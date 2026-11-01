@@ -1,50 +1,42 @@
 # HomeAwayFromHome
 
-**A small, predictable home-infrastructure stack for one Raspberry Pi 4 (8 GB).**
+**Self-hosted home infrastructure and monitoring on a Raspberry Pi 4 (8 GB).** Core services are Pi-hole and WireGuard; optional profiles add VictoriaMetrics/Grafana and a private HTTPS HomeAway control gateway. Windows SensorDash owns hardware sampling and fan control. HomeAway displays history and can separately manage registered PCs through its restricted `pcctl` agent; it never controls radiator PWM.
 
-Pi-hole v6 · WireGuard via wg-easy v15 · built-in responsive read-only status portal · optional Grafana + VictoriaMetrics. Everything is self-hosted on the Pi using Docker Compose. No VPS, external dashboard, mandatory account, or ongoing control-plane dependency.
+> **Implementation status (October 31, 2026):** The live Pi has passed baseline DNS/VPN/portal checks, and the operator reports ongoing VictoriaMetrics ingestion. The newest Grafana embed, authentication, and PC-control features are implemented on review branches but **not deployed to the Pi or verified on real PCs/iOS**. Automated CI is not a substitute for live auth, power-command, and cooling-safety validation. This repository's `Production` branch does not yet include the three stacked feature PRs described below.
 
-> **Status:** feature-branch implementation with a first real Pi 4 / Raspberry Pi OS 64-bit deployment. Pi-hole reached healthy DNS service, wg-easy started successfully with the documented nftables-compatible image, and the read-only portal/smoke checks passed on October 31, 2026. Real iPhone cellular VPN routing, DNS coverage through the VPN, eero household DNS cutover and Grafana/SensorDash telemetry are **not yet fully validated**. Read the [installation runbook](docs/INSTALL.md) and [existing-Pi migration notes](docs/EXISTING-PI-MIGRATION.md) before replacing live DNS or VPN.
+## Choose the correct starting point
 
-## Architecture
+| Layer | What it adds | Review branch / PR | Operator guide |
+| --- | --- | --- | --- |
+| Core infrastructure | DNS, WireGuard, read-only service portal, Grafana and VictoriaMetrics | `feature/pi4-home-infrastructure` ([PR #1](https://github.com/CodyMathis123/HomeAwayFromHome/pull/1)) | [Install and recovery](docs/INSTALL.md) |
+| Read-only metrics embed | Dedicated Grafana portal dashboard and single opt-in iframe | `feature/homeaway-grafana-embed` ([PR #2](https://github.com/CodyMathis123/HomeAwayFromHome/pull/2)) | [Grafana embed](docs/PORTAL-METRICS-EMBED.md) |
+| Authenticated computer control | Private HTTPS, local Authelia 2FA, multi-PC WOL/SSH actions and audit history | `feature/homeaway-auth-pc-control` ([PR #3](https://github.com/CodyMathis123/HomeAwayFromHome/pull/3)) | [PC onboarding / rollback](docs/PC-CONTROL.md) |
 
-```text
-                Internet / cellular
-                         |
-       Your public vpn.example.com -> home WAN IP
-                         |
-          Router: forward UDP 51820 ONLY
-                         |
-                    Raspberry Pi 4
-                  Raspberry Pi OS 64-bit
-                  Ethernet / fixed LAN IP
-                         |
-                  Docker Compose
-       +-----------------+------------------------+
-       |                 |                        |
-  Pi-hole v6         wg-easy v15           HomeAway portal
-  DNS :53            VPN UDP :51820       HTTP :8088 (LAN)
-  Web :8080 (LAN)    Admin :51821          Read-only checks
-                     localhost ONLY              |
-       |                 |                 Grafana :3000
-       +------- Pi LAN DNS / RDP / SensorDash ----+ (optional metrics)
-```
+The implementation and housekeeping PRs are stacked **#1 → #2 → #3 → #4**. For a complete end-to-end test, use **`chore/docs-and-legacy-cleanup`** in this repository together with **`chore/sensordash-telemetry-docs`** in SensorDash; both tips include all earlier stacked work. Follow the [two-repository integration test guide](docs/INTEGRATION-TEST.md). For core-only setup use `feature/pi4-home-infrastructure`. Do not cherry-pick partial files between incompatible Compose or telemetry schema revisions, and do not merge to `Production` before the operator's live validation.
 
-- **Public router exposure:** UDP 51820 to the Pi only. No published administration UI, SSH, DNS or HTTP WAN forwarding.
-- **WireGuard manager:** bound to the Pi's IPv4 loopback, reachable from an administrator's PC using an SSH port-forward. Admin HTML is HTTP only *inside the SSH tunnel*.
-- **Pi-hole DNS:** bound to the Pi's specified private IPv4 address, TCP and UDP 53; administration on port 8080 is **LAN/VPN-only HTTP with password**. Keep the LAN trustworthy; add HTTPS before extending web-admin access beyond it.
-- **Portal:** `http://PI_IP:8088` on LAN/VPN, zero dependencies beyond Python stdlib, no secrets, no Docker socket, no write API. Checks Pi-hole DNS and wg-easy's admin listener (not an actual VPN handshake).
-- **Optional Grafana:** `http://PI_IP:3000` with its own login; leave off until needed.
+## Service boundaries
+
+| Responsibility | Source of truth |
+| --- | --- |
+| DNS filtering and VPN peers | Pi-hole and wg-easy on the Pi |
+| Windows sensor collection, fan profiles, PWM output, cooling systems/associations, aliases | SensorDash on each Windows computer |
+| Long-term history, plots, electrical estimates, telemetry freshness | VictoriaMetrics and Grafana on the Pi |
+| Read-only home status | HomeAway HTTP portal on private LAN/VPN :8088 |
+| PC wake / sleep / reboot / shutdown | Opt-in HomeAway HTTPS :8443 UI → authenticated `pc-control` → restricted Pi `pcctl` → Windows SSH or WOL |
+
+**WAN exposure:** Forward only WireGuard UDP 51820. Keep HTTP :8080, :8088, :3000, :8429 and HTTPS :8443 on the LAN/VPN only. wg-easy admin TCP :51821 remains bound to loopback and accessible through SSH forwarding. The controller has no published port, SSH private-key mounts, Docker socket, or direct fan-control endpoint.
+
+For the simplified architecture and intended trust boundaries, read [security](docs/SECURITY.md) and [decisions](docs/DECISIONS.md). Historical implementation milestones are archived in [Project history](docs/PROJECT-HISTORY.md).
 
 ## Quick start (new Pi or after imaging)
 
 **Do not run this blindly on a Pi currently serving household DNS or VPN.** You will interrupt those services during replacement. Work from a local machine with a fallback DNS connection, and export anything you may want to keep first.
 
 1. Install **Raspberry Pi OS Lite 64-bit**, connect Ethernet, enable SSH, configure SSH keys, OS updates, and a reliable static/reserved Pi LAN IP. Install Docker Engine + the Compose plugin using [Docker's Debian instructions](https://docs.docker.com/engine/install/debian/). Recommended: USB SSD, recent Raspberry Pi kernel, good power supply.
-2. Clone this branch, then create the local configuration and secret:
+2. For the **combined staged feature set**, clone the top review branch shown below; for core-only deployment use `feature/pi4-home-infrastructure`. Then create the local configuration and secret:
 
    ```bash
-   git clone -b feature/pi4-home-infrastructure https://github.com/CodyMathis123/HomeAwayFromHome.git
+   git clone -b chore/docs-and-legacy-cleanup https://github.com/CodyMathis123/HomeAwayFromHome.git
    cd HomeAwayFromHome
    bash scripts/init.sh
    nano .env
@@ -87,7 +79,9 @@ Full tunnel is optional: use `0.0.0.0/0` for IPv4 AllowedIPs when intentionally 
 | HomeAway portal | `http://PI_IP:8088` | Read only; no credentials |
 | Pi-hole | `http://PI_IP:8080/admin/` | Pi-hole password |
 | wg-easy | `http://127.0.0.1:51821` | Only via SSH forwarding, then wg-easy login |
-| Grafana | `http://PI_IP:3000` | Optional metrics profile, authenticated |
+| Grafana | `http://PI_IP:3000` | Optional metrics profile, authenticated; shared read-only dashboard is separately opt-in |
+| HomeAway HTTPS gateway | `https://homeaway.home.arpa:8443` | Optional Caddy + Authelia; computer controls require 2FA |
+| Authelia login | `https://auth.homeaway.home.arpa:8443` | Optional local account and enrolled second factor |
 
 Start optional Grafana/VictoriaMetrics using the [telemetry guide](docs/TELEMETRY.md), which includes local HTTPS certificate and bearer token bootstrap. Monitoring charts never authorize physical fan control. Do not add a Docker socket to any web service.
 
@@ -123,26 +117,9 @@ Never commit `.env`, `secrets/`, `data/`, `backups/`, or client profiles/QR code
 **References:** [Pi-hole Docker](https://docs.pi-hole.net/docker/) · [Pi-hole v6 config](https://docs.pi-hole.net/docker/configuration/) · [wg-easy 15 setup](https://wg-easy.github.io/wg-easy/v15.2/examples/tutorials/basic-installation/) · [wg-easy admin security warning](https://wg-easy.github.io/wg-easy/latest/examples/tutorials/reverse-proxyless/) · [Grafana](https://grafana.com/docs/grafana/latest/) · [VictoriaMetrics](https://docs.victoriametrics.com/).
 
 
-## SensorDash / Grafana milestone 1
 
-See [docs/TELEMETRY.md](docs/TELEMETRY.md) and [cooling dashboard contract](docs/COOLING-GRAFANA.md): an optional Grafana 13.3.0 + VictoriaMetrics v1.155.0 profile, write-only authenticated TLS intake, a raw-sensor dashboard, a metadata-driven cooling-system dashboard, and a provenance-labeled fan/pump electrical dashboard. SensorDash's exporter remains disabled by default; all existing local control and browser features continue. Do not expose metrics endpoints at the router.
+## Optional features and deployment order
 
-## Real hardware validation
+The DNS/VPN quick start above does **not** start the optional control service. First enable and check Grafana/VictoriaMetrics via [telemetry setup](docs/TELEMETRY.md), then optionally share the compact metrics view via [Grafana embed setup](docs/PORTAL-METRICS-EMBED.md). Next, when ready to enable computer power commands, follow [PC control / Authelia onboarding](docs/PC-CONTROL.md) to configure the Pi host's inventory and socket, provision each Windows client's restricted SSH account, enable trusted local HTTPS, enroll two-factor auth, and verify access. The existing iOS Shortcut may remain operational.
 
-After CI passes, follow [First Pi/Windows rollout and side-by-side verification](docs/LIVE-VALIDATION.md). It describes the staged Pi-hole/DNS cutover, WireGuard test from iPhone cellular, private CA/token transfer to Windows, and the read-only `scripts/verify-telemetry.sh` checker. **Do not merge or delete the original SensorDash dashboard until that comparison passes.**
-
-## Optional Pi-hole and WireGuard dashboards
-
-The metrics profile now has opt-in internal monitoring for Pi-hole v6 aggregate DNS statistics and wg-easy v15 native Prometheus statistics. Both use the existing VictoriaMetrics instance. No additional host port is opened. Follow [DNS & VPN monitoring setup](docs/DNS-VPN-MONITORING.md) to configure app/bearer credentials and enable wg-easy Prometheus. The HomeAway DNS/VPN dashboard remains read-only; peer public endpoints and DNS queries are not collected.
-
-## SensorDash-style unified overview
-
-The read-only [SensorDash Overview](grafana/dashboards/overview.json) puts featured temperatures/RPM, recorded peaks, CPU/GPU power, cooling electrical estimates, temperature trends and a hardware catalog on one Grafana page. See [design and limitations](docs/GRAFANA-DESIGN.md). Windows remains the sole authority for hardware control.
-
-## Storage and events moved to Grafana
-
-Storage-device activity and temperature, local history-buffer footprint, and historical threshold events are now available in the new read-only [Storage](grafana/dashboards/storage.json) and [Events](grafana/dashboards/events.json) dashboards. Windows remains the sole owner of sensor sampling, alert thresholds, fan control, tray icons and cooling associations. Deploy the Pi ingestion schema before upgrading the Windows exporter.
-
-### Embedded read-only Grafana metrics in HomeAway
-
-The portal supports an opt-in, one-iframe compact Grafana view without an extra login. Keep all browser endpoints LAN/VPN-only; read [the enablement and revocation guide](docs/PORTAL-METRICS-EMBED.md) before sharing. By default no dashboard is shared and no iframe loads. Grafana admin authentication remains enabled.
+**Do not let remote PC management become a second hardware-control system:** SensorDash keeps all PWM authorization and cooling mappings, while HomeAway's PC power commands use a separate allowlisted, audited host agent. For visual and historical features, prefer Grafana panels to reimplementing graph code inside the portal. The [operating guide](docs/OPERATIONS.md) covers backups and manual updates, and [live validation](docs/LIVE-VALIDATION.md) covers the staged Pi/Windows checks.

@@ -481,7 +481,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "count(sensordash_component_info_value{host=~\"$host\",system=~\"$system\"} == 1)",
-          "instant": true
+          "instant": true,
+          "legendFormat": "Cooling components"
         }
       ]
     },
@@ -541,7 +542,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "count(count by(host,system,component)(sensordash_accessory_power_value{host=~\"$host\",system=~\"$system\",source=~\"$source\"}))",
-          "instant": true
+          "instant": true,
+          "legendFormat": "Power-model components"
         }
       ]
     },
@@ -601,7 +603,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "count(sensordash_accessory_power_value{host=~\"$host\",system=~\"$system\",source=\"measured\"}) or vector(0)",
-          "instant": true
+          "instant": true,
+          "legendFormat": "Measured power sources"
         }
       ]
     },
