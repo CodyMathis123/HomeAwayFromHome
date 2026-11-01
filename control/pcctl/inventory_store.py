@@ -70,6 +70,12 @@ def _read_existing(path: Path) -> tuple[dict, os.stat_result | None, bytes | Non
         os.close(fd)
 
 
+def read_inventory(path: Path) -> tuple[dict, str]:
+    """Read one validated atomic snapshot without exposing internals to callers."""
+    document, _, _ = _read_existing(Path(path))
+    return document, revision_of(document)
+
+
 def _stage(directory: Path, target: Path, payload: bytes,
            original: os.stat_result | None) -> Path:
     fd, temp_name = tempfile.mkstemp(prefix="." + target.name + ".", dir=directory)
