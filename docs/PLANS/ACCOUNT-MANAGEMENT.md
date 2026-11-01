@@ -2,6 +2,13 @@
 
 > **Phase 1 implementation branch.** Rebased onto the verified merged `Production` integration. The first change is a role-enforcement foundation; account provisioning remains gated on the independent Authelia user-store/session-lifecycle proof of concept. This feature branch is not deployed to the Pi, and does not alter existing Authelia users or live sessions. Read [phase overview](ADMIN-PHASE-OVERVIEW.md) first.
 
+## Status after release consolidation (November 1, 2026)
+
+- A1 **RBAC foundation implemented** on this draft branch, not deployed: verified Caddy group claims, server-enforced actions/status/history, role-aware UI and negative tests.
+- A0a **disposable directory experiment added**: [LLDAP GraphQL lab](../../scripts/integration-identity-lab.py) creates only synthetic users/groups, exercises grant/removal and duplicate rejection, and deletes all state afterward. This is not a migration test.
+- Provisional backend decision and hard gates: [ADR 0001 — Identity ownership](../ADR/0001-identity-backend.md). LLDAP is preferred rather than competing writers against Authelia's live file DB, but the account migration is **not approved**. Immediate revocation of an existing 2FA session, last-admin safety, TOTP preservation and backup/rollback are still required.
+- A0b next: isolated Authelia+LLDAP two-session experiment. **Do not** enable group-based household onboarding in the live Pi stack until account/session revocation is verified.
+
 ## 1. Existing behavior confirmed in the repository
 
 - `scripts/init-control-auth.py` builds `data/control/authelia/configuration.yml` and `users_database.yml`, generates a one-time 28-character password with pinned `authelia/authelia:4.39.28` CLI and Argon2id, sets one `admins` group user, refuses to replace an existing directory, and prints the password once.
@@ -28,7 +35,7 @@ Do not trust `X-HomeAway-User`, `Remote-Groups`, a role label rendered in HTML, 
 
 ## 3. Identity backend decision: implementation spike before coding UI
 
-### Option A — keep current Authelia file backend (recommended small-household prototype, conditional)
+### Option A — keep current Authelia file backend (current production only; not selected for independent browser writes)
 
 Authelia documents `authentication_backend.file.watch` for watching changes to the file; it is **off by default**. It also **writes the file itself** during password resets/changes. Our bootstrap writes a JSON object inside a `.yml` file (valid YAML), so treat extension/serialization rules carefully: Authelia writes files in the format implied by their extension. Do not assume two independent writers can safely serialize concurrently.
 
@@ -40,11 +47,11 @@ Prototype with the actual pinned 4.39.28 container:
 
 If proven adequate, use a dedicated narrowly privileged **identity provisioner**, not the web controller or generic root shell. It alone can update `users_database.yml` via strict operations, preserve the last enabled admin, validate schema, use safe file ownership/permissions, backup/recovery and optimistic revision checks; never mount all Authelia encryption/config secrets writable. Argon2id hash generation must happen within a reviewed pinned dependency/CLI isolated from browser input. Do not expose hashes or generated passwords in GET responses/logs. Keep backups off the Pi and encrypted.
 
-### Option B — a small LDAP directory, e.g. LLDAP (fallback for proper multi-user lifecycle)
+### Option B — LLDAP directory (provisional future account source of truth)
 
 Authelia supports LDAP as a first-factor backend. A dedicated lightweight user directory can own users/groups and password changes, reducing competing writers to Authelia's local file. Evaluate LLDAP compatibility with Authelia's exact pinned version, password reset, TOTP/session identities, migration of the existing admin account and backup/disaster recovery. This introduces one more always-on service and its database, secrets, ACLs and lifecycle; only choose it if the POC proves it materially safer/simpler than file administration. Never promise seamless migration of password hashes, 2FA devices or active sessions without testing.
 
-**Decision deliverable:** one ADR recording chosen identity source of truth, account migration procedure, privilege/secret boundaries, concurrent update design, session revoke behavior and rollback. Keep account identifiers stable across changes.
+**Decision deliverable:** [ADR 0001](../ADR/0001-identity-backend.md) selects LLDAP provisionally for development and records missing proof gates. Before production authorization, a follow-up ADR acceptance must record the tested account migration, privilege/secret boundaries, session revocation behavior and rollback. Preserve existing account identifiers.
 
 ## 4. First-run and recovery design
 
