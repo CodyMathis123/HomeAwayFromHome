@@ -9,6 +9,22 @@ import json
 import urllib.parse
 import urllib.request
 
+# Reach the exporter from the same private Docker bridge as VictoriaMetrics.
+# When this works but the pi-node job is missing, VM likely has stale config.
+exporter_ok = False
+try:
+    with urllib.request.urlopen("http://pi-node-exporter:9100/metrics", timeout=5) as resp:
+        metrics = resp.read(2_000_001)
+    if len(metrics) > 2_000_000:
+        raise ValueError("exporter diagnostic response exceeded limit")
+    exporter_ok = b"node_cpu_seconds_total{" in metrics
+    if exporter_ok:
+        print("PASS: node exporter directly reachable on Docker bridge")
+    else:
+        print("FAIL: node exporter reachable but CPU metrics absent")
+except (OSError, ValueError) as exc:
+    print("FAIL: node exporter unreachable on Docker bridge -", str(exc))
+
 base = "http://victoria-metrics:8428/api/v1/query?"
 def query(expr):
     with urllib.request.urlopen(base + urllib.parse.urlencode({"query": expr}),
@@ -50,13 +66,19 @@ for label, expr in (
             print("INFO:", label, "- not exposed by this kernel or collector")
     except (OSError, KeyError, ValueError, RuntimeError) as exc:
         print("WARN:", label, "-", str(exc))
-if failed:
+if failed or not exporter_ok:
     print("BLOCKED: Pi monitoring is not fully populated.")
     print("Check: sudo docker compose --profile metrics ps pi-node-exporter victoria-metrics")
-    print("Start exporter: sudo docker compose --profile metrics up -d --no-deps pi-node-exporter")
-    print("If the up{job=\"pi-node\"} series is absent after 60 seconds,")
-    print("VictoriaMetrics may have been started with an old scrape config.")
-    print("Recreate only VM: sudo docker compose --profile metrics up -d --no-deps --force-recreate victoria-metrics")
+    if not exporter_ok:
+        print("Exporter check failed: sudo docker compose --profile metrics logs --tail=60 pi-node-exporter")
+        print("Start exporter: sudo docker compose --profile metrics up -d --no-deps pi-node-exporter")
+    if "node exporter scrape" in failed and exporter_ok:
+        print("Exporter is healthy, but VictoriaMetrics did not successfully scrape it.")
+        print("If pi-node scrape job is absent, VictoriaMetrics may have an old scrape config.")
+    if failed:
+        print("Reload only VM (retains history):")
+        print("sudo docker compose --profile metrics up -d --no-deps --force-recreate victoria-metrics")
+        print("Then rerun this verification after two scrape intervals (~60 seconds).")
     raise SystemExit(2)
 print("PASS: Pi CPU, memory and uptime metrics are arriving in VictoriaMetrics.")
 print("Thermal and disk series are kernel-dependent; some may legitimately be absent.")
