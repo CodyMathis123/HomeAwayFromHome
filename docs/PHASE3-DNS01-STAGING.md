@@ -72,14 +72,24 @@ From the **clean Production checkout** on the Pi:
 
 ```bash
 cd ~/HomeAwayFromHome
+sudo -v
 umask 077
-mkdir -p secrets/control
+sudo install -d -m 700 secrets/control
 read -r -s -p 'Cloudflare DNS-01 API token: ' cf_token
 printf '\n'
-printf '%s\n' "$cf_token" > secrets/control/cloudflare_dns01_token
+printf '%s\n' "$cf_token" | sudo tee secrets/control/cloudflare_dns01_token >/dev/null
 unset cf_token
-chmod 600 secrets/control/cloudflare_dns01_token
+sudo chown root:root secrets/control/cloudflare_dns01_token
+sudo chmod 600 secrets/control/cloudflare_dns01_token
+sudo stat -c '%U:%G %a %n' secrets/control/cloudflare_dns01_token
 ```
+
+The token file should report `root:root 600`. The `secrets/control`
+directory may already be root-owned by HomeAway's protected control setup;
+that is expected, so the save and metadata-check commands use `sudo`.
+The token is piped into `sudo tee` with its output discarded; do not use
+`sudo cat`, share its contents, or change ownership of the whole secrets
+directory. The staging helper checks the root-owned file using `sudo`.
 
 The token is never needed in the current HomeAway gateway; do not add
 it to `.env`, Caddy's live configuration or other Compose overlays.
