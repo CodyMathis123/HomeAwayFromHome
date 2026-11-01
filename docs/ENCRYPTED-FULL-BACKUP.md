@@ -1,6 +1,6 @@
 # Encrypted full-state backup: proposed operator-run workflow
 
-**Status: draft, not yet validated or executed on the Pi.** Existing
+**Status: first supervised Pi backup and off-device decryption/listing completed on November 1, 2026; isolated full restore remains outstanding.** Existing
 `scripts/backup.sh` is unchanged. Do not schedule or run `--apply` until
 the read-only plan and the operator's recovery-key and network-access
 requirements are reviewed.
@@ -86,6 +86,18 @@ six host-side units. Confirm expected services work, and verify the
 encrypted archive checksum. Copy the encrypted archive and checksum
 off the Pi. A backup stored only on the Pi does not protect against
 device/SSD failure.
+
+## First live backup acceptance (November 1, 2026)
+
+The operator successfully created an encrypted full-state archive with 14 Compose containers and six active host-side units in the planned scope, confirmed the containers and sockets restarted, copied the archive off the Pi, and reported successful Windows decryption and archive listing. The protected on-Pi original was retained and temporary SCP transfer copies removed. The script's simulated recovery tests passed earlier. This establishes a readable encrypted snapshot, **not** a clean-host restore, real power-state transition test, or guaranteed unattended backup reliability.
+
+## Read-only local retention inventory
+
+```bash
+sudo python3 scripts/plan-backup-retention.py --plan --keep-local 3
+```
+
+This lists encrypted full-state archives in the root-only directory, labels the newest three KEEP, and flags older archives for review **without deleting anything**. It checks whether corresponding checksum files exist, not their contents. Before deleting an old local archive, independently verify a secure off-device copy and decryption with the saved recovery identity. There is deliberately no automatic pruning or deletion command.
 
 ## Restore validation (separate milestone)
 
