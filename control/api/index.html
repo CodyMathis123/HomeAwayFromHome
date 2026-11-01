@@ -15,7 +15,7 @@
     <a id="nav-computers" href="#computer-admin" hidden>Manage computers</a>
     <a id="nav-accounts" href="#accounts" hidden>Users and permissions</a>
     <a id="nav-activity" href="#recent-activity" hidden>Activity</a>
-    <a id="nav-readiness" href="#setup-readiness" hidden>Setup &amp; diagnostics</a>
+    <a id="nav-readiness" href="#setup-readiness" hidden>Operations &amp; diagnostics</a>
   </nav>
 </aside>
 <main>
@@ -73,10 +73,10 @@
 <div id="events" class="events">No commands yet.</div></section>
 <section id="setup-readiness" class="history readiness-page" data-view-section="setup-readiness" tabindex="-1" hidden aria-labelledby="readiness-title">
   <div class="heading">
-    <h2 id="readiness-title">Setup &amp; diagnostics</h2>
+    <h2 id="readiness-title">Operations &amp; diagnostics</h2>
     <button id="readiness-refresh" type="button">Refresh checks</button>
   </div>
-  <p class="detail">Admin-only, read-only checks of what HomeAway can currently observe. This is not a generic Docker administrator, installer or proof that every device is working.</p>
+  <p class="detail">Admin-only, read-only operational observations. Results reuse existing service, telemetry and certificate checks. No shell commands, backup execution or service restarts are exposed through this page.</p>
   <p id="readiness-updated" role="status" aria-live="polite">Not checked yet</p>
   <div class="readiness-grid" aria-label="Bounded setup readiness checks">
     <article class="readiness-item"><h3>Private browser connection</h3><span id="readiness-transport" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-transport">Not checked in this session</p></article>
@@ -124,12 +124,23 @@
       <p id="readiness-cert-detail-telemetry-receiver">Not checked; separate telemetry CA, not part of Let's Encrypt browser migration</p>
     </article>
   </div>
+  <h3>Backup &amp; recovery</h3>
+  <p class="detail">Encrypted full-state backups are operator-run on the Pi. This browser has no access to the root-only archive directory, backup encryption keys, or systemd, so it cannot verify when a backup last completed or whether a clean-host restore is possible.</p>
+  <div class="readiness-grid" aria-label="Backup verification boundaries">
+    <article class="readiness-item"><h3>Encrypted archive</h3><span class="readiness-badge" data-state="unknown">Not monitored</span><p>Use the Pi's root-only retention inventory and verify archive checksums locally. The existence of an archive does not prove it can be decrypted.</p></article>
+    <article class="readiness-item"><h3>Recovery verification</h3><span class="readiness-badge" data-state="unknown">Not verified here</span><p>Copy a backup off the Pi, decrypt it with your separately protected identity and test restoration on disposable storage. Never extract a recovery archive over running services.</p></article>
+  </div>
+  <div class="readiness-manual">
+    <p><strong>Encrypted backup scope (no outage)</strong> <code>sudo bash scripts/backup-full.sh --plan</code></p>
+    <p><strong>Local retention review (read-only)</strong> <code>sudo python3 scripts/plan-backup-retention.py --plan --keep-local 3</code></p>
+    <p><strong>Permission and deployment audit (read-only)</strong> <code>sudo python3 scripts/audit-production.py</code></p>
+  </div>
   <h3>Checks that still require the Pi</h3>
-  <p class="detail">Certificate expiry is observed separately above; renewal attempts and success, client-side TLS trust, external WireGuard/DNS connectivity, and backup recoverability are not verified by these checks. Pi metrics and export freshness now use the dedicated read-only metrics observer when deployed.</p>
+  <p class="detail">Certificate expiry is observed separately above; renewal attempts and success, client-side TLS trust, external WireGuard/DNS connectivity, backup freshness and backup recoverability are not verified by these checks. Pi metrics and export freshness now use the dedicated read-only metrics observer when deployed.</p>
   <div class="readiness-manual">
     <p><strong>Pi host metrics</strong> <code>sudo bash scripts/verify-pi-metrics.sh</code></p>
     <p><strong>Windows telemetry</strong> <code>sudo bash scripts/verify-telemetry.sh</code></p>
-    <p><strong>Backup scope preview (no backup run)</strong> <code>sudo bash scripts/backup.sh --plan</code></p>
+    <p><strong>Host recovery inventory (read-only)</strong> <code>sudo python3 scripts/plan-host-backup.py --plan</code></p>
   </div>
   <p class="detail">Run these commands locally in the Production repository. They do not verify all remote-client, certificate-renewal or restore scenarios. No HomeAway button runs shell commands or performs installation.</p>
 </section>
