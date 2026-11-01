@@ -70,6 +70,20 @@ class AccountAssets(unittest.TestCase):
         self.assertIn('grid-template-columns:228px minmax(0,1fr)', css)
         self.assertIn('position:sticky', css)
 
+    def test_pending_accounts_require_an_explicit_role_choice(self):
+        js = (API / "accounts.js").read_text()
+        css = (API / "styles.css").read_text()
+        self.assertIn("placeholder.selected = !roleValues.includes(user.role)", js)
+        self.assertIn("save.disabled = true", js)
+        self.assertIn("save.disabled = !select.value || user.role === select.value", js)
+        self.assertIn("if (!select.value || user.role === select.value) return;", js)
+        self.assertIn("select.setAttribute('aria-label', 'HomeAway role for '", js)
+        self.assertIn("mutationPending = true", js)
+        self.assertIn("mutationPending = false", js)
+        self.assertIn("createButton.disabled = true", js)
+        self.assertIn("createButton.disabled = false", js)
+        self.assertIn('#accounts-message[data-state="error"]', css)
+
     def test_navigation_hides_admin_links_until_capabilities_arrive(self):
         html = (API / "index.html").read_text()
         js = (API / "app.js").read_text()
