@@ -25,6 +25,8 @@ HOSTS = Path(os.getenv("HOMEAWAY_HOSTS_FILE", "/etc/homeaway-pcctl/hosts.json"))
 STATE_DIR = Path(os.getenv("HOMEAWAY_INVENTORY_STATE", "/var/lib/homeaway-pcinventory"))
 DRAFTS = STATE_DIR / "drafts.json"
 AUDIT = STATE_DIR / "audit.jsonl"
+RETIRED = STATE_DIR / "retired.json"
+MAX_RETIRED = 128
 SOCKET = "/run/homeaway-pcinventory/agent.sock"
 VERIFY_SOCKET = "/run/homeaway-pcverify/agent.sock"
 ID = re.compile(r"^[a-z][a-z0-9-]{0,31}$")
@@ -103,6 +105,95 @@ def _save_drafts(data: dict) -> None:
         if fd >= 0:
             os.close(fd)
         staged.unlink(missing_ok=True)
+
+
+def _read_retired() -> dict:
+    """Strict, separate retirement registry; never directly drives power actions."""
+    try:
+        fd = os.open(RETIRED, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    except FileNotFoundError:
+        return {"retired": []}
+    except OSError as exc:
+        raise InventoryFault(503, "Retirement records cannot be read safely") from exc
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+            raise InventoryFault(503, "Invalid retirement registry")
+        with os.fdopen(fd, "rb", closefd=False) as reader:
+            raw = reader.read(65537)
+        if len(raw) > 65536:
+            raise InventoryFault(503, "Retirement registry too large")
+        state = json.loads(raw)
+        if (not isinstance(state, dict) or set(state) != {"retired"} or
+                not isinstance(state["retired"], list) or len(state["retired"]) > MAX_RETIRED):
+            raise ValueError("Invalid retirement schema")
+        ids = set()
+        for record in state["retired"]:
+            if (not isinstance(record, dict) or set(record) !=
+                    {"host", "archived", "retiredAt", "retiredBy"} or
+                    type(record["archived"]) is not bool or
+                    not isinstance(record["retiredAt"], str) or
+                    len(record["retiredAt"]) > 48 or
+                    not isinstance(record["retiredBy"], str) or
+                    not ACTOR.fullmatch(record["retiredBy"]) or
+                    not isinstance(record["host"], dict) or
+                    set(record["host"]) !=
+                    {"id", "name", "address", "mac", "broadcast", "ssh_user", "ssh_port"}):
+                raise ValueError("Invalid retirement record")
+            validate_hosts({"hosts": [record["host"]]})
+            if record["host"]["id"] in ids:
+                raise ValueError("Duplicate retired ID")
+            ids.add(record["host"]["id"])
+        return state
+    except (ValueError, TypeError, KeyError, UnicodeError, AttributeError) as exc:
+        raise InventoryFault(503, "Retirement registry damaged; manual recovery required") from exc
+    finally:
+        os.close(fd)
+
+
+def _save_retired(state: dict) -> None:
+    """Atomic private archive snapshot, separate from the command registry."""
+    if RETIRED.is_symlink() or STATE_DIR.is_symlink():
+        raise InventoryFault(503, "Unsafe retirement registry path")
+    payload = (json.dumps(state, indent=2, ensure_ascii=False) + "\n").encode()
+    if len(payload) > 65536:
+        raise InventoryFault(413, "Retirement registry too large")
+    fd, temp_name = tempfile.mkstemp(prefix=".retired-", dir=STATE_DIR)
+    staged = Path(temp_name)
+    try:
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "wb") as writer:
+            fd = -1
+            writer.write(payload)
+            writer.flush()
+            os.fsync(writer.fileno())
+        os.replace(staged, RETIRED)
+        directory_fd = os.open(STATE_DIR, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
+    finally:
+        if fd >= 0:
+            os.close(fd)
+        staged.unlink(missing_ok=True)
+
+
+def _retired_record(payload: dict, state: dict) -> dict:
+    """Return record only if the user has read its current exact revision."""
+    if (set(payload) != {"id", "revision", "confirm"} or
+            not isinstance(payload.get("id"), str) or
+            not ID.fullmatch(payload["id"]) or
+            not isinstance(payload.get("revision"), str) or
+            not re.fullmatch(r"[0-9a-f]{24}", payload["revision"]) or
+            payload["confirm"] != payload["id"]):
+        raise InventoryFault(400, "Confirm the exact computer ID and refresh")
+    record = next((r for r in state["retired"] if r["host"]["id"] == payload["id"]), None)
+    if record is None:
+        raise InventoryFault(404, "Retired computer not found")
+    if revision_of(record) != payload["revision"]:
+        raise InventoryFault(409, "Retirement record changed; refresh")
+    return record
 
 
 def _audit(actor: str, target: str, operation: str, outcome: str) -> None:
