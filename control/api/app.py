@@ -96,12 +96,59 @@ def broker_request(actor: str, operation: str, payload: dict) -> dict:
         raise BrokerError(503, "Account broker unavailable") from exc
 
 
+def computer_admin_enabled() -> bool:
+    # Separate opt-in from accounts, and require live directory-role checks.
+    return (account_admin_enabled() and
+            os.getenv("HOMEAWAY_COMPUTER_ADMIN_ENABLED", "false").lower() == "true")
+
+
+def computer_request(actor: str, operation: str, payload: dict) -> dict:
+    """Send a fixed command over the dedicated, group-protected Unix socket."""
+    if not computer_admin_enabled():
+        raise BrokerError(404, "Computer management disabled")
+    if operation not in ("list", "audit-list", "draft-create", "draft-discard", "rename", "verify", "activate",
+                          "disable", "archive", "restore"):
+        raise BrokerError(404, "Unsupported computer operation")
+    if os.getenv("HOMEAWAY_INVENTORY_SOCKET") != "/run/homeaway-pcinventory/agent.sock":
+        raise BrokerError(503, "Inventory socket misconfigured")
+    message = (json.dumps({"actor": actor, "operation": operation, "payload": payload},
+                          separators=(",", ":")) + "\n").encode()
+    if len(message) > 4096:
+        raise BrokerError(413, "Computer request too large")
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as conn:
+            conn.settimeout(23 if operation in ("verify", "activate", "restore") else 5)
+            conn.connect("/run/homeaway-pcinventory/agent.sock")
+            conn.sendall(message)
+            response = conn.makefile("rb").readline(65537)
+        if not response.endswith(b"\n") or len(response) > 65536:
+            raise ValueError("Invalid inventory response size")
+        answer = json.loads(response)
+        if not isinstance(answer, dict) or type(answer.get("ok")) is not bool:
+            raise ValueError("Invalid inventory response")
+        if answer["ok"]:
+            if not isinstance(answer.get("result"), dict):
+                raise ValueError("Invalid inventory result")
+            return answer["result"]
+        code = answer.get("status")
+        if code not in (400, 403, 404, 409, 413):
+            code = 503
+        # Errors are selected/validated by the fixed host-side inventory service.
+        error = answer.get("error", "")
+        if not isinstance(error, str) or not 1 <= len(error) <= 120:
+            error = "Inventory operation unavailable"
+        raise BrokerError(code, error)
+    except (OSError, ValueError, json.JSONDecodeError, TimeoutError) as exc:
+        raise BrokerError(503, "Inventory service unavailable") from exc
+
+
 def capabilities(role: str) -> dict:
     return {
         "role": role,
         "actions": list(ROLE_ACTIONS[role]),
         "history": role == "admins",
         "manageUsers": role == "admins" and account_admin_enabled(),
+        "manageComputers": role == "admins" and computer_admin_enabled(),
     }
 LOCKS: dict[str, threading.Lock] = {}
 RECENT: dict[str, float] = {}
@@ -110,6 +157,7 @@ AUDIT_LOCK = threading.Lock()
 SAFE_FILES = {"/control/": ("index.html", "text/html; charset=utf-8"),
               "/control/app.js": ("app.js", "text/javascript; charset=utf-8"),
               "/control/accounts.js": ("accounts.js", "text/javascript; charset=utf-8"),
+              "/control/computers.js": ("computers.js", "text/javascript; charset=utf-8"),
               "/control/styles.css": ("styles.css", "text/css; charset=utf-8")}
 
 
@@ -293,6 +341,16 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(200, broker_request(actor, "users", {}))
             except BrokerError as exc:
                 return self._json(exc.status, {"error":str(exc)})
+        if path in ("/control/api/admin/computers", "/control/api/admin/computers/audit"):
+            if not computer_admin_enabled():
+                return self._json(404, {"error": "Not found"})
+            if role != "admins":
+                return self._json(403, {"error": "Insufficient permissions"})
+            operation = "audit-list" if path.endswith("/audit") else "list"
+            try:
+                return self._json(200, computer_request(actor, operation, {}))
+            except BrokerError as exc:
+                return self._json(exc.status, {"error": str(exc)})
         if path == "/control/api/hosts":
             try:
                 hosts = inventory()
@@ -321,8 +379,21 @@ class Handler(BaseHTTPRequestHandler):
             "/control/api/admin/users/create",
             "/control/api/admin/users/set-role",
             "/control/api/admin/users/revoke")
-        if request_path != "/control/api/actions" and not is_account:
+        is_computer = request_path in (
+            "/control/api/admin/computers/draft-create",
+            "/control/api/admin/computers/draft-discard",
+            "/control/api/admin/computers/verify",
+            "/control/api/admin/computers/activate",
+            "/control/api/admin/computers/disable",
+            "/control/api/admin/computers/archive",
+            "/control/api/admin/computers/restore",
+            "/control/api/admin/computers/rename")
+        if request_path != "/control/api/actions" and not is_account and not is_computer:
             return self._json(404, {"error": "Not found"})
+        if is_computer and not computer_admin_enabled():
+            return self._json(404, {"error": "Not found"})
+        if is_computer and role != "admins":
+            return self._json(403, {"error": "Insufficient permissions"})
         if is_account and not account_admin_enabled():
             return self._json(404, {"error": "Not found"})
         if is_account and role != "admins":
@@ -336,9 +407,17 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(403, {"error": "Origin or request verification failed"})
         try:
             length = int(self.headers.get("Content-Length", "0"))
-            if not 1 <= length <= (2048 if is_account else 1024):
+            if not 1 <= length <= (2048 if (is_account or is_computer) else 1024):
                 return self._json(413, {"error": "Invalid request length"})
             data = json.loads(self.rfile.read(length))
+            if is_computer:
+                if not isinstance(data, dict):
+                    raise ValueError("Invalid computer payload")
+                operation = request_path.rsplit("/", 1)[-1]
+                try:
+                    return self._json(200, computer_request(actor, operation, data))
+                except BrokerError as exc:
+                    return self._json(exc.status, {"error": str(exc)})
             if is_account:
                 if not isinstance(data, dict):
                     raise ValueError("Invalid account payload")

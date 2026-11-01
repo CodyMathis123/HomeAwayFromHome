@@ -19,7 +19,11 @@ DEFAULT_CONFIG = "/etc/homeaway-pcctl/hosts.json"
 
 def load_hosts(path: str | None = None) -> dict[str, dict]:
     source = Path(path or os.getenv("HOMEAWAY_HOSTS_FILE", DEFAULT_CONFIG))
-    data = json.loads(source.read_text(encoding="utf-8"))
+    return validate_hosts(json.loads(source.read_text(encoding="utf-8")))
+
+
+def validate_hosts(data: dict) -> dict[str, dict]:
+    """Validate an in-memory inventory using the same rules as the live agent."""
     if not isinstance(data, dict) or not isinstance(data.get("hosts"), list):
         raise ValueError("Inventory must contain a hosts array")
     result = {}

@@ -1,0 +1,30 @@
+[Unit]
+Description=HomeAway narrow computer inventory writer
+Requires=homeaway-inventory.socket
+After=homeaway-inventory.socket
+
+[Service]
+Type=simple
+User=homeaway-inventory
+Group=homeaway-inventory
+ExecStart=/usr/bin/python3 -B /opt/homeaway-pcinventory/agent.py
+Environment=HOMEAWAY_HOSTS_FILE=/etc/homeaway-pcctl/hosts.json
+Environment=HOMEAWAY_INVENTORY_STATE=/var/lib/homeaway-pcinventory
+NoNewPrivileges=true
+CapabilityBoundingSet=
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/etc/homeaway-pcctl /var/lib/homeaway-pcinventory
+ReadOnlyPaths=/opt/homeaway-pcinventory
+RestrictAddressFamilies=AF_UNIX
+SystemCallArchitectures=native
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+
+[Install]
+WantedBy=multi-user.target
