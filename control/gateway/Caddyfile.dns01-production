@@ -10,7 +10,9 @@ home.homeawayfromhome.house:8443 {
   tls {
     dns cloudflare {env.CF_API_TOKEN}
     ca https://acme-v02.api.letsencrypt.org/directory
-    resolvers 1.1.1.1
+    resolvers 1.1.1.1 8.8.8.8
+    propagation_delay 15s
+    propagation_timeout 5m
   }
   respond "HomeAway public HTTPS certificate ready; application routing not yet enabled" 503
 }
@@ -19,7 +21,9 @@ auth.homeawayfromhome.house:8443 {
   tls {
     dns cloudflare {env.CF_API_TOKEN}
     ca https://acme-v02.api.letsencrypt.org/directory
-    resolvers 1.1.1.1
+    resolvers 1.1.1.1 8.8.8.8
+    propagation_delay 15s
+    propagation_timeout 5m
   }
   respond "HomeAway public HTTPS certificate ready; application routing not yet enabled" 503
 }
@@ -28,7 +32,9 @@ metrics.homeawayfromhome.house:8443 {
   tls {
     dns cloudflare {env.CF_API_TOKEN}
     ca https://acme-v02.api.letsencrypt.org/directory
-    resolvers 1.1.1.1
+    resolvers 1.1.1.1 8.8.8.8
+    propagation_delay 15s
+    propagation_timeout 5m
   }
   respond "HomeAway public HTTPS certificate ready; application routing not yet enabled" 503
 }
