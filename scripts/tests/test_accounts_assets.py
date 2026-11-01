@@ -50,6 +50,21 @@ class AccountAssets(unittest.TestCase):
         self.assertIn("Change failed:", js)
         self.assertIn("No HomeAway access · pending or revoked", js)
 
+    def test_navigation_hides_admin_links_until_capabilities_arrive(self):
+        html = (API / "index.html").read_text()
+        js = (API / "app.js").read_text()
+        css = (API / "styles.css").read_text()
+        self.assertIn('aria-label="Control page sections"', html)
+        self.assertIn('id="nav-computers" href="#computer-admin" hidden', html)
+        self.assertIn('id="nav-accounts" href="#accounts" hidden', html)
+        self.assertIn('id="recent-activity"', html)
+        self.assertIn("updateSectionNavigation(identity.capabilities)", js)
+        self.assertIn("updateSectionNavigation(null)", js)
+        self.assertIn("!capabilities?.manageComputers", js)
+        self.assertIn("!capabilities?.manageUsers", js)
+        self.assertIn(".section-nav [hidden]{display:none}", css)
+        self.assertIn("overflow-x:auto", css)
+
 
 if __name__ == "__main__":
     unittest.main()
