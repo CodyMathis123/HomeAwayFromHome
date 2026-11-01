@@ -3,17 +3,19 @@
 // overview stops polling but keeps its DOM and Grafana disclosure state.
 window.HomeAwayOverview = (() => {
   let initialized = false;
+  let viewRefresh = null;
   function init() {
-    if (initialized || !document.getElementById('refresh')) return;
+    const root = document.querySelector('#page-view-slot > main.shell:not([hidden])');
+    if (initialized || !root?.querySelector('#refresh')) return;
     initialized = true;
-    const byId = id => document.getElementById(id);
+    const byId = id => root.querySelector('#' + id);
     const host = window.location.hostname;
     byId('link-dns').href = `http://${host}:8080/admin/`;
     byId('link-monitor').href = `http://${host}:3000/`;
     let pending = false;
     async function refresh() {
       // The overview may be cached but detached while Architecture is displayed.
-      if (!byId('refresh') || pending) return;
+      if (!root.isConnected || root.hidden || pending) return;
       pending = true;
       byId('refresh').disabled = true;
       try {
@@ -128,8 +130,12 @@ window.HomeAwayOverview = (() => {
       } catch (_) { /* Optional control stack can be stopped. */ }
     }
     void setupPcControls();
-    
+    viewRefresh = refresh;
   }
-  return Object.freeze({init});
+  function show() {
+    init();
+    if (viewRefresh) void viewRefresh();
+  }
+  return Object.freeze({init, show});
 })();
 window.HomeAwayOverview.init();
