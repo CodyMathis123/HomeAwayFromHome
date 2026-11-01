@@ -36,6 +36,7 @@ jobs:
           node --check portal/router.js
           node scripts/tests/test_portal_router.cjs
           node --check portal/architecture.js
+          node scripts/tests/test_architecture_status.cjs
           node --check control/api/app.js
           node scripts/tests/test_control_views.cjs
           node --check control/api/accounts.js
