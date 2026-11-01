@@ -31,10 +31,19 @@ if [[ "$mode" == --stop ]]; then
   echo "Staging certificate files remain under data/control/dns01-staging/."
   exit 0
 fi
-[[ -s "$secret" ]] || die "Missing token file: $secret. Create it locally; never commit or paste it."
-perms="$(stat -c '%a' "$secret")" || die "Cannot inspect secret permissions."
+# The gateway token is deliberately kept in a root-owned secret directory.
+# Run metadata checks via sudo, matching the root-executed Compose command.
+# Never read or print secret contents.
+sudo test -s "$secret" ||
+  die "Missing/empty token file: $secret. Create it with sudo tee; never paste it."
+perms="$(sudo stat -c '%a' "$secret")" ||
+  die "Cannot inspect root-owned secret permissions."
+owner="$(sudo stat -c '%u' "$secret")" ||
+  die "Cannot inspect secret ownership."
+[[ "$owner" == "0" ]] ||
+  die "Secret must be root-owned; run sudo chown root:root $secret."
 [[ "$perms" == "600" || "$perms" == "400" ]] ||
-  die "Set secret owner-only permissions: chmod 600 $secret."
+  die "Secret must be owner-only; run sudo chmod 600 $secret."
 # Only the extra isolated Compose project is resolved. Do NOT include
 # compose.yaml, compose.control.yaml, or any real gateway service.
 "${compose[@]}" config -q || die "Isolated Compose invalid."
