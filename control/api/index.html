@@ -30,6 +30,12 @@
   <h3>Disabled and archived computers</h3>
   <p class="detail">Disabled computers are removed from the active power-control inventory. Their last verified configuration is retained privately. Restoring one requires a fresh authenticated SSH identity check.</p>
   <div id="computer-admin-retired" class="account-list"></div>
+  <details id="computer-admin-audit" class="computer-setup">
+    <summary>Recent computer management activity (admins only)</summary>
+    <p class="detail">Up to 50 recent verified audit events; no IP addresses, MAC addresses, or SSH credentials.</p>
+    <p id="computer-admin-audit-message" role="status" aria-live="polite"></p>
+    <ol id="computer-admin-audit-events" class="computer-audit-events"></ol>
+  </details>
 </section>
 <section id="accounts" class="accounts history" hidden aria-label="Account administration">
   <div class="heading"><h2>Users and permissions</h2><button id="accounts-refresh" type="button">Refresh users</button></div>
