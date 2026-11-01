@@ -38,9 +38,16 @@ def run_checks(runner=subprocess.run) -> dict:
         except (OSError, subprocess.TimeoutExpired):
             state = "attention"
         results.append({"id": name, "state": state})
+    try:
+        enabled = runner(["systemctl", "is-enabled",
+                          "homeaway-backup-preflight.timer"],
+                         capture_output=True, text=True, timeout=5,
+                         check=False).returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        enabled = False
     return {"schemaVersion": 1,
             "checkedAt": datetime.now(timezone.utc).isoformat(),
-            "mode": "preflight-only", "scheduleEnabled": False,
+            "mode": "preflight-only", "scheduleEnabled": enabled,
             "checks": results}
 
 
