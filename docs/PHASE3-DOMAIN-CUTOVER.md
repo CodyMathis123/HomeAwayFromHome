@@ -26,7 +26,15 @@ python3 -m py_compile control/api/app.py
 sudo docker compose -f compose.yaml -f compose.control.yaml -f compose.accounts.yaml -f compose.computers.yaml -f compose.dns01-production.yaml -f compose.phase3-domain.yaml --profile control --profile accounts --profile metrics config -q
 ```
 
-Check both actual cookie entries and the two-factor rule; `config -q` alone does not validate Authelia semantics. Confirm `control/gateway/Caddyfile.phase3-domain` is world-readable (mode 644) without changing the Cloudflare secret file.
+Check both actual cookie entries and the two-factor rule; `config -q` alone does not validate Authelia semantics. The new Caddyfile must be world-readable on the Pi because this gateway uses restricted container privileges. Git does not track file read bits, so perform this on every fresh checkout **before** validation or restart:
+
+```bash
+chmod 644 control/gateway/Caddyfile.phase3-domain
+stat -c '%a %n' control/gateway/Caddyfile.phase3-domain
+test "$(stat -c '%a' control/gateway/Caddyfile.phase3-domain)" = 644 || exit 1
+```
+
+Do not change `secrets/control/cloudflare_dns01_token` permissions. A mode-600 Phase 3 Caddyfile caused an actual live Caddy restart loop; validate offline before trying the gateway again.
 
 Validate the exact Caddyfile offline, using a synthetic token and no networking:
 
