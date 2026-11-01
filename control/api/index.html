@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark"><title>HomeAway · Computers</title>
-<link rel="stylesheet" href="/control/styles.css"><link rel="stylesheet" href="/theme.css"><script defer src="/navigation.js"></script><script defer src="/control/accounts.js"></script><script defer src="/control/computers.js"></script><script defer src="/control/app.js"></script></head>
+<link rel="stylesheet" href="/control/styles.css"><link rel="stylesheet" href="/theme.css"><script defer src="/navigation.js"></script><script defer src="/control/accounts.js"></script><script defer src="/control/computers.js"></script><script defer src="/control/readiness.js"></script><script defer src="/control/app.js"></script></head>
 <body><div class="ambient" aria-hidden="true"></div><div class="app-layout">
 <aside id="app-navigation" class="app-sidebar" aria-label="Primary navigation">
   <nav class="section-nav" aria-label="Control page sections">
@@ -15,6 +15,7 @@
     <a id="nav-computers" href="#computer-admin" hidden>Manage computers</a>
     <a id="nav-accounts" href="#accounts" hidden>Users and permissions</a>
     <a id="nav-activity" href="#recent-activity" hidden>Activity</a>
+    <a id="nav-readiness" href="#setup-readiness" hidden>Setup &amp; diagnostics</a>
   </nav>
 </aside>
 <main>
@@ -70,5 +71,30 @@
 </section>
 <section id="recent-activity" class="history" data-view-section="recent-activity" tabindex="-1"><div class="heading"><h2>Recent activity</h2><button id="refresh-history" type="button">Refresh log</button></div>
 <div id="events" class="events">No commands yet.</div></section>
+<section id="setup-readiness" class="history readiness-page" data-view-section="setup-readiness" tabindex="-1" hidden aria-labelledby="readiness-title">
+  <div class="heading">
+    <h2 id="readiness-title">Setup &amp; diagnostics</h2>
+    <button id="readiness-refresh" type="button">Refresh checks</button>
+  </div>
+  <p class="detail">Admin-only, read-only checks of what HomeAway can currently observe. This is not a generic Docker administrator, installer or proof that every device is working.</p>
+  <p id="readiness-updated" role="status" aria-live="polite">Not checked yet</p>
+  <div class="readiness-grid" aria-label="Bounded setup readiness checks">
+    <article class="readiness-item"><h3>Private browser connection</h3><span id="readiness-transport" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-transport">Not checked in this session</p></article>
+    <article class="readiness-item"><h3>Account administration</h3><span id="readiness-accounts" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-accounts">Not checked in this session</p></article>
+    <article class="readiness-item"><h3>Computer management</h3><span id="readiness-computers" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-computers">Not checked in this session</p></article>
+    <article class="readiness-item"><h3>Pi-hole DNS</h3><span id="readiness-dns" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-dns">Not checked in this session</p></article>
+    <article class="readiness-item"><h3>WireGuard management listener</h3><span id="readiness-wireguard" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-wireguard">Not checked in this session</p></article>
+    <article class="readiness-item"><h3>Grafana listener (optional)</h3><span id="readiness-monitor" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-monitor">Not checked in this session</p></article>
+    <article class="readiness-item"><h3>Registered computer reachability</h3><span id="readiness-hosts" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-hosts">Not checked in this session</p></article>
+  </div>
+  <h3>Checks that still require the Pi</h3>
+  <p class="detail">Telemetry freshness, Pi exporter health, HTTPS certificate expiration and renewal, external WireGuard/DNS connectivity, and backup recoverability cannot be confirmed from the existing web APIs. They are not automatically passing.</p>
+  <div class="readiness-manual">
+    <p><strong>Pi host metrics</strong> <code>sudo bash scripts/verify-pi-metrics.sh</code></p>
+    <p><strong>Windows telemetry</strong> <code>sudo bash scripts/verify-telemetry.sh</code></p>
+    <p><strong>Backup scope preview (no backup run)</strong> <code>sudo bash scripts/backup.sh --plan</code></p>
+  </div>
+  <p class="detail">Run these commands locally in the Production repository. They do not verify all remote-client, certificate-renewal or restore scenarios. No HomeAway button runs shell commands or performs installation.</p>
+</section>
 <footer><span>Private network · Verified sign-in required</span><span>Commands are allowlisted and audited · Your iOS Shortcut remains independent</span></footer>
 </main></div></body></html>
