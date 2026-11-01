@@ -13,6 +13,8 @@ def main():
     backend=(ROOT/"control/api/app.py").read_text()
     broker=(ROOT/"control/accounts/broker.py").read_text()
     assert "profiles: [accounts]" in c
+    assert "ghcr.io/lldap/lldap:2026-09-22-debian-rootless" in c
+    assert "cap_drop: [ALL]" in c and "no-new-privileges:true" in c
     assert "HOMEAWAY_ACCOUNT_ADMIN_ENABLED:" in c and ":-false" in c
     assert 'HOMEAWAY_ACCOUNT_ADMIN_ENABLED", "false"' in backend
     assert "HOMEAWAY_ACCOUNT_BROKER_URL" in backend
