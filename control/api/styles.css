@@ -12,3 +12,9 @@
 #computer-admin .account-detail{overflow-wrap:anywhere}
 #computer-admin-message{font-size:13px;color:var(--accent);min-height:1.3em}
 @media(max-width:700px){.computer-create{grid-template-columns:1fr}}
+
+.computer-setup{margin:12px 0 14px;border-top:1px solid var(--line);padding:12px 0;color:var(--muted);font-size:12px}
+.computer-setup summary{color:var(--accent);cursor:pointer;font-weight:600}
+.computer-setup ol{padding-left:22px;display:grid;gap:12px;line-height:1.5}
+.computer-command{font-size:11px;white-space:pre-wrap;overflow-wrap:anywhere;background:#0c1e2a;padding:9px;border-radius:6px}
+.computer-setup a{color:var(--accent)}
