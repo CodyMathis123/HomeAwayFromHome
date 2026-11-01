@@ -561,6 +561,43 @@ class ComputerApiTests(unittest.TestCase):
             self.assertEqual(result["activated"],"living-room")
             self.assertEqual(calls[-1],("homeowner","activate",activation))
 
+    def test_retirement_routes_enforce_admin_and_csrf(self):
+        ids = ("disable", "archive", "restore")
+        payload = {"id": "gaming", "revision": "a" * 24, "confirm": "gaming"}
+        with self.config(), patch.object(api, "broker_request",
+               side_effect=self.identity("operators")), patch.object(api, "computer_request") as writer:
+            for route in ids:
+                code, _ = self.request("POST",
+                    "/control/api/admin/computers/" + route, payload)
+                self.assertEqual(code, 403)
+            writer.assert_not_called()
+        with self.config(), patch.object(api, "broker_request",
+               side_effect=self.identity("admins")), patch.object(api, "computer_request") as writer:
+            for route in ids:
+                code, _ = self.request("POST",
+                    "/control/api/admin/computers/" + route, payload, origin=False)
+                self.assertEqual(code, 403)
+            writer.assert_not_called()
+        with self.config(False), patch.object(api, "broker_request",
+               side_effect=self.identity("admins")), patch.object(api, "computer_request") as writer:
+            code, _ = self.request("POST", "/control/api/admin/computers/disable", payload)
+            self.assertEqual(code, 404)
+            writer.assert_not_called()
+
+    def test_admin_retire_restore_routes_send_fixed_payload(self):
+        payload = {"id": "gaming", "revision": "a" * 24, "confirm": "gaming"}
+        with self.config(), patch.object(api, "broker_request",
+               side_effect=self.identity("admins")), patch.object(api, "computer_request",
+               side_effect=lambda actor, op, data: {"actor": actor, "operation": op, "payload": data}):
+            for op in ("disable", "archive", "restore"):
+                body = {**payload, **({"inventoryRevision": "b" * 24}
+                         if op == "restore" else {})}
+                code, result = self.request("POST",
+                    "/control/api/admin/computers/" + op, body)
+                self.assertEqual(code, 200)
+                self.assertEqual(result, {"actor": "homeowner", "operation": op,
+                                          "payload": body})
+
     def test_admin_list_create_and_rename_use_fixed_operations(self):
         calls=[]
         def fake(actor,op,payload):
