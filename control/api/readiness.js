@@ -55,7 +55,7 @@ const HomeAwayReadiness = (() => {
       const label = item.state === 'observed' ? 'Scraped' :
         item.state === 'attention' ? 'Scrape failed' : 'Unknown';
       display(id.replace('.', '-'), item.state, label,
-        'Internal metrics endpoint only; end-to-end service health not established');
+        'Metrics endpoint response');
     }
   }
   const metricIds = ['pi.scrape', 'pi.cpu', 'pi.memory', 'pi.load', 'pi.thermal', 'vm.free'];
@@ -108,7 +108,7 @@ const HomeAwayReadiness = (() => {
       const stale = telemetry.hosts.filter(item => item.state === 'stale').length;
       display('telemetry', stale ? 'stale' : 'observed',
         stale ? stale + ' host(s) without recent exports' : 'Recent samples',
-        'Last raw sensor exports; gaps can indicate sleep, offline Windows, or an exporter issue.');
+        'Last sensor export received');
       for (const item of telemetry.hosts.slice(0, 16)) {
         if (typeof item.host !== 'string' || !Number.isFinite(item.ageSeconds)) continue;
         const li = document.createElement('li');
@@ -121,7 +121,7 @@ const HomeAwayReadiness = (() => {
     }
     const checked = Date.parse(data.checkedAt);
     $('readiness-metrics-checked').textContent = Number.isFinite(checked)
-      ? 'VictoriaMetrics observations checked ' + new Date(checked).toLocaleTimeString()
+      ? 'Updated ' + new Date(checked).toLocaleTimeString()
       : 'Metrics checked (timestamp unavailable)';
   }
 
@@ -177,7 +177,7 @@ const HomeAwayReadiness = (() => {
     }
     const checked = Date.parse(data.checkedAt);
     $('readiness-certificates-checked').textContent = Number.isFinite(checked)
-      ? 'Certificate leaves observed ' + new Date(checked).toLocaleTimeString()
+      ? 'Updated ' + new Date(checked).toLocaleTimeString()
       : 'Certificate check time unavailable';
   }
 
@@ -198,12 +198,12 @@ const HomeAwayReadiness = (() => {
     label.textContent = !fresh ? 'Evidence unavailable or stale' :
       data.ageHours <= 168 ? 'Checksum verified' : 'Backup older than 7 days';
     detail.textContent = fresh
-      ? 'Encrypted backup created ' + new Date(backupStamp).toLocaleString() +
-        '. SHA-256 matched at observation time. Decryption and clean-host restore are not established.'
-      : 'Run the Pi backup status publisher to refresh local checksum evidence.';
+      ? 'Encrypted backup: ' + new Date(backupStamp).toLocaleString() +
+        ' · SHA-256 verified · Restore untested'
+      : 'Backup verification unavailable or outdated';
     checked.textContent = Number.isFinite(stamp) ?
-      'Last local checksum observation ' + new Date(stamp).toLocaleString() :
-      'No local checksum observation available';
+      'Verified ' + new Date(stamp).toLocaleString() :
+      'Not verified';
   }
 
   async function readJson(path) {
@@ -230,7 +230,7 @@ const HomeAwayReadiness = (() => {
     checked = true;
     // Keep the last observed values visible until each request returns.
     // This is a transient activity notice, not a replacement observation.
-    updated.textContent = 'Refreshing checks… Previous values remain visible until updated.';
+    updated.textContent = 'Refreshing…';
     try {
       // /control/api/me must be freshly verified before querying status.
       const me = await readJson('/control/api/me');
@@ -238,13 +238,13 @@ const HomeAwayReadiness = (() => {
       const caps = me.capabilities;
       display('transport', location.protocol === 'https:' ? 'observed' : 'attention',
         location.protocol === 'https:' ? 'HTTPS in use' : 'Not HTTPS',
-        'Browser connection scheme only; certificate trust, issuer, expiry and renewal are not verified');
+        'Secure connection');
       display('accounts', caps.manageUsers ? 'observed' : 'optional',
         caps.manageUsers ? 'Available' : 'Not enabled',
-        'Account administration capability; directory availability is not checked here');
+        'Account management enabled');
       display('computers', caps.manageComputers ? 'observed' : 'optional',
         caps.manageComputers ? 'Available' : 'Not enabled',
-        'Computer-management capability; Windows setup and SSH trust are not verified here');
+        'Computer management enabled');
 
       // Each existing API is independently optional. One failure must not
       // misclassify another component or erase independently observed results.
@@ -272,9 +272,9 @@ const HomeAwayReadiness = (() => {
           const label = check.ok ? 'Responding' : isOptional ? 'Not detected' : 'No response';
           display(id, check.ok ? 'observed' : isOptional ? 'optional' : 'attention',
             label, check.detail +
-            (id === 'wireguard' ? ' · Tunnel handshake and remote access not verified' :
-             id === 'dns' ? ' · Client DNS configuration not verified' :
-             ' · Dashboard content and telemetry freshness not verified'));
+            (id === 'wireguard' ? ' · Admin listener only' :
+             id === 'dns' ? ' · DNS response only' :
+             ' · Listener only'));
         }
       } else {
         failedSections++;
@@ -296,8 +296,8 @@ const HomeAwayReadiness = (() => {
           const reachable = entries.filter(item => item.state === 'online').length;
           display('hosts', 'observed', entries.length ? reachable + ' / ' + entries.length : 'No entries',
             entries.length
-              ? 'Computers responding to the existing restricted SSH status check; this does not prove a power command completed'
-              : 'No registered active computer targets; this is not a failed reachability test');
+              ? 'SSH reachability'
+              : 'No registered computers');
         }
       } else {
         failedSections++;
@@ -341,9 +341,8 @@ const HomeAwayReadiness = (() => {
       ];
       await Promise.all(queries);
       updated.textContent = (failedSections
-        ? 'Refresh finished with ' + failedSections + ' unavailable source(s) '
-          + '— last readings retained and marked as stale'
-        : 'Refreshed successfully') + ' · ' + new Date().toLocaleTimeString();
+        ? failedSections + ' source(s) unavailable'
+        : 'Updated') + ' · ' + new Date().toLocaleTimeString();
     } catch (_) {
       // Session loss or stale admin role. Clear any prior observations and
       // hide this view; never leave sensitive control details on screen.
