@@ -48,6 +48,14 @@ services:
       - pc-control
     # Only pc-control can call fixed, authenticated account RPCs.
 
+  authelia:
+    # A directory-backed first factor must reach LLDAP over the private
+    # directory network. The live file backend stays unchanged until an
+    # isolated restore/migration rehearsal passes.
+    networks:
+      - pc-control
+      - account-directory
+
   pc-control:
     # All new account endpoints remain off unless this explicit operator
     # switch is true. The controller must not have LLDAP admin credentials.
