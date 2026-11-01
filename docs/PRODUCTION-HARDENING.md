@@ -17,6 +17,26 @@ which host-side computer management resources are present.
 | Authelia, pcctl credentials, Windows pairing key | Keep restricted to intended service identity, never fix via broad chmod |
 | Writable inventory and audit state | Preserve ownership assigned by the host agent installers, not Caddy/Compose |
 
+The first live audit found the canonical Caddyfile at mode 0600 (all other
+permission checks passed). This is consistent with a restrictive checkout umask,
+but the precise source of the mode has not been proven. The live gateway was
+mounted from the correct file; this does not prove a new Caddy process could
+read it. The fix is narrow and safe because this Caddyfile has no embedded
+Cloudflare credentials:
+
+```bash
+python3 scripts/prepare-gateway-permissions.py --plan
+python3 scripts/prepare-gateway-permissions.py --apply
+sudo python3 scripts/audit-production.py
+```
+
+Run the preparation script as the checkout owner, without sudo. It only sets
+`control/gateway/Caddyfile.production` mode 0644 after rejecting symlinks
+and hardlinks. On future `scripts/deploy-ui.sh --apply` runs, the same narrow
+normalization is automatic after Git sync, before any UI container rebuild.
+`--plan` and the audit remain read-only. A dedicated gateway cutover must
+still use the production cutover's permission and offline Caddy checks.
+
 A failing audit blocks a manual deployment decision; it does not mutate the
 live system. Keep the gateway and Windows fan-control service running while
 investigating a failed check.
