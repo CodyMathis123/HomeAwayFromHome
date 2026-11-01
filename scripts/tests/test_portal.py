@@ -135,6 +135,43 @@ class HttpTests(unittest.TestCase):
         self.assertIn("style-src 'self'", headers["Content-Security-Policy"])
         self.assertEqual(self.request("POST", "/theme.css")[0], 405)
 
+    def test_public_shell_router_is_scoped_to_read_only_routes(self):
+        root = Path(__file__).resolve().parents[2] / "portal"
+        index = (root / "index.html").read_text()
+        architecture = (root / "architecture.html").read_text()
+        router = (root / "router.js").read_text()
+        navigation = (root / "navigation.js").read_text()
+        dockerfile = (root / "Dockerfile").read_text()
+        app = (root / "app.js").read_text()
+        arch_js = (root / "architecture.js").read_text()
+        for markup in (index, architecture):
+            with self.subTest(markup=markup[:45]):
+                self.assertIn('src="/router.js"', markup)
+                self.assertIn('src="/app.js"', markup)
+                self.assertIn('src="/architecture.js"', markup)
+                self.assertLess(markup.index('src="/navigation.js"'),
+                                markup.index('src="/router.js"'))
+        self.assertIn("router.js", dockerfile)
+        self.assertIn('"/router.js": ("router.js", "text/javascript; charset=utf-8")',
+                      (root / "app.py").read_text())
+        self.assertIn("const routeFor = pathname => pathname === '/'", router)
+        self.assertIn("'/architecture/'", router)
+        self.assertIn("if (url.origin !== location.origin || !route) return;", router)
+        self.assertIn("history.pushState(", router)
+        self.assertIn("window.addEventListener('popstate'", router)
+        self.assertIn("window.HomeAwayOverview?.init()", router)
+        self.assertIn("window.HomeAwayArchitecture?.init()", router)
+        self.assertNotIn("'/control/'", router)
+        self.assertNotIn("control/api", router)
+        self.assertIn("window.HomeAwayNavigation = Object.freeze({sync})", navigation)
+        self.assertIn("window.HomeAwayOverview.init()", app)
+        self.assertIn("window.HomeAwayArchitecture.init()", arch_js)
+        code, headers, payload = self.request("GET", "/router.js")
+        self.assertEqual(code, 200)
+        self.assertIn("script-src 'self'", headers["Content-Security-Policy"])
+        self.assertIn(b"Never intercept /control/", payload)
+        self.assertEqual(self.request("POST", "/router.js")[0], 405)
+
     def test_status_api_failure_displays_unknown_not_service_down(self):
         root = Path(__file__).resolve().parents[2] / "portal"
         js = (root / "app.js").read_text()
