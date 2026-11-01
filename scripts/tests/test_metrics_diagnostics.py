@@ -94,7 +94,9 @@ class ObserverContracts(unittest.TestCase):
         self.assertEqual(set(checks), set(observer.DIAG_CHECKS)
                          if hasattr(observer, "DIAG_CHECKS")
                          else {item[0] for item in observer.PROBES
-                               if item[0] != "telemetry.last"})
+                               if item[0] != "telemetry.last" and not item[0].startswith("service.")})
+        self.assertEqual({item["id"] for item in snap["serviceChecks"]},
+                         {"service.pihole", "service.wireguard", "service.victoria"})
         self.assertEqual(checks["pi.scrape"]["state"], "observed")
         self.assertEqual(checks["pi.cpu"]["state"], "unknown")
         self.assertEqual(checks["vm.free"]["value"], 10 * (1024 ** 3))
