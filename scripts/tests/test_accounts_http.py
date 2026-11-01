@@ -127,7 +127,7 @@ class HttpAccounts(unittest.TestCase):
         # Authelia's login gate permits all three roles, but this API
         # must never turn that into permission to execute every command.
         body={"host":"gaming","action":"wake","confirm":""}
-        with self.config(),patch.object(api,"broker_request",side_effect=self.resolved("viewers")),\\
+        with self.config(),patch.object(api,"broker_request",side_effect=self.resolved("viewers")),\
              patch.object(api,"apply_action") as issue:
             status,result=self.request("GET","/control/api/me",headers=self.claims("viewers"))
             self.assertEqual(status,200)
@@ -136,7 +136,7 @@ class HttpAccounts(unittest.TestCase):
             self.assertEqual(status,403)
             issue.assert_not_called()
 
-        with self.config(),patch.object(api,"broker_request",side_effect=self.resolved("operators")),\\
+        with self.config(),patch.object(api,"broker_request",side_effect=self.resolved("operators")),\
              patch.object(api,"apply_action") as issue:
             status,result=self.request("GET","/control/api/me",headers=self.claims("operators"))
             self.assertEqual(status,200)
