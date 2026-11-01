@@ -50,6 +50,28 @@ class AccountAssets(unittest.TestCase):
         self.assertIn("Change failed:", js)
         self.assertIn("No HomeAway access · pending or revoked", js)
 
+    def test_authenticated_pages_use_shared_visual_theme_with_local_fallback(self):
+        html = (API / "index.html").read_text()
+        css = (API / "styles.css").read_text()
+        gateway = (ROOT / "control/gateway/Caddyfile").read_text()
+        shared = (ROOT / "portal/theme.css").read_text()
+        self.assertIn('href="/control/styles.css"', html)
+        self.assertIn('href="/theme.css"', html)
+        self.assertLess(html.index('href="/control/styles.css"'), html.index('href="/theme.css"'))
+        self.assertIn('class="masthead"', html)
+        self.assertIn('class="brand"', html)
+        self.assertIn('class="brand-mark"', html)
+        self.assertIn('class="ambient" aria-hidden="true"', html)
+        self.assertIn('id="identity"', html)
+        self.assertIn("handle {", gateway)
+        self.assertIn("reverse_proxy portal:8080", gateway)
+        # If the portal is unavailable, local CSS still supplies essential UI.
+        self.assertIn(".app-layout", css)
+        self.assertIn(".app-sidebar", css)
+        self.assertIn("--accent:#72e6ce", css)
+        self.assertIn("border-radius: var(--radius-card)", shared)
+        self.assertNotIn("password", shared.lower())
+
     def test_unified_control_navigation_and_stale_state(self):
         html = (API / "index.html").read_text()
         js = (API / "app.js").read_text()

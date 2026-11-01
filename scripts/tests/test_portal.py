@@ -116,6 +116,25 @@ class HttpTests(unittest.TestCase):
         self.assertIn("control.hidden = true", (root / "navigation.js").read_text())
         self.assertNotIn("docker.sock", (root / "architecture.js").read_text())
 
+    def test_shared_theme_is_same_origin_read_only_and_packaged(self):
+        root = Path(__file__).resolve().parents[2]
+        theme = (root / "portal/theme.css").read_text()
+        docker = (root / "portal/Dockerfile").read_text()
+        handler = (root / "portal/app.py").read_text()
+        for name in ("index.html", "architecture.html"):
+            markup = (root / "portal" / name).read_text()
+            self.assertIn('href="/theme.css" rel="stylesheet"', markup)
+        self.assertIn("theme.css", docker)
+        self.assertIn('"/theme.css": ("theme.css", "text/css; charset=utf-8")', handler)
+        self.assertIn("--radius-card:", theme)
+        self.assertIn(".app-sidebar", theme)
+        status, headers, payload = self.request("GET", "/theme.css")
+        self.assertEqual(status, 200)
+        self.assertTrue(headers["Content-Type"].startswith("text/css"))
+        self.assertIn(b"HomeAway shared presentation layer", payload)
+        self.assertIn("style-src 'self'", headers["Content-Security-Policy"])
+        self.assertEqual(self.request("POST", "/theme.css")[0], 405)
+
     def test_status_api_failure_displays_unknown_not_service_down(self):
         root = Path(__file__).resolve().parents[2] / "portal"
         js = (root / "app.js").read_text()

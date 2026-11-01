@@ -25,6 +25,14 @@ The map is **read-only** and describes logical system boundaries, not an auto-di
 - The Pi's public readonly overview currently exposes a shared Grafana dashboard by explicit token; navigation must not implicitly expose Grafana admin access.
 - SVG and service-directory links are native `<a>` anchors; no drag or command capability. The new page's files are packaged in the existing non-root, read-only portal container and served by the same CSP (no external JS, inline script or privileged browser API).
 
+## Shared design language across separate services
+
+The portal and authenticated control API intentionally remain distinct containers: the portal is **read-only**, while `/control/` is protected by Authelia and server-side capabilities. Caddy makes them appear under one private HTTPS hostname; separate containers do **not** require inconsistent visual designs.
+
+The shared CSS `portal/theme.css` is the common source for HomeAway's colors, page width, top branding, sidebar, content typography, card surfaces, buttons and mobile breakpoints. The existing same-origin Caddy routing serves `/theme.css` from the read-only portal on both overview/architecture and authenticated `/control/`. Each application still serves its own local CSS **before** the common theme as a fallback; this prevents a portal outage or network error from breaking an otherwise working PC-control page. To change the common appearance, edit `portal/theme.css` rather than independently adjusting the two frontends.
+
+The shared stylesheet is a static asset, not a shared authentication context, API proxy, dynamic script, or Docker mount. Caddy continues to authorize `/control/` without exposing privileged operations to `/`. Full-page navigation across the two frontends still performs a document load; matched styling reduces visual discontinuity, but a future genuine single-page shell would need a separately reviewed frontend/router architecture with strict server-side authorization.
+
 ## UX audit plan, in small PRs
 
 1. **Portal shell and architecture map (this PR)** — responsive desktop left rail / mobile horizontal links, route `/architecture/`, service descriptions and navigation; preserve the current `/control/` boundary. Verify all static pages return correct CSP and HTTP 405 for mutation methods.
