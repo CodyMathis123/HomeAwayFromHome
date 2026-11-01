@@ -13,7 +13,6 @@ import secrets
 import subprocess
 import tempfile
 import time
-from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -62,16 +61,17 @@ def main() -> None:
     admin_password = secrets.token_urlsafe(35)
     label = "homeaway-lldap-lab-" + secrets.token_hex(5)
 
-    with tempfile.TemporaryDirectory(prefix="homeaway-synthetic-identity-") as path:
-        directory = Path(path)
-        # The image runs with an unprivileged UID. This is a disposable fake
-        # identity store that is destroyed at test end, never a host credential.
-        directory.chmod(0o777)
+    with tempfile.TemporaryDirectory(prefix="homeaway-synthetic-identity-"):
+        # Docker-managed volume avoids container chown on host TemporaryDirectory
+        # (which made the successful CI test fail during cleanup). All data is
+        # synthetic and deleted when the container stops.
+        volume = label + "-data"
+        docker("volume", "create", volume)
         try:
             docker("run", "--detach", "--rm",
                    "--name", label,
                    "--publish", "127.0.0.1:17178:17170",
-                   "--volume", f"{directory}:/data",
+                   "--volume", volume + ":/data",
                    "--env", "LLDAP_LDAP_BASE_DN=dc=lab,dc=invalid",
                    "--env", "LLDAP_LDAP_USER_EMAIL=admin@lab.invalid",
                    "--env", "LLDAP_LDAP_USER_PASS=" + admin_password,
@@ -146,6 +146,9 @@ def main() -> None:
                   flush=True)
         finally:
             subprocess.run(["docker", "rm", "-f", label],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                           timeout=30, check=False)
+            subprocess.run(["docker", "volume", "rm", "-f", volume],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                            timeout=30, check=False)
 
