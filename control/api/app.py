@@ -31,10 +31,10 @@ ROLE_ACTIONS = {
 
 
 def verified_role(group_header: str) -> str | None:
-    """Interpret only Caddy's sanitized, Authelia-copied groups.
+    """Interpret Caddy's sanitized Authelia groups in legacy file-user mode.
 
-    No configured Authelia role -> fail closed. This intentionally does not
-    accept an actor name as sufficient authorization.
+    With account management enabled, LLDAP provides the current role instead.
+    In both modes, an authenticated username alone never grants permission.
     """
     if not isinstance(group_header, str) or not 1 <= len(group_header) <= 512:
         return None
@@ -234,19 +234,26 @@ class Handler(BaseHTTPRequestHandler):
         actor = self.headers.get("X-HomeAway-User", "")
         if not USER_RE.fullmatch(actor):
             return self._deny_auth("missing_or_invalid_user_header")
-        role = verified_role(self.headers.get("X-HomeAway-Groups", ""))
-        if not role:
-            return self._deny_auth("missing_or_invalid_role_header")
         if account_admin_enabled():
-            # Never allow stale Authelia groups to retain permissions after
-            # a directory demotion/revocation. Require an exact fresh match;
-            # fail closed if the independent broker cannot be reached.
+            # Caddy's forward_auth must first authenticate the session with
+            # Authelia (including two-factor policy) and copy a verified user.
+            # With account management enabled, LLDAP is the *sole* authority
+            # for the CURRENT role. Do not rely on an optional/stale groups
+            # header from Authelia to grant permissions.
             try:
                 identity = broker_request(actor, "resolve", {"user": actor})
             except BrokerError:
                 return self._deny_auth("account_broker_unavailable")
-            if identity.get("role") != role:
-                return self._deny_auth("directory_role_mismatch")
+            role = identity.get("role")
+            if role not in ROLE_ACTIONS:
+                return self._deny_auth("directory_access_denied")
+            return actor, role
+        # Compatibility with the original file-backed deployment: without
+        # the account feature, the two-factor Authelia-provided groups header
+        # continues to be required for every protected action.
+        role = verified_role(self.headers.get("X-HomeAway-Groups", ""))
+        if not role:
+            return self._deny_auth("missing_or_invalid_role_header")
         return actor, role
 
     def do_GET(self):
@@ -344,7 +351,7 @@ class Handler(BaseHTTPRequestHandler):
             if action not in ACTIONS:
                 raise ValueError("Unknown action")
             # The local agent has fixed verbs, but must never determine user
-            # permissions. Enforce the Authelia role on every request before RPC.
+            # permissions. Enforce the independently resolved role on every request.
             if not can_command(role, action):
                 record_denial(actor, host, action)
                 return self._json(403, {"error": "Insufficient permissions"})
