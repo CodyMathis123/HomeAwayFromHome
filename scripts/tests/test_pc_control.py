@@ -112,7 +112,7 @@ class EndpointTests(unittest.TestCase):
             mutate.assert_not_called()
 
     def test_csrf_origin_and_confirmation(self):
-        base = {"X-HomeAway-User":"homeowner", "X-HomeAway-Request":"1"}
+        base = {"X-HomeAway-User":"homeowner", "X-HomeAway-Groups":"admins", "X-HomeAway-Request":"1"}
         with patch.dict(os.environ, {"HOMEAWAY_CONTROL_ORIGIN":"https://homeaway.home.arpa:8443"}), patch.object(api, "apply_action") as mutate:
             payload = {"host":"gaming", "action":"shutdown", "confirm":"gaming"}
             code, _ = self.request("POST", "/control/api/actions", payload, base)
@@ -126,7 +126,7 @@ class EndpointTests(unittest.TestCase):
             mutate.assert_not_called()
 
     def test_valid_request_reaches_only_allowlisted_action(self):
-        base = {"X-HomeAway-User":"homeowner", "X-HomeAway-Request":"1",
+        base = {"X-HomeAway-User":"homeowner", "X-HomeAway-Groups":"admins", "X-HomeAway-Request":"1",
                 "Origin":"https://homeaway.home.arpa:8443", "Sec-Fetch-Site":"same-origin"}
         with patch.dict(os.environ, {"HOMEAWAY_CONTROL_ORIGIN":"https://homeaway.home.arpa:8443"}), patch.object(api, "apply_action", return_value={"ok":True,"state":"requested","detail":"Wake sent"}) as mutate:
             code, result = self.request("POST", "/control/api/actions",
@@ -135,10 +135,53 @@ class EndpointTests(unittest.TestCase):
             self.assertEqual(result["state"], "requested")
             mutate.assert_called_once_with("gaming", "wake", "homeowner")
 
+    def test_roles_and_malformed_claims(self):
+        self.assertEqual(api.verified_role("admins,operators"), "admins")
+        self.assertEqual(api.verified_role(" operators, viewers "), "operators")
+        for invalid in ("", "unknown", "admins;viewers", "admins\nX-Forged:evil", "admins," + "a"*520):
+            self.assertIsNone(api.verified_role(invalid))
+        self.assertFalse(api.can_command("viewers", "wake"))
+        self.assertFalse(api.can_command("operators", "restart"))
+        self.assertTrue(api.can_command("operators", "sleep"))
+
+    def test_missing_group_claim_fails_closed(self):
+        headers = {"X-HomeAway-User":"homeowner"}
+        with patch.object(api, "apply_action") as mutate:
+            code, _ = self.request("GET", "/control/api/me", extra=headers)
+            self.assertEqual(code, 401)
+            mutate.assert_not_called()
+
+    def test_viewer_and_operator_actions_denied_without_rpc(self):
+        base = {"X-HomeAway-User":"homeowner", "X-HomeAway-Request":"1",
+                "Origin":"https://homeaway.home.arpa:8443", "Sec-Fetch-Site":"same-origin"}
+        with patch.dict(os.environ, {"HOMEAWAY_CONTROL_ORIGIN":"https://homeaway.home.arpa:8443"}), \
+             patch.object(api, "apply_action") as mutate, patch.object(api, "record_denial"):
+            for group, action, confirmation in (
+                    ("viewers", "wake", ""), ("operators", "restart", "gaming"),
+                    ("operators", "shutdown", "gaming")):
+                code, result = self.request("POST", "/control/api/actions",
+                    {"host":"gaming","action":action,"confirm":confirmation},
+                    {**base,"X-HomeAway-Groups":group})
+                self.assertEqual(code, 403, (group, action, result))
+            mutate.assert_not_called()
+
+    def test_operator_status_allowed_but_history_hidden(self):
+        with patch.object(api, "inventory", return_value=[]), patch.object(api, "record_denial"):
+            head = {"X-HomeAway-User":"member","X-HomeAway-Groups":"operators"}
+            code, data = self.request("GET", "/control/api/me", extra=head)
+            self.assertEqual(code, 200)
+            self.assertEqual(data["capabilities"]["actions"], ["wake","sleep"])
+            self.assertFalse(data["capabilities"]["history"])
+            code, data = self.request("GET", "/control/api/hosts", extra=head)
+            self.assertEqual(code, 200)
+            self.assertEqual(data["hosts"], [])
+            code, _ = self.request("GET", "/control/api/history", extra=head)
+            self.assertEqual(code, 403)
+
     def test_request_rejects_arbitrary_commands(self):
         data = {"host":"gaming", "action":"rm -rf /", "confirm":""}
-        base = {"X-HomeAway-User":"homeowner", "X-HomeAway-Request":"1",
-                "Origin":"https://homeaway.home.arpa:8443"}
+        base = {"X-HomeAway-User":"homeowner", "X-HomeAway-Groups":"admins",
+                "X-HomeAway-Request":"1", "Origin":"https://homeaway.home.arpa:8443"}
         with patch.dict(os.environ, {"HOMEAWAY_CONTROL_ORIGIN":"https://homeaway.home.arpa:8443"}), patch.object(api, "rpc") as sender:
             code, _ = self.request("POST", "/control/api/actions", data, base)
             self.assertEqual(code, 400)

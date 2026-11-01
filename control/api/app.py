@@ -19,6 +19,40 @@ AUDIT = Path(os.getenv("HOMEAWAY_AUDIT_FILE", "/data/events.jsonl"))
 ACTIONS = frozenset(("wake", "sleep", "restart", "shutdown"))
 USER_RE = re.compile(r"^[a-zA-Z0-9_.@-]{1,80}$")
 HOST_RE = re.compile(r"^[a-z][a-z0-9-]{0,31}$")
+GROUP_RE = re.compile(r"^[a-z][a-z0-9_-]{0,63}$")
+ROLE_PRIORITY = ("admins", "operators", "viewers")
+ROLE_ACTIONS = {
+    "admins": ("wake", "sleep", "restart", "shutdown"),
+    "operators": ("wake", "sleep"),
+    "viewers": (),
+}
+
+
+def verified_role(group_header: str) -> str | None:
+    """Interpret only Caddy's sanitized, Authelia-copied groups.
+
+    No configured Authelia role -> fail closed. This intentionally does not
+    accept an actor name as sufficient authorization.
+    """
+    if not isinstance(group_header, str) or not 1 <= len(group_header) <= 512:
+        return None
+    groups = [part.strip() for part in group_header.split(",")]
+    if len(groups) > 16 or any(not GROUP_RE.fullmatch(group) for group in groups):
+        return None
+    return next((role for role in ROLE_PRIORITY if role in groups), None)
+
+
+def can_command(role: str, action: str) -> bool:
+    return action in ROLE_ACTIONS.get(role, ())
+
+
+def capabilities(role: str) -> dict:
+    return {
+        "role": role,
+        "actions": list(ROLE_ACTIONS[role]),
+        "history": role == "admins",
+        "manageUsers": False,  # Identity provisioning remains disabled until A0.
+    }
 LOCKS: dict[str, threading.Lock] = {}
 RECENT: dict[str, float] = {}
 GUARD = threading.RLock()
@@ -89,6 +123,16 @@ def history(limit: int = 30) -> list[dict]:
     return [json.loads(line) for line in reversed(lines) if line.strip()]
 
 
+def record_denial(actor: str, host: str, action: str) -> None:
+    # Best-effort bounded audit; never reflect unknown user-controlled payloads.
+    safe_host = host if isinstance(host, str) and HOST_RE.fullmatch(host) else "-"
+    safe_action = action if action in ACTIONS else "invalid-action"
+    try:
+        record(actor, safe_host, safe_action, {"ok": False, "state": "denied"})
+    except OSError:
+        pass
+
+
 def apply_action(host: str, action: str, actor: str) -> dict:
     if action not in ACTIONS or host not in {x["id"] for x in inventory()}:
         raise ValueError("Unknown computer or command")
@@ -131,16 +175,19 @@ class Handler(BaseHTTPRequestHandler):
         self._headers(status, "application/json; charset=utf-8", len(content))
         self.wfile.write(content)
 
-    def _actor(self) -> str | None:
-        # Proxy MUST be the only network path. Caddy removes client-supplied
-        # Remote-User before forward_auth and injects verified identity.
+    def _principal(self) -> tuple[str, str] | None:
+        # All identity headers must be removed by Caddy before its forward_auth;
+        # only verified Authelia response values enter this isolated service.
+        # Do not accept a valid username alone as an authorization grant.
         actor = self.headers.get("X-HomeAway-User", "")
-        return actor if USER_RE.fullmatch(actor) else None
+        role = verified_role(self.headers.get("X-HomeAway-Groups", ""))
+        return (actor, role) if USER_RE.fullmatch(actor) and role else None
 
     def do_GET(self):
-        actor = self._actor()
-        if actor is None:
-            return self._json(401, {"error": "Not authenticated"})
+        principal = self._principal()
+        if principal is None:
+            return self._json(401, {"error": "Not authenticated or not authorized"})
+        actor, role = principal
         path = urlsplit(self.path).path
         if path == "/control":
             self.send_response(308)
@@ -154,6 +201,8 @@ class Handler(BaseHTTPRequestHandler):
             self._headers(200, mime, len(content))
             self.wfile.write(content)
             return
+        if path == "/control/api/me":
+            return self._json(200, {"user": actor, "capabilities": capabilities(role)})
         if path == "/control/api/hosts":
             try:
                 hosts = inventory()
@@ -163,6 +212,9 @@ class Handler(BaseHTTPRequestHandler):
             except (OSError, ValueError, KeyError, json.JSONDecodeError):
                 return self._json(503, {"error": "Computer inventory unavailable"})
         if path == "/control/api/history":
+            if role != "admins":
+                record_denial(actor, "-", "history")
+                return self._json(403, {"error": "Insufficient permissions"})
             try:
                 return self._json(200, {"events": history()})
             except (OSError, ValueError, json.JSONDecodeError):
@@ -170,9 +222,10 @@ class Handler(BaseHTTPRequestHandler):
         return self._json(404, {"error": "Not found"})
 
     def do_POST(self):
-        actor = self._actor()
-        if actor is None:
-            return self._json(401, {"error": "Not authenticated"})
+        principal = self._principal()
+        if principal is None:
+            return self._json(401, {"error": "Not authenticated or not authorized"})
+        actor, role = principal
         if urlsplit(self.path).path != "/control/api/actions":
             return self._json(404, {"error": "Not found"})
         expected_origin = os.getenv("HOMEAWAY_CONTROL_ORIGIN", "")
@@ -195,6 +248,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(422, {"error": "Confirm the computer ID for this action"})
             if action not in ("restart", "shutdown") and confirm:
                 raise ValueError("Confirmation must be empty")
+            # The local agent has fixed verbs, but must never determine user
+            # permissions. Enforce the Authelia role on every request before RPC.
+            if not can_command(role, action):
+                record_denial(actor, host, action)
+                return self._json(403, {"error": "Insufficient permissions"})
             result = apply_action(host, action, actor)
             return self._json(200 if result["ok"] else 503, result)
         except (ValueError, KeyError, json.JSONDecodeError):
