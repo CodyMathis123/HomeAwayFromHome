@@ -72,3 +72,16 @@ After deploying, navigate to Operations & Diagnostics, choose Refresh checks,
 and confirm that unrelated cards populate while computer reachability may still
 be pending. The page should finish with a check time or explicit authorization
 failure, rather than leaving unrelated cards indefinitely in `Checking`.
+
+## Diagnostics container startup regression (2026-11-01)
+
+Live Pi logs showed `metrics-diagnostics` restarting with
+`python: can't open file '/app/app.py': [Errno 13] Permission denied`.
+The repository sources have intentionally restrictive Pi file permissions;
+the original Dockerfile preserved those permissions when copying files,
+while the container executes as UID/GID 65534. The image Dockerfile now uses
+`COPY --chmod=0644 app.py certificates.py ./`, without changing host
+permissions. Rebuild/recreate only `metrics-diagnostics`; check its logs and
+HTTP endpoints from `pc-control`. The separate `serviceChecks` control-API
+schema propagation is also fixed on this branch. Avoid merging until the
+read-only metrics and certificate cards populate without 503 errors.
