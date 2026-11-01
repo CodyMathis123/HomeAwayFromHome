@@ -353,6 +353,49 @@ class ComputerApiTests(unittest.TestCase):
             self.assertEqual(code,403)
             broker.assert_not_called()
 
+    def test_verify_and_activate_are_admin_only_and_csrf_guarded(self):
+        activation={"id":"living-room","revision":"a"*24,
+                    "inventoryRevision":"b"*24,"confirm":"living-room"}
+        with self.config(),patch.object(api,"broker_request",
+             side_effect=self.identity("operators")),patch.object(api,"computer_request") as writer:
+            for verb,payload in (
+                ("verify",{"id":"living-room","revision":"a"*24}),
+                ("activate",activation),
+            ):
+                code,_=self.request("POST","/control/api/admin/computers/"+verb,payload)
+                self.assertEqual(code,403)
+            writer.assert_not_called()
+        with self.config(),patch.object(api,"broker_request",
+             side_effect=self.identity("admins")),patch.object(api,"computer_request") as writer:
+            code,_=self.request("POST","/control/api/admin/computers/activate",activation,origin=False)
+            self.assertEqual(code,403)
+            writer.assert_not_called()
+        with self.config(False),patch.object(api,"broker_request",
+             side_effect=self.identity("admins")),patch.object(api,"computer_request") as writer:
+            code,_=self.request("POST","/control/api/admin/computers/activate",activation)
+            self.assertEqual(code,404)
+            writer.assert_not_called()
+
+    def test_admin_activate_passes_exact_confirmation_to_writer(self):
+        activation={"id":"living-room","revision":"a"*24,
+                    "inventoryRevision":"b"*24,"confirm":"living-room"}
+        calls=[]
+        def fake(actor,op,payload):
+            calls.append((actor,op,payload))
+            if op=="verify":return {"id":"living-room","verified":True,
+                                    "code":"ssh_key_and_status_verified"}
+            return {"activated":"living-room","cleanupPending":False}
+        with self.config(),patch.object(api,"broker_request",
+             side_effect=self.identity("admins")),patch.object(api,"computer_request",side_effect=fake):
+            code,result=self.request("POST","/control/api/admin/computers/verify",
+                                      {"id":"living-room","revision":"a"*24})
+            self.assertEqual(code,200)
+            self.assertTrue(result["verified"])
+            code,result=self.request("POST","/control/api/admin/computers/activate",activation)
+            self.assertEqual(code,200)
+            self.assertEqual(result["activated"],"living-room")
+            self.assertEqual(calls[-1],("homeowner","activate",activation))
+
     def test_admin_list_create_and_rename_use_fixed_operations(self):
         calls=[]
         def fake(actor,op,payload):
