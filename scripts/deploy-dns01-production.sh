@@ -2,12 +2,12 @@
 # Explicit certificate-only production HTTPS migration. NEVER part of routine deploy.
 set -euo pipefail
 usage() {
-  echo "Usage: bash scripts/deploy-dns01-production.sh --plan|--apply|--status|--rollback" >&2
+  echo "Usage: bash scripts/deploy-dns01-production.sh --plan|--apply|--status|--rollback|--probe" >&2
 }
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 (($# == 1)) || { usage; exit 2; }
 mode="$1"
-case "$mode" in --plan|--apply|--status|--rollback) ;; *) usage; exit 2 ;; esac
+case "$mode" in --plan|--apply|--status|--rollback|--probe) ;; *) usage; exit 2 ;; esac
 [[ "$EUID" -ne 0 ]] || die "Run as normal user (script invokes sudo only as needed)."
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 for command in git python3 sudo docker tar; do
@@ -71,6 +71,30 @@ echo "Verified: only gateway image, entrypoint, Caddyfile, and scoped token chan
 echo "Existing .home.arpa routing is preserved; new names return HTTP 503 placeholders."
 if [[ "$mode" == --plan ]]; then
   echo "PLAN ONLY; no snapshot, DNS change or service restart."
+  exit 0
+fi
+
+# Offline runtime validation of the exact combined Caddyfile and Pi hostname
+# settings. No live cert state, real token, network, host ports or other
+# HomeAway containers are present. The synthetic token can never edit DNS.
+python3 scripts/extract_dns01_gateway_env.py "$tmp/base.json" > "$tmp/legacy-hosts.env" ||
+  die "Could not safely extract only the legacy hostnames for offline validation."
+echo "Checking custom Caddy startup configuration offline (network disabled)."
+if ! sudo docker run --rm --network none --cap-drop ALL \
+    --security-opt no-new-privileges:true --read-only \
+    --tmpfs /data --tmpfs /config --tmpfs /tmp \
+    --env-file "$tmp/legacy-hosts.env" \
+    -e CF_API_TOKEN=offline-synthetic-no-access \
+    -v "$PWD/control/gateway/Caddyfile.dns01-production:/etc/caddy/Caddyfile:ro" \
+    -v "$PWD/control/gateway/Caddyfile:/etc/caddy/Caddyfile.legacy:ro" \
+    --entrypoint /usr/local/bin/homeaway-caddy \
+    homeaway-caddy-dns01:2.11.7-cloudflare-v0.2.4 \
+    validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null; then
+  die "Offline Caddy validation failed. Live gateway left untouched."
+fi
+echo "PASS: combined Caddy config validated without network, DNS or live state."
+if [[ "$mode" == --probe ]]; then
+  echo "PROBE ONLY; no live gateway changes or certificate requests."
   exit 0
 fi
 
