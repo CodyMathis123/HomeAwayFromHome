@@ -9,7 +9,7 @@ const script = fs.readFileSync(path.join(__dirname, '../../control/api/readiness
 
 function simulate({role = 'admins', servicesFail = false, hostsFail = false,
   malformedServices = false, malformedHosts = false,
-  metricsFail = false, protocol = 'https:'} = {}) {
+  metricsFail = false, certificatesFail = false, protocol = 'https:'} = {}) {
   let currentRole = role;
   const calls = [];
   const elements = new Map();
@@ -62,6 +62,22 @@ function simulate({role = 'admins', servicesFail = false, hostsFail = false,
             {host:'sleeping-pc',ageSeconds:600,state:'stale'}
           ]}
         })};
+    if (url === '/control/api/admin/certificates')
+      return certificatesFail ? {ok:false,status:503} :
+        {ok:true,json:async()=>({
+          schemaVersion:1,checkedAt:'2026-11-01T16:30:00Z',
+          certificates:['browser-home','browser-auth','browser-metrics','telemetry-receiver']
+            .map(id=>({
+              id,state:id==='browser-auth'?'attention':'observed',
+              daysRemaining:id==='browser-auth'?7.5:60.3,
+              notAfter:'2027-01-01T16:30:00Z',
+              issuer:'CN=HomeAway Test CA',
+              subjectAltNames:['homeaway.home.arpa'],
+              hostnameMatch:id==='telemetry-receiver'?null:true,
+              publicTrust:id==='telemetry-receiver'?'not_checked':'not_trusted',
+              detail:'Synthetic certificate observed'
+            }))
+        })};
     if (url === '/control/api/hosts')
       return hostsFail ? {ok:false,status:503} :
         {ok:true,json:async()=>({hosts:[
@@ -96,7 +112,7 @@ function simulate({role = 'admins', servicesFail = false, hostsFail = false,
   assert.equal(admin.element('nav-readiness').hidden, false);
   assert.deepEqual(admin.calls.map(call=>call.url), [
     '/control/api/me','/api/status','/control/api/hosts',
-    '/control/api/admin/diagnostics'
+    '/control/api/admin/diagnostics', '/control/api/admin/certificates'
   ]);
   assert.equal(admin.element('readiness-transport').textContent, 'HTTPS in use');
   assert.equal(admin.element('readiness-accounts').textContent, 'Available');
@@ -120,6 +136,12 @@ function simulate({role = 'admins', servicesFail = false, hostsFail = false,
   assert.equal(admin.element('readiness-telemetry').dataset.state, 'stale');
   assert.equal(admin.element('readiness-telemetry-hosts').children.length, 2);
   assert.match(admin.element('readiness-telemetry-hosts').children[1].textContent, /sleeping-pc/);
+
+  assert.equal(admin.element('readiness-cert-browser-home').textContent, '60.3 days remaining');
+  assert.equal(admin.element('readiness-cert-browser-auth').dataset.state, 'attention');
+  assert.match(admin.element('readiness-cert-detail-browser-metrics').textContent, /not trusted/);
+  assert.match(admin.element('readiness-cert-detail-telemetry-receiver').textContent, /not checked/);
+  assert.match(admin.element('readiness-cert-detail-browser-home').textContent, /HomeAway Test CA/);
 
   const partial = simulate({servicesFail:true});
   partial.readiness.start({capabilities:{role:'admins'}});
@@ -158,6 +180,13 @@ function simulate({role = 'admins', servicesFail = false, hostsFail = false,
   assert.equal(metricsMissing.element('readiness-dns').textContent, 'Responding');
   assert.equal(metricsMissing.element('readiness-hosts').textContent, '1 / 2');
 
+  const missingCerts = simulate({certificatesFail:true});
+  missingCerts.readiness.start({capabilities:{role:'admins'}});
+  await missingCerts.settle();
+  assert.equal(missingCerts.element('readiness-cert-browser-home').textContent, 'Unknown');
+  assert.equal(missingCerts.element('readiness-pi-cpu').textContent, '12.4%');
+  assert.equal(missingCerts.element('readiness-dns').textContent, 'Responding');
+
   const revoked = simulate();
   revoked.readiness.start({capabilities:{role:'admins'}});
   await revoked.settle();
@@ -170,6 +199,7 @@ function simulate({role = 'admins', servicesFail = false, hostsFail = false,
   assert.equal(revoked.element('readiness-hosts').textContent, 'Unknown');
   assert.equal(revoked.element('readiness-pi-thermal').textContent, 'Unknown');
   assert.equal(revoked.element('readiness-telemetry-hosts').children.length, 0);
+  assert.equal(revoked.element('readiness-cert-browser-home').textContent, 'Unknown');
   assert.match(revoked.element('readiness-updated').textContent, /Authorization unavailable/);
 
   const plain = simulate({protocol:'http:'});
