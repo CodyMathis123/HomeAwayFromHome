@@ -80,7 +80,7 @@ def forward_auth(cookie):
                 "X-Forwarded-Uri":"/control/api/me",
                 "X-Forwarded-Method":"GET"})
 
-def session(password,secret):
+def session(password,secret,role="admins"):
     status,headers,_=call_auth("POST","/api/firstfactor",
                                {"username":"admin","password":password})
     assert status==200, "Authelia first-factor synthetic login failed: "+str(status)
@@ -108,8 +108,8 @@ def session(password,secret):
         "Two-factor session was not authorized: "+str(status))
     assert auth_headers.get("Remote-User")=="admin", \
         "Forward-auth didn't provide expected verified username"
-    assert "admins" in auth_headers.get("Remote-Groups","").split(","), \
-        "Forward-auth didn't provide verified admin membership"
+    assert role in auth_headers.get("Remote-Groups","").split(","), \
+        "Forward-auth did not provide verified "+role+" membership"
     return cookie
 
 def main():
@@ -142,11 +142,13 @@ def main():
             except (OSError,URLError,HTTPError,ValueError):pass
             time.sleep(1)
         assert token, "Synthetic LLDAP did not become healthy"
-        group=graphql(token,"mutation($name:String!){createGroup(name:$name){id}}",
-                      {"name":"admins"})["createGroup"]["id"]
+        group_mutation="mutation($name:String!){createGroup(name:$name){id}}"
+        groups={}
+        for role in ("admins","operators","viewers"):
+            groups[role]=graphql(token,group_mutation,{"name":role})["createGroup"]["id"]
         mutation="mutation($user:String!,$group:Int!){addUserToGroup(userId:$user,groupId:$group){ok}}"
         rm="mutation($user:String!,$group:Int!){removeUserFromGroup(userId:$user,groupId:$group){ok}}"
-        args={"user":"admin","group":group}
+        args={"user":"admin","group":groups["admins"]}
         assert graphql(token,mutation,args)["addUserToGroup"]["ok"]
         print("PASS: LLDAP synthetic admin role granted",flush=True)
 
@@ -181,6 +183,8 @@ access_control:
         - '^/control(?:/.*)?$'
       subject:
         - 'group:admins'
+        - 'group:operators'
+        - 'group:viewers'
       policy: two_factor
 session:
   secret: {q(secrets.token_urlsafe(64))}
@@ -234,10 +238,26 @@ notifier:
                 "SECURITY FAIL: old authenticated cookie retained control access"
         print("PASS: removing LLDAP role revokes forward-auth on both old 2FA sessions",flush=True)
 
+        # Operators and viewers must pass Authelia's two-factor gateway
+        # before the HomeAway API enforces their narrower action permissions.
+        # Check each downgrade against an already-authenticated cookie.
+        for role in ("operators","viewers"):
+            group_args={"user":"admin","group":groups[role]}
+            assert graphql(token,mutation,group_args)["addUserToGroup"]["ok"]
+            role_cookie=session(password,totp_secret,role)
+            assert graphql(token,rm,group_args)["removeUserFromGroup"]["ok"]
+            status,_,_=forward_auth(role_cookie)
+            assert not 200<=status<300, (
+                "SECURITY FAIL: previously authenticated "+role+
+                " cookie retained access after role revocation")
+            print("PASS: "+role+" TOTP login and existing-session revocation",
+                  flush=True)
+
+        # Restore admin group and require a fresh login; revoked cookies
+        # must not be assumed to become valid again after re-grant.
         assert graphql(token,mutation,args)["addUserToGroup"]["ok"]
-        # User profiles may require a fresh request; the existing session
-        # might be invalidated, so reauthentication on grant is allowed.
-        print("PASS: role can be restored; do not assert old cookie is revived",flush=True)
+        session(password,totp_secret,"admins")
+        print("PASS: fresh administrator login after role restoration",flush=True)
     finally:
         docker("rm","-f",label+"-auth",check=False)
         docker("rm","-f",label+"-ldap",check=False)
