@@ -1,0 +1,15 @@
+# Tested Raspberry Pi 4 (kernel 6.18.50) workaround for wg-easy 15.5's
+# iptables-legacy NAT failure. This changes firewall CLI backend inside the
+# container; it does not install kernel modules or alter host alternatives.
+FROM ghcr.io/wg-easy/wg-easy:15.5.0
+
+RUN update-alternatives --install \
+      /usr/sbin/iptables iptables /usr/sbin/iptables-nft 20 \
+      --slave /usr/sbin/iptables-restore iptables-restore /usr/sbin/iptables-nft-restore \
+      --slave /usr/sbin/iptables-save iptables-save /usr/sbin/iptables-nft-save \
+ && update-alternatives --install \
+      /usr/sbin/ip6tables ip6tables /usr/sbin/ip6tables-nft 20 \
+      --slave /usr/sbin/ip6tables-restore ip6tables-restore /usr/sbin/ip6tables-nft-restore \
+      --slave /usr/sbin/ip6tables-save ip6tables-save /usr/sbin/ip6tables-nft-save \
+ && iptables --version | grep -q nf_tables \
+ && ip6tables --version | grep -q nf_tables

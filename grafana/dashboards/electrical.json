@@ -1,0 +1,690 @@
+{
+  "id": null,
+  "uid": "homeaway-electrical",
+  "title": "SensorDash · Fan & Pump Electricity",
+  "tags": [
+    "homeaway",
+    "sensordash",
+    "electrical",
+    "read-only"
+  ],
+  "schemaVersion": 40,
+  "version": 5,
+  "editable": false,
+  "timezone": "browser",
+  "graphTooltip": 1,
+  "refresh": "15s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "description": "Fan-group and pump watts recorded by SensorDash from its local electrical model. Ratings are estimates, not actual measurements; no data is filled across sleep or power-off gaps. Does not include CPU/GPU heat-source power. Dashboard formatting is presentation-only; calibrated watts and revision history are retained exactly.",
+  "templating": {
+    "list": [
+      {
+        "name": "host",
+        "label": "Computer",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "homeaway-vm"
+        },
+        "query": {
+          "query": "label_values(sensordash_accessory_power_value,host)",
+          "refId": "A"
+        },
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": []
+      },
+      {
+        "name": "system",
+        "label": "Cooling system",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "homeaway-vm"
+        },
+        "query": {
+          "query": "label_values(sensordash_component_info_value{host=~\"$host\"},system)",
+          "refId": "A"
+        },
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": []
+      },
+      {
+        "name": "source",
+        "label": "Power source",
+        "type": "custom",
+        "query": "measured,calibrated,curve,rated",
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": []
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Cooling component inventory",
+      "type": "table",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 31,
+        "w": 24,
+        "h": 7
+      },
+      "description": "Active components defined in Windows SensorDash. This inventory includes heat sources even when they have no fan/pump electrical estimate; only the charts below report watts. Source, calibration revision, and all electrical model configuration live in SensorDash. Only component and system *names* are display-normalized, not stable component IDs.",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(sensordash_component_info_value{host=~\"$host\",system=~\"$system\"} == 1, \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"system_name\", \"$1 $2\", \"system_name\", \"^(.*)_(.*)$\"), \"system_name\", \"$1 $2\", \"system_name\", \"^(.*)_(.*)$\"), \"system_name\", \"$1 $2\", \"system_name\", \"^(.*)_(.*)$\"), \"system_name\", \"$1 $2\", \"system_name\", \"^(.*)_(.*)$\"), \"system_name\", \"$1 $2\", \"system_name\", \"^(.*)_(.*)$\"), \"system_name\", \"$1 $2\", \"system_name\", \"^(.*)_(.*)$\")",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "component": true,
+              "system": true,
+              "Value": true,
+              "Value #A": true
+            },
+            "indexByName": {
+              "component_name": 0,
+              "role": 1,
+              "system_name": 2,
+              "host": 3
+            },
+            "renameByName": {
+              "component_name": "Component",
+              "role": "Role",
+              "system_name": "Cooling system",
+              "host": "Computer"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "All fan and pump power",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 10,
+        "w": 12,
+        "h": 9
+      },
+      "description": "Archived watts from SensorDash's C# electrical model. The source label distinguishes real measurements, user calibration, curves and nameplate-rated estimates; config revision preserves the historical model. Legend shows the first six revision characters for readability; the complete immutable configuration revision remains attached to the metric. A new line after calibration changes does not imply a second physical fan group. Historical values are not recomputed. Visible name labels are normalized at query time; the stored series and join identity labels are unchanged.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "custom": {
+            "drawStyle": "line",
+            "spanNulls": false,
+            "lineInterpolation": "smooth",
+            "showPoints": "never",
+            "lineWidth": 2,
+            "fillOpacity": 14,
+            "axisBorderShow": false
+          },
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "label_replace(label_replace(label_replace(label_replace(label_replace((sensordash_accessory_power_value{host=~\"$host\",system=~\"$system\",source=~\"$source\"} * on(host,system,component) group_left(component_name,system_name,role) (sensordash_component_info_value{host=~\"$host\",system=~\"$system\"} == 1)), \"revision_short\", \"$1\", \"revision\", \"^([0-9a-f]{6})[0-9a-f]{10}$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\")",
+          "legendFormat": "{{component_name}} · {{source}} · rev {{revision_short}}",
+          "range": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Radiator and other fan-group power",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 10,
+        "w": 12,
+        "h": 9
+      },
+      "description": "Archived watts from SensorDash's C# electrical model. The source label distinguishes real measurements, user calibration, curves and nameplate-rated estimates; config revision preserves the historical model. Legend shows the first six revision characters for readability; the complete immutable configuration revision remains attached to the metric. A new line after calibration changes does not imply a second physical fan group. Historical values are not recomputed. Visible name labels are normalized at query time; the stored series and join identity labels are unchanged.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "custom": {
+            "drawStyle": "line",
+            "spanNulls": false,
+            "lineInterpolation": "smooth",
+            "showPoints": "never",
+            "lineWidth": 2,
+            "fillOpacity": 14,
+            "axisBorderShow": false
+          },
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "label_replace(label_replace(label_replace(label_replace(label_replace((sensordash_accessory_power_value{host=~\"$host\",system=~\"$system\",source=~\"$source\"} * on(host,system,component) group_left(component_name,system_name,role) (sensordash_component_info_value{host=~\"$host\",system=~\"$system\",role=\"fan-group\"} == 1)), \"revision_short\", \"$1\", \"revision\", \"^([0-9a-f]{6})[0-9a-f]{10}$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\")",
+          "legendFormat": "{{component_name}} · {{source}} · rev {{revision_short}}",
+          "range": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Measured electrical watts · requires sensor",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 19,
+        "w": 12,
+        "h": 9
+      },
+      "description": "Archived watts from SensorDash's C# electrical model. The source label distinguishes real measurements, user calibration, curves and nameplate-rated estimates; config revision preserves the historical model. Legend shows the first six revision characters for readability; the complete immutable configuration revision remains attached to the metric. A new line after calibration changes does not imply a second physical fan group. Historical values are not recomputed. No data is expected unless SensorDash is assigned a real power measurement. Rated/curve-based estimates intentionally do not appear here. Visible name labels are normalized at query time; the stored series and join identity labels are unchanged.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "custom": {
+            "drawStyle": "line",
+            "spanNulls": false,
+            "lineInterpolation": "smooth",
+            "showPoints": "never",
+            "lineWidth": 2,
+            "fillOpacity": 14,
+            "axisBorderShow": false
+          },
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "label_replace(label_replace(label_replace(label_replace(label_replace((sensordash_accessory_power_value{host=~\"$host\",system=~\"$system\",source=\"measured\"} * on(host,system,component) group_left(component_name,system_name,role) (sensordash_component_info_value{host=~\"$host\",system=~\"$system\"} == 1)), \"revision_short\", \"$1\", \"revision\", \"^([0-9a-f]{6})[0-9a-f]{10}$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\")",
+          "legendFormat": "{{component_name}} · {{source}} · rev {{revision_short}}",
+          "range": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Pump electrical estimates",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 19,
+        "w": 12,
+        "h": 9
+      },
+      "description": "Archived watts from SensorDash's C# electrical model. The source label distinguishes real measurements, user calibration, curves and nameplate-rated estimates; config revision preserves the historical model. Legend shows the first six revision characters for readability; the complete immutable configuration revision remains attached to the metric. A new line after calibration changes does not imply a second physical fan group. Historical values are not recomputed. Visible name labels are normalized at query time; the stored series and join identity labels are unchanged.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "custom": {
+            "drawStyle": "line",
+            "spanNulls": false,
+            "lineInterpolation": "smooth",
+            "showPoints": "never",
+            "lineWidth": 2,
+            "fillOpacity": 14,
+            "axisBorderShow": false
+          },
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "label_replace(label_replace(label_replace(label_replace(label_replace((sensordash_accessory_power_value{host=~\"$host\",system=~\"$system\",source=~\"$source\"} * on(host,system,component) group_left(component_name,system_name,role) (sensordash_component_info_value{host=~\"$host\",system=~\"$system\",role=\"pump\"} == 1)), \"revision_short\", \"$1\", \"revision\", \"^([0-9a-f]{6})[0-9a-f]{10}$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\")",
+          "legendFormat": "{{component_name}} · {{source}} · rev {{revision_short}}",
+          "range": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
+    },
+    {
+      "id": 110,
+      "title": "Cooling components",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Current cooling topology components; does not mean each has a wattage sensor.",
+      "gridPos": {
+        "x": 0,
+        "y": 3,
+        "w": 8,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#52B6FF"
+          },
+          "noValue": "—",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "count(sensordash_component_info_value{host=~\"$host\",system=~\"$system\"} == 1)",
+          "instant": true,
+          "legendFormat": "Cooling components"
+        }
+      ]
+    },
+    {
+      "id": 111,
+      "title": "Power-model components",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Components reporting an estimated or measured accessory wattage series; independent of revision count.",
+      "gridPos": {
+        "x": 8,
+        "y": 3,
+        "w": 8,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#A78BFA"
+          },
+          "noValue": "—",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "count(count by(host,system,component)(sensordash_accessory_power_value{host=~\"$host\",system=~\"$system\",source=~\"$source\"}))",
+          "instant": true,
+          "legendFormat": "Power-model components"
+        }
+      ]
+    },
+    {
+      "id": 112,
+      "title": "Measured power sources",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Physical measurements, not rated or curve-calculated watts. Zero means no measured series currently.",
+      "gridPos": {
+        "x": 16,
+        "y": 3,
+        "w": 8,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#58D4BD"
+          },
+          "noValue": "—",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "count(sensordash_accessory_power_value{host=~\"$host\",system=~\"$system\",source=\"measured\"}) or vector(0)",
+          "instant": true,
+          "legendFormat": "Measured power sources"
+        }
+      ]
+    },
+    {
+      "id": 100,
+      "title": "",
+      "type": "text",
+      "transparent": true,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "targets": [],
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 3
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### ELECTRICAL OVERVIEW\nCurve and rated wattage are **estimates** · no fabricated watt-hour totals across sleep gaps"
+      }
+    },
+    {
+      "id": 101,
+      "title": "",
+      "type": "text",
+      "transparent": true,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "targets": [],
+      "gridPos": {
+        "x": 0,
+        "y": 7,
+        "w": 24,
+        "h": 3
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### FAN & PUMP POWER\nSource and short calibration revision are shown; historical model revisions remain distinct"
+      }
+    },
+    {
+      "id": 102,
+      "title": "",
+      "type": "text",
+      "transparent": true,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "targets": [],
+      "gridPos": {
+        "x": 0,
+        "y": 28,
+        "w": 24,
+        "h": 3
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### COMPONENT REFERENCE\nCalibration and electricity models are owned by Windows SensorDash"
+      }
+    }
+  ],
+  "links": [
+    {
+      "type": "dashboards",
+      "title": "Other HomeAway views",
+      "tags": [
+        "homeaway"
+      ],
+      "asDropdown": true,
+      "includeVars": true,
+      "keepTime": true,
+      "targetBlank": false,
+      "icon": "dashboard",
+      "tooltip": "Jump to another HomeAway monitoring dashboard"
+    }
+  ]
+}

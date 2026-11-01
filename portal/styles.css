@@ -1,0 +1,35 @@
+:root{color-scheme:dark;--bg:#09131e;--panel:#102033;--line:#264257;--ink:#eff8fa;--muted:#91aaba;--accent:#72e6ce;--subtle:#14293a;--good:#8be3ad;--bad:#f79d92;--warn:#f4ce8c}
+*{box-sizing:border-box}html{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink)}
+.ambient{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 18% 5%,#116b7450,transparent 48%),radial-gradient(ellipse at 87% 40%,#124d6b36,transparent 46%);z-index:-1}
+.shell{max-width:1120px;margin:0 auto;padding:28px 25px 45px}.masthead,.brand,.environment,.headline-meta,.section-heading,.card-top,footer{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{justify-content:start;font-size:20px;letter-spacing:-.6px;font-weight:800}.brand small{display:block;font-size:9px;letter-spacing:2px;color:#8baab4;margin-top:3px}.brand-mark{display:grid;place-items:center;width:38px;height:38px;border-radius:11px;background:#143b43;border:1px solid #316975;color:var(--accent);font-size:28px}.brand-accent{color:var(--accent)}
+.environment{font-size:11px;letter-spacing:1.4px;font-weight:700;color:#a6bfcc}.led{width:8px;height:8px;background:#70d4b4;border-radius:50%;box-shadow:0 0 11px #70d4b499}
+.hero{padding:82px 0 48px;max-width:780px}.eyebrow{color:var(--accent);font-size:11px;letter-spacing:2.3px;font-weight:800}.hero h1{font-size:clamp(37px,6.5vw,69px);line-height:1.11;letter-spacing:-2px;margin:18px 0 19px}.hero h1 em{font-style:normal;color:var(--accent)}.hero>p:not(.eyebrow){color:#b6c8d2;font-size:16px;line-height:1.65;max-width:640px}
+.headline-meta{justify-content:start;color:#94aebb;font-size:12px;margin-top:25px;flex-wrap:wrap}button{font:inherit;background:#1b3f4b;color:#d9fff7;border:1px solid #3b7480;border-radius:8px;min-height:38px;padding:8px 15px;cursor:pointer}button:hover{background:#25515a}button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:18px 20px;border:1px solid var(--line);border-radius:15px;background:#11253590}.summary>div{display:flex;flex-direction:column;gap:4px;padding:10px 16px;border-right:1px solid var(--line)}.summary>div:last-child{border:0}.summary-label{text-transform:uppercase;letter-spacing:1.1px;font-size:10px;color:#9bb6c7;font-weight:700}.summary strong{font-size:26px;letter-spacing:-1px}.summary span:last-child{font-size:11px;color:var(--muted)}
+.section-heading{margin:42px 0 15px;align-items:end}.section-heading h2{font-size:24px;margin:5px 0 0;letter-spacing:-.5px}.section-heading p:last-child{color:var(--muted);font-size:12px}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.service-card{background:linear-gradient(155deg,#172d3c,#0f202e);border:1px solid var(--line);border-radius:14px;padding:22px;min-width:0;display:flex;flex-direction:column;gap:12px}.service-icon{display:grid;place-items:center;width:39px;height:39px;background:#153c47;border:1px solid #315b69;color:#82dfd6;border-radius:10px;font-size:24px}.state{font-size:11px;font-weight:750;border-radius:20px;padding:6px 10px;background:#253f51;color:#b4cfda}.state[data-status="up"]{background:#1e4a3a;color:var(--good)}.state[data-status="down"]{background:#512e34;color:var(--bad)}
+h3{margin:4px 0 -3px;font-size:20px}.service-card p{margin:0;color:#a8bac9;font-size:13px;line-height:1.65;min-height:64px}.probe{font-size:12px;color:#e0d3a0;border-left:2px solid #496478;padding-left:10px;margin:5px 0 2px;min-height:35px;line-height:1.5}
+.service-card a,.private-link{font-size:12px;margin-top:auto;padding-top:14px;border-top:1px solid #284255;color:var(--accent);text-decoration:none;font-weight:650;line-height:1.6}.private-link{color:#9bbed0}.service-card a:hover{text-decoration:underline}
+.note{margin:26px 0 22px;padding:18px 21px;background:#102b3a;border:1px solid #2a5261;border-radius:13px}.note strong{color:#d7f9ef}.note p{font-size:12px;line-height:1.75;color:#a6bdcc;margin:6px 0 0}
+footer{border-top:1px solid #263f50;margin-top:45px;padding-top:20px;color:#718e9f;font-size:11px;flex-wrap:wrap}
+@media(max-width:850px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.summary{gap:0}}
+@media(max-width:600px){.shell{padding:20px 15px 30px}.hero{padding:65px 0 36px}.hero h1{letter-spacing:-1.2px}.environment{font-size:9px;letter-spacing:.6px}.summary{grid-template-columns:1fr;padding:6px 16px}.summary>div{border-right:0;border-bottom:1px solid var(--line);padding:13px 3px}.summary>div:last-child{border:0}.summary strong{font-size:23px}.cards{grid-template-columns:1fr}.service-card{padding:19px}.service-card p{min-height:0}.section-heading{margin-top:34px}.section-heading p:last-child{font-size:10px}.hero>p:not(.eyebrow){font-size:14px}}
+
+/* Embedded Grafana is one lazy-loaded app context, not a fleet of panel iframes. */
+.metrics-section{border:1px solid var(--line);background:#102334;border-radius:14px;overflow:hidden}
+.metrics-section summary{padding:17px 20px;color:#e1f7f2;font-weight:750;cursor:pointer;list-style-position:inside}
+.metrics-hint{float:right;font-size:11px;color:var(--muted);font-weight:400}
+.metrics-body{border-top:1px solid var(--line);padding:14px 16px 16px}
+.metrics-description,.metrics-footer{color:var(--muted);font-size:12px;line-height:1.6;margin:0 0 12px}
+.metrics-frame{min-height:0}
+.metrics-iframe{display:block;width:100%;height:780px;border:1px solid var(--line);border-radius:8px;background:#09131e}
+.metrics-footer{margin:12px 0 0}
+.metrics-footer a{color:var(--accent);margin-left:12px}
+@media(max-width:600px){.metrics-body{padding:12px}.metrics-iframe{height:680px}.metrics-hint{font-size:10px}}
+
+.pc-access{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:28px 0 0;padding:19px 22px;border:1px solid var(--line);border-radius:14px;background:linear-gradient(145deg,#153542,#102333)}
+.pc-access[hidden]{display:none}.pc-access h2{margin:4px 0 8px;font-size:20px}.pc-access p:not(.eyebrow){max-width:620px;font-size:12px;color:var(--muted);line-height:1.6;margin:0}
+.pc-access a{color:var(--accent);font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap}
+.pc-access a:hover{text-decoration:underline}
+@media(max-width:600px){.pc-access{align-items:flex-start;flex-direction:column}.pc-access a{white-space:normal}}

@@ -1,0 +1,59 @@
+# Cooling-system metadata in Grafana (historical milestone 2)
+
+> **Milestone snapshot, not the current operating contract.** The archive-time electrical export and controls-only SensorDash cleanup have since been implemented in the feature branches. For current setup use [TELEMETRY.md](TELEMETRY.md) and [SensorDash ADR 0008](https://github.com/CodyMathis123/SensorDash/blob/feature/telemetry-grafana-export/docs/adr/0008-local-control-observability.md). The discussion below records the incremental migration design.
+
+
+The [Windows exporter branch](https://github.com/CodyMathis123/SensorDash/tree/feature/telemetry-grafana-export) now synchronizes a **read-only catalog** of discovered sensors and each configured Cooling System's component-to-sensor bindings **including RPM, PWM and power sensor references stored in a component's electrical configuration**. This is *metadata*, not a second hardware poller, control interface, or cooling configuration database. SensorDash still defines all sensor IDs, names, aliases, cooling system roles, fan/PWM mappings and approvals.
+
+## What gets sent
+
+The original raw metric stays exactly the same:
+
+```text
+sensordash_reading,host=main-desktop,sensor=/amdcpu/0/temperature/0,kind=Temperature value=54.0 1793450400000
+```
+
+Additional info gauges are synchronized about every 120 seconds, and immediately after configuration changes:
+
+```text
+sensordash_sensor_info,host=main-desktop,sensor=/amdcpu/0/temperature/0,kind=Temperature,name=CPU_Package,alias=CPU_Core,device=AMD_Ryzen value=1 1793450400000
+sensordash_cooling_binding,host=main-desktop,sensor=/amdcpu/0/temperature/0,system=loop1,system_name=Walnut_Loop,component=cpu,component_name=CPU_Block,role=heat-source,kind=Temperature value=1 1793450400000
+```
+
+For security, the ingest gateway allows only the five explicitly enumerated metric schemas (raw readings, sensor catalog, cooling sensor bindings, component descriptions, and provenance-tagged accessory watts) and **no arbitrary measurement names or control commands**. Aliases/names are represented in sanitized readable ASCII labels (spaces become underscores) with explicit size limits. Raw metric identity remains only `host, sensor, kind`, so changing an alias does not fragment long-term temperature history.
+
+Removed associations and renamed labels are marked with `value=0` **tombstones** on the previous tag set, before/alongside new active (`value=1`) entries. Queries filter on `== 1` so deleted sensors/old aliases aren't returned as active. A successful complete snapshot is persisted in Windows ProgramData and reused to compute deletions after service restarts. Failed metadata delivery is retried independently of numeric samples; a failed catalog update must never affect fan control or prevent raw samples being exported.
+
+## Dashboard mechanics
+
+The provisioned **SensorDash · Cooling Systems** dashboard presents a current association table and time-series panels for assigned temperatures, CPU/GPU power, radiator fans, pump tach, PWM duty, coolant temperature, flow and room ambient (when those readings exist).
+
+Panels join the single-copy raw samples with time-indexed metadata using PromQL's `on(host,sensor) group_right(...)` one-to-many matching. This allows the same temperature sensor to be referenced by more than one component without copying its raw history into separate series.
+
+For example:
+
+```promql
+sensordash_reading_value{kind="Temperature",host=~"$host"}
+* on(host,sensor) group_right()
+(sensordash_cooling_binding_value{system=~"$system",kind="Temperature"} == 1)
+```
+
+Metadata exists only **from its first successful synchronization forward**; it cannot reconstruct cooling mappings from before export was enabled. Prior configurations are not fabricated. Old assignments remain correct as-of their original time until a later tombstone, provided retention covers that period. A 120-second refresh keeps info values inside the usual Prometheus-style instant-query lookback for healthy hosts. When the collector goes offline, stale metadata will expire from instant queries rather than presenting obsolete configuration as current.
+
+## What hasn't moved
+
+- **Cooling-system editor, sensor assignments, electrical calibration and fan/pump presets:** remain in SensorDash's local configuration.
+- **Fan curves, UAC authorization, PWM output and fail-safe handling:** remain exclusively on Windows.
+- **Estimated watts:** exported as archive-time, source/revision-labeled measurements in the later milestones (see below). **Historical watt-hours/coverage** remain out of scope until gap-aware integration has been validated.
+- **Aliases:** metadata-only display information; metadata labels can churn temporarily with edits but cannot split raw sensor identity.
+- **Historical peak/energy/correlation:** Grafana now owns the history viewer in the controls-only branch; historical energy/coverage parity still needs real hardware validation. The earlier instruction to keep duplicate Windows history charts applied only to the initial side-by-side phase.
+
+Access Grafana over private LAN or WireGuard; never port-forward its management UI or the restricted telemetry receiver. See [TELEMETRY.md](TELEMETRY.md) for setup and TLS bootstrap.
+
+## Provenance-aware electrical readings
+
+The **SensorDash · Fan & Pump Electricity** dashboard is backed by the separate `sensordash_accessory_power_value` metric (archive-time watts, not browser estimates). Every row contains stable system/component identifiers, an explicitly labeled source (`measured`, `calibrated`, `curve`, or `rated`), and a deterministic 16-hex revision for the electrical configuration at the moment of sampling. The component display name and role are joined from the independent `sensordash_component_info_value == 1` gauge; this remains available even if the pump has no assigned tachometer.
+
+**Measured** means the input came from an actual power sensor. **Calibrated** means interpolation between entered whole-group measurements. **Curve** means a per-unit RPM or duty interpolation scaled by quantity. **Rated** means nameplate power gated by an observed running/stopped tachometer and is **not a direct measurement**. Unknown or stale measurements produce no wattage point, not a false zero. A calibration change starts a new revision label rather than rewriting old values.
+
+Watt-hours and complete system power totals are intentionally excluded until missing-data and gap-aware integration match SensorDash's existing local historical statistics on real PC data. The charts must not bridge holes from sleep or shutdown.

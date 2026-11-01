@@ -1,0 +1,221 @@
+# HomeAwayFromHome · Pi 4 / arm64 · reviewed baseline
+# No router, firewall, DNS-client or OS changes are made by Compose itself.
+name: homeawayfromhome
+
+x-log-rotation: &logrotation
+  driver: local
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  pihole:
+    image: pihole/pihole:2026.10.0
+    restart: unless-stopped
+    logging: *logrotation
+    environment:
+      TZ: ${TZ:-America/Detroit}
+      FTLCONF_dns_listeningMode: ALL
+      FTLCONF_dns_upstreams: "${UPSTREAM_DNS:-1.1.1.1;9.9.9.9}"
+      WEBPASSWORD_FILE: pihole_password
+    secrets:
+      - pihole_password
+    ports:
+      - "${PI_LAN_IP:?Set PI_LAN_IP in .env}:53:53/tcp"
+      - "${PI_LAN_IP:?Set PI_LAN_IP in .env}:53:53/udp"
+      - "${PI_LAN_IP:?Set PI_LAN_IP in .env}:8080:80/tcp"
+    volumes:
+      - ./data/pihole:/etc/pihole
+    networks:
+      - infra
+    # No DHCP capability, privileged mode, or host-network exposure.
+
+  wg-easy:
+    # Pi 4 / kernel 6.18 needs nft-compatible iptables tools inside the image.
+    # See Dockerfile.wg-easy-nft and docs/EXISTING-PI-MIGRATION.md.
+    image: homeaway-wg-easy-nft:15.5.0
+    build:
+      context: .
+      dockerfile: Dockerfile.wg-easy-nft
+    restart: unless-stopped
+    logging: *logrotation
+    environment:
+      # HTTP is permissible ONLY inside an SSH tunnel. UI not on LAN/WAN.
+      INSECURE: "true"
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    sysctls:
+      net.ipv4.ip_forward: "1"
+      net.ipv4.conf.all.src_valid_mark: "1"
+      net.ipv6.conf.all.disable_ipv6: "0"
+      net.ipv6.conf.all.forwarding: "1"
+      net.ipv6.conf.default.forwarding: "1"
+    volumes:
+      - ./data/wireguard:/etc/wireguard
+      - /lib/modules:/lib/modules:ro
+    ports:
+      - "${VPN_PORT:-51820}:51820/udp"
+      - "127.0.0.1:51821:51821/tcp"
+    networks:
+      - infra
+
+  portal:
+    build:
+      context: ./portal
+    restart: unless-stopped
+    logging: *logrotation
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      PIHOLE_DNS_HOST: pihole
+      WG_ADMIN_HOST: wg-easy
+      PI_LAN_IP: ${PI_LAN_IP:?Set PI_LAN_IP in .env}
+      GRAFANA_PUBLIC_EMBED_TOKEN: ${GRAFANA_PUBLIC_EMBED_TOKEN:-}
+    ports:
+      - "${PI_LAN_IP:?Set PI_LAN_IP in .env}:8088:8080/tcp"
+    networks:
+      - infra
+
+  victoria-metrics:
+    profiles: [metrics]
+    image: victoriametrics/victoria-metrics:v1.155.0
+    restart: unless-stopped
+    logging: *logrotation
+    command:
+      - "-storageDataPath=/victoria-metrics-data"
+      - "-retentionPeriod=90d"
+      - "-dedup.minScrapeInterval=1ms"
+      - "-promscrape.config=/etc/victoria-metrics/prometheus.yml"
+    volumes:
+      - ./data/victoria-metrics:/victoria-metrics-data
+      - ./monitoring/scrape.yml:/etc/victoria-metrics/prometheus.yml:ro
+    secrets:
+      - wg_metrics_bearer
+    networks:
+      - infra
+    # Intentionally no published port; Grafana and intake reach it internally.
+
+  grafana:
+    profiles: [metrics]
+    image: grafana/grafana:13.3.0
+    restart: unless-stopped
+    logging: *logrotation
+    depends_on:
+      - victoria-metrics
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      # Only the manually shared, read-only dashboard loads without a login.
+      # Allow iframe rendering on this private LAN/VPN-only Grafana listener.
+      GF_SECURITY_ALLOW_EMBEDDING: "true"
+      GF_SERVER_ROOT_URL: "http://${PI_LAN_IP:?Set PI_LAN_IP}:3000"
+    secrets:
+      - grafana_admin_password
+    ports:
+      - "${PI_LAN_IP:?Set PI_LAN_IP}:3000:3000/tcp"
+    volumes:
+      - ./data/grafana:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/etc/grafana/dashboards:ro
+    networks:
+      - infra
+
+  telemetry-ingest:
+    profiles: [metrics]
+    build:
+      context: ./ingest
+    restart: unless-stopped
+    logging: *logrotation
+    depends_on:
+      - victoria-metrics
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      VICTORIAMETRICS_HOST: victoria-metrics
+    ports:
+      - "${PI_LAN_IP:?Set PI_LAN_IP}:8429:8443/tcp"
+    volumes:
+      - ./secrets/telemetry:/run/tls:ro
+    networks:
+      - infra
+
+  pihole-exporter:
+    profiles: [metrics]
+    build:
+      context: ./monitoring/pihole_exporter
+    restart: unless-stopped
+    logging: *logrotation
+    read_only: true
+    user: "65534:65534"
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      PIHOLE_API_BASE: http://pihole
+    secrets:
+      - pihole_monitor_password
+    networks:
+      - infra
+    # No published host port. Only VictoriaMetrics can scrape its bridge endpoint.
+
+  pi-node-exporter:
+    profiles: [metrics]
+    # Standard upstream host metrics; no duplicate database or custom probe.
+    image: quay.io/prometheus/node-exporter:v1.12.1
+    restart: unless-stopped
+    logging: *logrotation
+    read_only: true
+    user: "65534:65534"
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    command:
+      - "--web.listen-address=:9100"
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      # Constrain to real host CPU, memory, thermal and disk activity.
+      # No filesystem collector: VictoriaMetrics reports its actual data
+      # volume free bytes without exposing the entire host root to a container.
+      - "--collector.disable-defaults"
+      - "--collector.cpu"
+      - "--collector.meminfo"
+      - "--collector.loadavg"
+      - "--collector.stat"
+      - "--collector.thermal_zone"
+      - "--collector.diskstats"
+      - "--collector.uname"
+      - "--collector.time"
+      - "--collector.vmstat"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+    networks:
+      - infra
+    # Internal-only metrics on :9100; never publish to LAN or WAN.
+
+secrets:
+  pihole_password:
+    file: ./secrets/pihole_password
+  grafana_admin_password:
+    file: ./secrets/grafana_admin_password
+  pihole_monitor_password:
+    file: ./secrets/pihole_monitor_password
+  wg_metrics_bearer:
+    file: ./secrets/wg_metrics_bearer
+
+networks:
+  infra:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: 10.42.42.0/24
+        - subnet: fdcc:ad94:bacf:61a3::/64
