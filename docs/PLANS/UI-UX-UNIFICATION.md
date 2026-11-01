@@ -115,6 +115,43 @@ This is a small observation-only foundation for Phase 3 S1. The planned
 authenticated admin setup/readiness checks, privileged configuration broker,
 and real end-to-end verification remain **unimplemented**.
 
+## Phase 3: assisted, authenticated readiness (initial read-only implementation)
+
+A dedicated admin-only `/control/#setup-readiness` view uses existing
+`/control/api/me`, `/control/api/hosts` and read-only portal `/api/status`.
+No new privileged endpoint, host mount, Docker API, configuration writer,
+scanner, daemon, data store or background poller is introduced. The link is
+hidden until an existing authenticated **admin** role is verified; current
+server permissions remain authoritative. All checks run only when the view
+is opened or its Refresh button is selected.
+
+The view reports *bounded evidence*, not a global success banner:
+
+- Browser URL uses HTTPS; it does **not** verify leaf-certificate expiry,
+  trust chain, ACME renewals or trust on a different device.
+- Current admin capabilities include account/computer management; this does
+  **not** certify LLDAP availability or Windows setup completion.
+- Existing Pi-hole DNS probe answered a test query; it does not prove that
+  all clients use HomeAway DNS.
+- Existing WireGuard management listener is reachable; it does not prove a
+  VPN handshake, WAN routing or client DNS.
+- Existing Grafana TCP listener is reachable (or optionally absent); it does
+  not confirm dashboards, VictoriaMetrics or SensorDash freshness.
+- Registered PC SSH status is counted from the existing restricted check;
+  it does not prove a power action completed.
+
+If one source fails, **only that source** becomes Unknown. A revoked/invalid
+admin session clears prior observations and hides this admin-only view.
+Telemetry freshness, Pi metrics, remote-client checks, certificate renewal
+and backup restore still require existing operator CLI steps; the page links
+those steps by command text without executing them. The backup command
+shown is `scripts/backup.sh --plan`, which must not stop containers.
+
+The signed-in control browser still uses a separate document from the public
+Overview/Architecture shell, because Caddy/Authelia redirect semantics and
+server-side read/write boundaries take priority over eliminating the
+cross-authentication page transition.
+
 ## UX audit plan, in small PRs
 
 1. **Portal shell and architecture map (implemented)** — responsive desktop left rail / mobile horizontal links, route `/architecture/`, service descriptions and navigation; preserve the current `/control/` boundary. Verify all static pages return correct CSP and HTTP 405 for mutation methods.
