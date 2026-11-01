@@ -95,6 +95,10 @@ def inspect_ssh(ssh_dir: Path, pcctl_uid: int) -> list[str]:
         raise PreflightError("pcctl SSH directory needs pcctl ownership and private permissions")
     for name in ("id_ed25519", "known_hosts"):
         entry = ssh_dir / name
+        # A symlink must never be downgraded to a mere "uninspected" warning,
+        # even when this plan is run as a non-root user.
+        if entry.is_symlink():
+            raise PreflightError(f"{name}: symlink is unsafe")
         try:
             result = check_file(entry, allow_missing=True)
         except PreflightError:
