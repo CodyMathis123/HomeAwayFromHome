@@ -78,7 +78,9 @@ function simulate(initialHash, firstCapabilities) {
   let capabilities = firstCapabilities;
   const fetch = async url => {
     if (url === '/control/api/me')
-      return {ok: true, json: async () => ({user: 'operator', capabilities})};
+      return capabilities
+        ? {ok: true, json: async () => ({user: 'operator', capabilities})}
+        : {ok: false, status: 401};
     if (url === '/control/api/hosts')
       return {ok: true, json: async () => ({hosts: []})};
     throw Error('Unexpected API call: ' + url);
@@ -158,6 +160,20 @@ const viewers = {role: 'viewers', actions: [], manageUsers: false, manageCompute
   assert.equal(viewer.location.hash, '#hosts');
   assert.equal(viewer.element('accounts').hidden, true);
   assert.equal(viewer.element('nav-power').attrs['aria-current'], 'location');
+
+  // A revoked session while on an admin panel must clear the stale fragment,
+  // hide the old admin views and remove cached power-action cards.
+  const expired = simulate('#accounts', admins);
+  await expired.settle();
+  expired.setCapabilities(null);
+  await expired.refresh();
+  assert.equal(expired.location.hash, '#hosts');
+  assert.equal(expired.main.dataset.activeView, 'hosts');
+  assert.equal(expired.element('accounts').hidden, true);
+  assert.equal(expired.element('computer-admin').hidden, true);
+  assert.equal(expired.element('nav-accounts').hidden, true);
+  assert.ok(expired.element('hosts').children.length > 0);
+  assert.equal(expired.element('identity').textContent, 'Authorization unavailable');
 
   console.log('Control views: deep links, history fragments, capability revocation and denial passed');
 })().catch(error => { console.error(error); process.exitCode = 1; });
