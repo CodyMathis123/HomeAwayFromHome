@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark"><title>HomeAway · Computers</title>
-<link rel="stylesheet" href="/control/styles.css"><script defer src="/control/accounts.js"></script><script defer src="/control/app.js"></script></head>
+<link rel="stylesheet" href="/control/styles.css"><script defer src="/control/accounts.js"></script><script defer src="/control/computers.js"></script><script defer src="/control/app.js"></script></head>
 <body><main>
 <header><a href="/">⌂ Home<span>Away</span></a><small>AUTHENTICATED COMPUTER CONTROL · <span id="identity">Checking permissions…</span></small></header>
 <section class="hero"><p>YOUR COMPUTERS</p><h1>Power and presence.</h1>
@@ -9,6 +9,25 @@
 <button id="refresh" type="button">Refresh status</button><span id="updated" role="status">Loading computers…</span>
 <p id="last-action" class="action-feedback" aria-live="polite"></p></section>
 <section id="hosts" class="hosts" aria-label="Computer controls"></section>
+<section id="computer-admin" class="accounts history" hidden aria-label="Computer administration">
+  <div class="heading"><h2>Computer management</h2><button id="computer-admin-refresh" type="button">Refresh inventory</button></div>
+  <p class="detail">Existing machines remain active. New entries start as drafts and cannot be controlled until their Windows setup and SSH trust are verified in a later enrollment step.</p>
+  <div id="computer-admin-active" class="account-list"></div>
+  <h3>Prepare a new computer</h3>
+  <form id="computer-admin-create" class="computer-create">
+    <label>Stable ID <input name="id" required maxlength="32" pattern="[a-z][a-z0-9-]{0,31}" placeholder="living-room"></label>
+    <label>Display name <input name="name" required maxlength="80" placeholder="Living Room PC"></label>
+    <label>Private IPv4 <input name="address" required placeholder="192.168.1.120"></label>
+    <label>Ethernet MAC <input name="mac" required placeholder="aa:bb:cc:dd:ee:ff"></label>
+    <label>Broadcast IPv4 <input name="broadcast" required placeholder="192.168.1.255"></label>
+    <label>SSH username <input name="ssh_user" required value="pcctl" maxlength="31"></label>
+    <label>SSH port <input name="ssh_port" type="number" required min="1" max="65535" value="22"></label>
+    <button type="submit">Save draft (no activation)</button>
+  </form>
+  <h3>Unconfigured drafts</h3>
+  <p id="computer-admin-message" role="status" aria-live="polite"></p>
+  <div id="computer-admin-drafts" class="account-list"></div>
+</section>
 <section id="accounts" class="accounts history" hidden aria-label="Account administration">
   <div class="heading"><h2>Users and permissions</h2><button id="accounts-refresh" type="button">Refresh users</button></div>
   <p class="detail">These are HomeAway permissions. Revoking access does not disable an LDAP password or access to unrelated applications.</p>
