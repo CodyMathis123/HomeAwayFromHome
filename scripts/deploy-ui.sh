@@ -115,6 +115,10 @@ git merge --ff-only origin/Production || fail "Fast-forward failed; containers u
   fail "Updated Compose project differs; no containers restarted."
 
 check_gateway
+# Git checkout umask may leave tracked Caddyfile at 0600 after a pull.
+# Repair ONLY this non-secret config before reconciling the selected UI.
+python3 scripts/prepare-gateway-permissions.py --apply ||
+  fail "Canonical Caddyfile is unreadable; refusing UI deployment."
 printf 'Rebuilding ONLY %s (no dependencies)...\n' "${services[*]}"
 "${compose[@]}" up -d --no-deps --build "${services[@]}" ||
   fail "Targeted deployment failed. Inspect selected container logs; other services were not requested."
