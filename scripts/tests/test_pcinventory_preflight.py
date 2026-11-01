@@ -4,6 +4,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import shutil
 import stat
 import subprocess
 import tempfile
@@ -59,6 +60,26 @@ class PreflightTests(unittest.TestCase):
         self.assertNotIn("192.168.50.12", "\n".join(messages))
         self.assertEqual((self.inventory.read_bytes(), self.key.read_bytes(),
                           self.known.read_bytes()), before)
+
+    def test_group_writable_git_checkout_is_not_confused_with_live_inventory(self):
+        # Shared-worktree umask commonly produces mode 0664 for source code.
+        # Source files are not live state, but live inventory permissions must
+        # still block group/other writes. Do not change any real permissions.
+        checkout = self.root / "git-core.py"
+        shutil.copyfile(CORE, checkout)
+        checkout.chmod(0o664)
+        count, mode = preflight.check_inventory(self.inventory, checkout)
+        self.assertEqual(count, 1)
+        self.assertEqual(mode, "0644")
+        self.inventory.chmod(0o664)
+        with self.assertRaisesRegex(preflight.PreflightError, "hosts.json.*writable"):
+            preflight.check_inventory(self.inventory, checkout)
+
+    def test_symlink_git_core_file_is_still_rejected(self):
+        checkout = self.root / "git-core.py"
+        checkout.symlink_to(CORE)
+        with self.assertRaises(preflight.PreflightError):
+            preflight.check_inventory(self.inventory, checkout)
 
     def test_missing_known_hosts_is_pending_not_an_excuse_to_trust_on_first_use(self):
         self.known.unlink()
