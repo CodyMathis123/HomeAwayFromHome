@@ -167,7 +167,10 @@ class DashboardContracts(unittest.TestCase):
             self.assertIn("label_replace(", query)
             self.assertIn('"name", "$1 $2", "name"', query)
             self.assertIn('sensor=~"$sensor"', query)
-            self.assertNotIn("alias=", query)
+            # Alias selectors apply to the presentation metadata, never to
+            # the raw reading series: identity remains the stable sensor ID.
+            raw_selector = query.split("sensordash_reading_value{", 1)[1].split("}", 1)[0]
+            self.assertNotIn("alias=", raw_selector)
             self.assertIn("sensordash_sensor_info_value", query)
             self.assertIn("on(host,sensor) group_left(name,alias,device)", query)
             self.assertEqual(panels[id]["targets"][0]["legendFormat"], "{{name}}")
