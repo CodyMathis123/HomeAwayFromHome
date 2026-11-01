@@ -52,7 +52,13 @@ def main():
         cwd=ROOT, env=env, check=True, capture_output=True, text=True)
     services=json.loads(output.stdout)["services"]
     assert set(services["authelia"]["networks"]) == {"pc-control","account-directory"}
-    assert set(services["lldap"]["networks"]) == {"account-directory"}
+    assert set(services["lldap"]["networks"]) == {"account-directory", "account-ui"}
+    networks=json.loads(output.stdout)["networks"]
+    assert networks["account-directory"]["internal"] is True
+    assert networks["account-ui"].get("internal", False) is False
+    assert "account-ui" not in services["authelia"]["networks"]
+    assert "account-ui" not in services["account-broker"]["networks"]
+    assert "account-ui" not in services["pc-control"]["networks"]
     assert set(services["account-broker"]["networks"]) == {"pc-control","account-directory"}
     assert set(services["pc-control"]["networks"]) == {"pc-control"}
     ui_ports=services["lldap"].get("ports",[])
