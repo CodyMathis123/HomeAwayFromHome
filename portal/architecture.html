@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#09131e">
+  <title>HomeAway · Architecture</title>
+  <link href="/styles.css" rel="stylesheet">
+  <script defer src="/navigation.js"></script>
+  <script defer src="/architecture.js"></script>
+</head>
+<body>
+  <div class="ambient" aria-hidden="true"></div>
+  <div class="app-layout">
+    <aside id="app-navigation" class="app-sidebar" aria-label="Primary navigation"></aside>
+    <main class="shell">
+      <header class="masthead">
+        <div class="brand"><span class="brand-mark" aria-hidden="true">⌂</span><span>Home<span class="brand-accent">Away</span><small>ARCHITECTURE</small></span></div>
+        <span class="environment"><span class="led"></span> PRIVATE NETWORK</span>
+      </header>
+      <section class="architecture-intro">
+        <p class="eyebrow">HOW THE PARTS CONNECT</p>
+        <h1>One home.<br><em>Separate responsibilities.</em></h1>
+        <p>This is an architectural map, not a live network scanner. Select a component to see its role and available navigation. Service connectivity and physical PC power state are not inferred by the diagram.</p>
+      </section>
+      <section class="architecture-panel" aria-labelledby="topology-title">
+        <div class="architecture-panel-heading">
+          <div><p class="eyebrow">SYSTEM MAP</p><h2 id="topology-title">HomeAway architecture</h2></div>
+          <span class="map-legend">Select any node for details ↓</span>
+        </div>
+        <div class="architecture-canvas" tabindex="0" aria-label="Scrollable HomeAway architecture map">
+          <svg viewBox="0 0 1140 550" xmlns="http://www.w3.org/2000/svg" role="group" aria-label="Read-only topology diagram with links to component descriptions">
+            <defs>
+              <marker id="map-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#548a9b"/></marker>
+              <marker id="map-arrow-metric" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#72e6ce"/></marker>
+            </defs>
+            <g class="map-paths" fill="none" stroke="#548a9b" stroke-width="2" marker-end="url(#map-arrow)">
+              <path d="M132 146 V220"/>
+              <path d="M248 267 H265 V99 H280"/>
+              <path d="M500 99 H550"/>
+              <path d="M660 146 V220"/>
+              <path d="M775 267 H810 V99 H840"/>
+              <path d="M950 146 V220"/>
+              <path d="M500 267 H520 V195 H390 V146"/>
+            </g>
+            <g class="map-paths" fill="none" stroke="#72e6ce" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#map-arrow-metric)">
+              <path d="M950 314 V395"/>
+              <path d="M840 440 H775"/>
+              <path d="M550 440 H500"/>
+              <path d="M390 395 V355 H520 V175 H390 V146"/>
+            </g>
+            <g class="map-axis-labels">
+              <text x="20" y="32">PRIVATE CLIENTS</text>
+              <text x="285" y="32">HOMEAWAY PORTAL</text>
+              <text x="555" y="32">ACCESS &amp; CONTROL</text>
+              <text x="845" y="32">WINDOWS ENDPOINTS</text>
+              <text x="280" y="375">TELEMETRY &amp; HISTORY (READ-ONLY)</text>
+            </g>
+            <a class="map-node" href="#component-client" aria-label="Client devices details"><rect x="20" y="58" width="225" height="88" rx="14"/><text x="36" y="91">Phone &amp; laptop</text><text class="map-subtitle" x="36" y="117">Browser · VPN client</text></a>
+            <a class="map-node" href="#component-homeaway" aria-label="HomeAway portal details"><rect x="280" y="58" width="220" height="88" rx="14"/><text x="296" y="91">HomeAway portal</text><text class="map-subtitle" x="296" y="117">Read-only overview</text></a>
+            <a class="map-node map-node-control" href="#component-control" aria-label="Authentication and control details"><rect x="550" y="58" width="225" height="88" rx="14"/><text x="566" y="91">Authelia + Control</text><text class="map-subtitle" x="566" y="117">Signed-in role checks</text></a>
+            <a class="map-node" href="#component-windows" aria-label="Windows computer details"><rect x="840" y="58" width="225" height="88" rx="14"/><text x="856" y="91">Windows PC</text><text class="map-subtitle" x="856" y="117">Power · local hardware</text></a>
+            <a class="map-node" href="#component-wireguard" aria-label="WireGuard VPN details"><rect x="20" y="220" width="225" height="94" rx="14"/><text x="36" y="253">WireGuard</text><text class="map-subtitle" x="36" y="279">Private remote access</text></a>
+            <a class="map-node" href="#component-pihole" aria-label="Pi-hole DNS details"><rect x="280" y="220" width="220" height="94" rx="14"/><text x="296" y="253">Pi-hole</text><text class="map-subtitle" x="296" y="279">Private DNS · filtering</text></a>
+            <a class="map-node map-node-control" href="#component-pcctl" aria-label="pcctl agent details"><rect x="550" y="220" width="225" height="94" rx="14"/><text x="566" y="253">pcctl agent</text><text class="map-subtitle" x="566" y="279">Allowlisted WOL / SSH</text></a>
+            <a class="map-node" href="#component-sensordash" aria-label="SensorDash details"><rect x="840" y="220" width="225" height="94" rx="14"/><text x="856" y="253">SensorDash</text><text class="map-subtitle" x="856" y="279">Fan control · collector</text></a>
+            <a class="map-node map-node-metrics" href="#component-grafana" aria-label="Grafana details"><rect x="280" y="395" width="220" height="90" rx="14"/><text x="296" y="428">Grafana</text><text class="map-subtitle" x="296" y="453">Read-only graphs</text></a>
+            <a class="map-node map-node-metrics" href="#component-victoriametrics" aria-label="VictoriaMetrics details"><rect x="550" y="395" width="225" height="90" rx="14"/><text x="566" y="428">VictoriaMetrics</text><text class="map-subtitle" x="566" y="453">Time-series history</text></a>
+            <a class="map-node map-node-metrics" href="#component-ingest" aria-label="Telemetry ingest details"><rect x="840" y="395" width="225" height="90" rx="14"/><text x="856" y="428">Telemetry ingest</text><text class="map-subtitle" x="856" y="453">Authenticated TLS receiver</text></a>
+            <g class="map-legend-inline">
+              <path d="M20 516 h35" stroke="#548a9b" stroke-width="2"/><text x="65" y="521">Network / command paths (simplified)</text>
+              <path d="M470 516 h35" stroke="#72e6ce" stroke-width="2" stroke-dasharray="7 5"/><text x="515" y="521">Metrics / read-only observations</text>
+            </g>
+          </svg>
+        </div>
+        <p class="map-footnote">Arrows describe responsibilities and logical paths—not physical network wiring, direction of every packet, or current service health. All HomeAway web administration remains private to LAN/VPN access.</p>
+      </section>
+      <section aria-labelledby="components-title" class="component-section">
+        <div class="section-heading"><div><p class="eyebrow">COMPONENT DIRECTORY</p><h2 id="components-title">Explore the services</h2></div><p>Links open the existing tool where available</p></div>
+        <div class="component-grid">
+          <article class="component-card" id="component-client"><h3>Phone &amp; laptop</h3><p>Access the portal on your home network or through WireGuard when away. The map is visible without an admin session.</p><a href="#component-wireguard">Learn about private VPN access</a></article>
+          <article class="component-card" id="component-wireguard"><h3>WireGuard / wg-easy</h3><p>Encrypted remote access. The wg-easy administration web page is bound to the Pi's loopback port and requires an SSH tunnel; it is not a public portal destination.</p><span class="component-private">SSH-tunnel-only management · no direct web link</span></article>
+          <article class="component-card" id="component-homeaway"><h3>HomeAway portal</h3><p>This read-only service status page and the embedded, shared Grafana view. It cannot administer DNS, VPN, user accounts, PCs or Windows fans.</p><a href="/">Open overview</a></article>
+          <article class="component-card" id="component-pihole"><h3>Pi-hole</h3><p>DNS filtering and private hostname resolution for devices using your home's DNS. This portal may probe DNS responsiveness but cannot reconfigure it.</p><a id="architecture-dns" href="#" hidden>Open Pi-hole console</a></article>
+          <article class="component-card" id="component-control"><h3>Authelia, LLDAP &amp; HomeAway Control</h3><p>Private HTTPS sign-in and current household permissions protect PC controls and the admin-only computer/user management pages. LLDAP administration itself remains SSH-tunnel-only.</p><a id="architecture-control" href="#" hidden>Open authenticated controls</a></article>
+          <article class="component-card" id="component-pcctl"><h3>pcctl host agent</h3><p>Restricted Pi-side power commands and a separate non-root inventory writer. The web interface sends only allowlisted requests; no generic shell or Docker control is exposed.</p><span class="component-private">Admin and power actions require authentication</span></article>
+          <article class="component-card" id="component-windows"><h3>Windows PC</h3><p>Registered desktop computers can accept supervised power requests. A reachable SSH port is not proof that the PC is healthy or that a power action completed.</p><a id="architecture-windows" href="#" hidden>Open computer controls</a></article>
+          <article class="component-card" id="component-sensordash"><h3>SensorDash</h3><p>Windows owns sensor sampling, local PWM curves, fan association, and tray status. HomeAway does not duplicate fan controls; the collector exports observational telemetry.</p><a href="/#metrics-heading">See read-only metrics</a></article>
+          <article class="component-card" id="component-ingest"><h3>Telemetry ingest</h3><p>An authenticated TLS receiver accepts SensorDash measurements and forwards them to the internal metrics store. It has no browser control interface.</p><span class="component-private">Write-only sensor intake · no admin link</span></article>
+          <article class="component-card" id="component-victoriametrics"><h3>VictoriaMetrics</h3><p>Internal-only time-series history. It does not publish its query API on a LAN port; Grafana reads from it and renders dashboards.</p><a href="#component-grafana">Explore Grafana</a></article>
+          <article class="component-card" id="component-grafana"><h3>Grafana</h3><p>Dashboards for cooling observations, Pi health, DNS/VPN summaries and history. Editing and administration belong to Grafana, not the HomeAway portal.</p><a id="architecture-grafana" href="#" hidden>Open Grafana</a></article>
+        </div>
+      </section>
+      <footer><span>HomeAwayFromHome · Architectural overview only</span><span>No config changes, secrets, scans or power commands</span></footer>
+    </main>
+  </div>
+</body>
+</html>

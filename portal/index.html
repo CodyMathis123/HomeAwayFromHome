@@ -7,10 +7,13 @@
   <meta name="theme-color" content="#09131e">
   <title>HomeAway · Home infrastructure</title>
   <link href="/styles.css" rel="stylesheet">
+  <script defer src="/navigation.js"></script>
   <script defer src="/app.js"></script>
 </head>
 <body>
   <div class="ambient" aria-hidden="true"></div>
+  <div class="app-layout">
+  <aside id="app-navigation" class="app-sidebar" aria-label="Primary navigation"></aside>
   <main class="shell">
     <header class="masthead">
       <div class="brand"><span class="brand-mark" aria-hidden="true">⌂</span><span>Home<span class="brand-accent">Away</span><small>HOME INFRASTRUCTURE</small></span></div>
@@ -28,7 +31,7 @@
       <div><span class="summary-label">VPN manager</span><strong id="vpn-state">Checking</strong><span>Does not verify a tunnel</span></div>
     </section>
     <section class="section-heading"><div><p class="eyebrow">SERVICES</p><h2>At a glance</h2></div><p>Checks every 30 seconds</p></section>
-    <div class="cards">
+    <div class="cards" id="services">
       <article class="service-card" data-service="dns">
         <div class="card-top"><div class="service-icon" aria-hidden="true">◈</div><span class="state" id="state-dns">Checking…</span></div>
         <h3>Pi-hole</h3><p>DNS filtering, private DNS records and household query history.</p>
@@ -66,5 +69,6 @@
     <section class="note"><strong>Security boundary</strong><p>This dashboard cannot change DNS, WireGuard peers, Docker, or fan control. The WireGuard administration UI is intentionally bound to the Pi's loopback address. Expose only your VPN UDP port at the router.</p></section>
     <footer><span>HomeAwayFromHome · Raspberry Pi 4</span><span>No telemetry cloud · No browser admin tokens</span></footer>
   </main>
+  </div>
 </body>
 </html>
