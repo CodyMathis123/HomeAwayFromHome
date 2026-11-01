@@ -4,11 +4,11 @@
 services:
   lldap:
     profiles: [accounts]
-    image: ghcr.io/lldap/lldap:2026-09-22-debian
+    # Rootless image starts as UID/GID 1000; compatible with cap_drop ALL
+    # and no-new-privileges (standard Debian entrypoint tries to switch users).
+    image: ghcr.io/lldap/lldap:2026-09-22-debian-rootless
     restart: unless-stopped
     environment:
-      UID: "1000"
-      GID: "1000"
       LLDAP_LDAP_BASE_DN: dc=homeaway,dc=home,dc=arpa
       LLDAP_LDAP_USER_EMAIL: admin@homeaway.home.arpa
       LLDAP_LDAP_USER_PASS_FILE: /run/secrets/lldap_admin_password
@@ -26,7 +26,7 @@ services:
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     networks: [account-directory]
-    # No host ports, not even the directory UI. No WAN exposure.
+    # LDAP and GraphQL are Docker-only; web UI port is Pi loopback/SSH-only.
 
   account-broker:
     profiles: [accounts]
