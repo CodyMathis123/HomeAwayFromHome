@@ -106,7 +106,8 @@ def computer_request(actor: str, operation: str, payload: dict) -> dict:
     """Send a fixed command over the dedicated, group-protected Unix socket."""
     if not computer_admin_enabled():
         raise BrokerError(404, "Computer management disabled")
-    if operation not in ("list", "draft-create", "draft-discard", "rename", "verify", "activate"):
+    if operation not in ("list", "draft-create", "draft-discard", "rename", "verify", "activate",
+                          "disable", "archive", "restore", "retired-cleanup"):
         raise BrokerError(404, "Unsupported computer operation")
     if os.getenv("HOMEAWAY_INVENTORY_SOCKET") != "/run/homeaway-pcinventory/agent.sock":
         raise BrokerError(503, "Inventory socket misconfigured")
@@ -382,6 +383,10 @@ class Handler(BaseHTTPRequestHandler):
             "/control/api/admin/computers/draft-discard",
             "/control/api/admin/computers/verify",
             "/control/api/admin/computers/activate",
+            "/control/api/admin/computers/disable",
+            "/control/api/admin/computers/archive",
+            "/control/api/admin/computers/restore",
+            "/control/api/admin/computers/retired-cleanup",
             "/control/api/admin/computers/rename")
         if request_path != "/control/api/actions" and not is_account and not is_computer:
             return self._json(404, {"error": "Not found"})
