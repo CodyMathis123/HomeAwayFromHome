@@ -28,6 +28,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
 # Recovery helper is shell-only; never execute extra commands on import.
 source "$root/scripts/backup-recovery.sh"
+source "$root/scripts/backup-postprocess.sh"
 
 for tool in docker python3 systemctl tar sha256sum flock; do
   command -v "$tool" >/dev/null || die "Missing prerequisite: $tool"
@@ -120,6 +121,7 @@ printf 'format=homeaway-full-v1\ncreated_utc=%s\nproject=%s\ncommit=%s\n' \
 chmod 600 "$metadata/backup-metadata.txt"
 
 recovery_needed=0
+backup_committed=0
 cleanup() {
   original_status=$?
   trap - EXIT HUP INT TERM
@@ -128,6 +130,13 @@ cleanup() {
       echo "ERROR: one or more previously active units/containers could not be restarted." >&2
       original_status=1
     fi
+  fi
+  # Only publish new backup evidence after the encrypted artifact, checksum,
+  # and restoration of all previously active services have succeeded.
+  # A publication failure is reported but does not delete a usable backup.
+  if (( original_status == 0 && backup_committed == 1 )); then
+    homeaway_publish_postbackup "$root" ||
+      echo "WARNING: archive retained; status publishing needs manual retry." >&2
   fi
   [[ ! -e "$partial" ]] || rm -f -- "$partial"
   [[ ! -d "$metadata" ]] || rm -rf -- "$metadata"
@@ -169,6 +178,7 @@ chmod 600 "$partial"
 mv -- "$partial" "$archive"
 sha256sum "$archive" > "$archive.sha256"
 chmod 600 "$archive.sha256"
+backup_committed=1
 echo "Encrypted archive created: $archive"
 echo "Encrypted archive SHA-256: $archive.sha256"
 echo "IMPORTANT: copy the encrypted archive and checksum off the Pi and perform an isolated restore test."
