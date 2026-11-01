@@ -106,7 +106,7 @@ def computer_request(actor: str, operation: str, payload: dict) -> dict:
     """Send a fixed command over the dedicated, group-protected Unix socket."""
     if not computer_admin_enabled():
         raise BrokerError(404, "Computer management disabled")
-    if operation not in ("list", "draft-create", "draft-discard", "rename"):
+    if operation not in ("list", "draft-create", "draft-discard", "rename", "verify", "activate"):
         raise BrokerError(404, "Unsupported computer operation")
     if os.getenv("HOMEAWAY_INVENTORY_SOCKET") != "/run/homeaway-pcinventory/agent.sock":
         raise BrokerError(503, "Inventory socket misconfigured")
@@ -116,7 +116,7 @@ def computer_request(actor: str, operation: str, payload: dict) -> dict:
         raise BrokerError(413, "Computer request too large")
     try:
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as conn:
-            conn.settimeout(5)
+            conn.settimeout(23 if operation in ("verify", "activate") else 5)
             conn.connect("/run/homeaway-pcinventory/agent.sock")
             conn.sendall(message)
             response = conn.makefile("rb").readline(65537)
@@ -380,6 +380,8 @@ class Handler(BaseHTTPRequestHandler):
         is_computer = request_path in (
             "/control/api/admin/computers/draft-create",
             "/control/api/admin/computers/draft-discard",
+            "/control/api/admin/computers/verify",
+            "/control/api/admin/computers/activate",
             "/control/api/admin/computers/rename")
         if request_path != "/control/api/actions" and not is_account and not is_computer:
             return self._json(404, {"error": "Not found"})
