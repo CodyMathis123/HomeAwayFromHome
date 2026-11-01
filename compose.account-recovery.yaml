@@ -1,0 +1,19 @@
+# Optional LLDAP email password reset. Append after canonical production overlays.
+# Disabled unless this file and the root-only SMTP env file are explicitly used.
+# This does not grant HomeAway roles or change Authelia two-factor policy.
+services:
+  lldap:
+    env_file:
+      - path: ./secrets/control/lldap-smtp.env
+        format: raw
+    environment:
+      LLDAP_HTTP_URL: "https://home.homeawayfromhome.house:8443/directory"
+      LLDAP_SMTP_OPTIONS__ENABLE_PASSWORD_RESET: "true"
+
+  gateway:
+    # Caddy can reach the native LLDAP web UI over the directory-only bridge.
+    # HTTPS listener remains bound to PI_LAN_IP; no new published ports.
+    networks:
+      - infra
+      - pc-control
+      - account-directory
