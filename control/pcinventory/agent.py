@@ -112,13 +112,27 @@ def _audit(actor: str, target: str, operation: str, outcome: str) -> None:
         "operation": operation, "outcome": outcome,
     }, separators=(",", ":")) + "\n"
     try:
-        if AUDIT.is_symlink():
-            raise OSError("symlinked audit")
-        with AUDIT.open("a", encoding="utf-8") as handle:
-            os.chmod(AUDIT, 0o600)
-            handle.write(line)
-            handle.flush()
-            os.fsync(handle.fileno())
+        fd = os.open(AUDIT, os.O_WRONLY | os.O_APPEND | os.O_CREAT |
+                     os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
+        try:
+            info = os.fstat(fd)
+            if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+                raise OSError("unsafe inventory audit")
+            os.fchmod(fd, 0o600)
+            # Bound the audit log to a current and previous ~1MB generation.
+            # Rotation happens before the next write under the manager lock.
+            if info.st_size > 1_000_000:
+                os.close(fd)
+                fd = -1
+                os.replace(AUDIT, STATE_DIR / "audit.previous.jsonl")
+                fd = os.open(AUDIT, os.O_WRONLY | os.O_APPEND | os.O_CREAT |
+                             os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
+                os.fchmod(fd, 0o600)
+            os.write(fd, line.encode("utf-8"))
+            os.fsync(fd)
+        finally:
+            if fd >= 0:
+                os.close(fd)
     except OSError as exc:
         raise InventoryFault(503, "Inventory audit unavailable") from exc
 
