@@ -89,7 +89,7 @@ port 3890, or publish LLDAP 17170 to the LAN/WAN.
 ## What is implemented
 
 - The existing secured HomeAway control UI now includes an **admin-only Users** section when the server's account-admin feature switch is explicitly enabled.
-- The isolated `account-broker` talks to LLDAP's fixed GraphQL API. `pc-control` never receives the directory administrator password; it receives only a narrow broker token. The broker has no host ports.
+- The isolated `account-broker` talks to LLDAP's fixed GraphQL API. `pc-control` never receives the directory administrator password; it receives only a narrow broker token. The broker has no host ports. LLDAP's optional admin web UI binds **only to 127.0.0.1:17170**, for an SSH tunnel; LDAP TCP 3890 is never host published.
 - Roles: `admins` (all power + audit + account operations), `operators` (wake/sleep/status), `viewers` (status only). A missing or unrecognized group denies access.
 - On **every protected request**, the control API compares Caddy/Authelia's verified role with a fresh role from LLDAP. Mismatch, disabled role, unreachable broker, missing verified header, or invalid identity **fail closed**, including previously authenticated sessions.
 - Account creation makes a **pending identity with no HomeAway role and no password issued**. This is not a usable invitation; credentials must be enrolled by a separately reviewed flow. Explicit account role/revoke operations use an expected revision, serialized broker writes, restricted group operations and minimal audit metadata. A revoked account retains its LDAP password but loses HomeAway access; UI must not claim total LDAP-login disablement.
@@ -119,7 +119,7 @@ Mandatory human-supervised release checklist:
 - Configure SMTP or a documented supported credential-invitation mechanism, with a test message and safe failure handling. Pending users cannot be onboarded from the current UI until this is reviewed.
 - Verify fresh Authelia session, previously authenticated session after role downgrade/revoke, and reauthorization after role upgrade using two browsers; prove admin access stays recoverable and the iOS Shortcut continues to function. Do not conflate computer power permissions with Pi-hole/wg-easy administrative credentials.
 - Fail the cutover if old sessions, LDAP outages, last-admin enforcement, backup integrity or TOTP association are unsafe. Roll back the **Authelia backend config and its matching encrypted storage** as a coherent set, without rotating encryption keys.
-- Only after all tests pass, initialize `secrets/control/*` with unique random secrets, adjust permissions, and opt into `compose.accounts.yaml`. The example overlay is **not a one-click install**: it does not perform an Authelia migration and deliberately leaves the existing Authelia file authentication configuration unchanged.
+- For a stricter rollout, initialize `secrets/control/*` only once rollback requirements are satisfied. The new dev setup scripts bootstrap those secrets, role groups and the explicit Authelia configuration switch separately; there is still **no automatic deployment**.
 - Validate the real deployment as the final gate before merging the feature branch into `Production`.
 
 ## Explicitly not supported yet
