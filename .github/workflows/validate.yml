@@ -159,6 +159,48 @@ jobs:
           docker compose -p homeaway-dns01-staging -f compose.dns01-staging.yaml config --format json | \
             python3 scripts/check_dns01_resolved.py
 
+  dns01-production:
+    # Offline CI only; no ACME issuance, production DNS writes or live Pi.
+    if: github.head_ref == 'feature/phase3-production-dns01-certificates' || github.ref == 'refs/heads/feature/phase3-production-dns01-certificates'
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Caddy pinned Cloudflare module under restricted execution
+        run: |
+          docker build -f control/gateway/Dockerfile.dns01 -t homeaway-caddy-dns01:ci ./control/gateway
+          docker run --rm --cap-drop ALL --security-opt no-new-privileges:true \
+            --read-only --entrypoint /usr/local/bin/homeaway-caddy \
+            homeaway-caddy-dns01:ci list-modules | grep -Fx dns.providers.cloudflare
+      - name: Adapt live legacy and new certificate-only routes offline
+        run: |
+          docker run --rm --cap-drop ALL --security-opt no-new-privileges:true \
+            --read-only --entrypoint /usr/local/bin/homeaway-caddy \
+            -e CF_API_TOKEN=ci-synthetic-only \
+            -e HOMEAWAY_DOMAIN=homeaway.home.arpa \
+            -e HOMEAWAY_AUTH_DOMAIN=auth.homeaway.home.arpa \
+            -e HOMEAWAY_METRICS_DOMAIN=metrics.homeaway.home.arpa \
+            -v "$PWD/control/gateway/Caddyfile.dns01-production:/etc/caddy/Caddyfile:ro" \
+            -v "$PWD/control/gateway/Caddyfile:/etc/caddy/Caddyfile.legacy:ro" \
+            homeaway-caddy-dns01:ci adapt --config /etc/caddy/Caddyfile --adapter caddyfile > /tmp/homeaway-caddy-dns01.json
+          python3 scripts/check_dns01_caddy_routes.py /tmp/homeaway-caddy-dns01.json
+      - name: Verify resolved Compose only changes the gateway
+        run: |
+          cp .env.example .env
+          mkdir -p secrets/control
+          printf 'ci-synthetic-only\n' > secrets/control/cloudflare_dns01_token
+          for name in pihole_password grafana_admin_password pihole_monitor_password wg_metrics_bearer; do
+            printf 'ci-synthetic-only\n' > "secrets/$name"
+          done
+          for name in lldap_admin_password lldap_jwt_secret lldap_key_seed account_broker_token; do
+            printf 'ci-synthetic-only\n' > "secrets/control/$name"
+          done
+          export HOMEAWAY_DOMAIN=homeaway.home.arpa HOMEAWAY_AUTH_DOMAIN=auth.homeaway.home.arpa HOMEAWAY_METRICS_DOMAIN=metrics.homeaway.home.arpa PCCTL_GID=999
+          files=(-f compose.yaml -f compose.control.yaml -f compose.accounts.yaml -f compose.computers.yaml)
+          docker compose "${files[@]}" --profile control --profile accounts --profile metrics config --format json > /tmp/homeaway-base.json
+          docker compose "${files[@]}" -f compose.dns01-production.yaml --profile control --profile accounts --profile metrics config --format json > /tmp/homeaway-prod.json
+          python3 scripts/check_dns01_production_resolved.py /tmp/homeaway-base.json /tmp/homeaway-prod.json
+
   identity-lab:
     # Disposable fake users only; never mount the Pi's live Authelia files,
     # never publish a directory service on a non-loopback interface.
