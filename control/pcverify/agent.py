@@ -34,7 +34,7 @@ def probe(candidate: dict) -> dict:
     try:
         validate_hosts({"hosts": [candidate]})
         address = ipaddress.IPv4Address(candidate["address"])
-        if address not in RFC1918 or candidate["ssh_user"] != "pcctl":
+        if not any(address in net for net in RFC1918) or candidate["ssh_user"] != "pcctl":
             return {"verified": False, "code": "invalid_candidate"}
     except (ValueError, TypeError, KeyError, AttributeError):
         return {"verified": False, "code": "invalid_candidate"}
