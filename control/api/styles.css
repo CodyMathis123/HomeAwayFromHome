@@ -43,3 +43,7 @@ button{min-height:42px}
   #hosts,#computer-admin,#accounts,#recent-activity{scroll-margin-top:92px}
 }
 @media(max-width:700px){.hero{padding-top:30px}}
+
+/* A failed refresh must not make historical reachability look current. */
+.hosts[data-stale="true"] .state{opacity:.65;filter:grayscale(.7)}
+.hosts[data-stale="true"] .host-card{border-style:dashed}
