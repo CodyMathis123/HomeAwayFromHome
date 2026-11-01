@@ -1,0 +1,31 @@
+# Canonical production overlay for the deployed private HTTPS domain.
+# Always append after compose.yaml, compose.control.yaml, compose.accounts.yaml,
+# and compose.computers.yaml. Replaces both historical Phase 3 overlays.
+services:
+  gateway:
+    image: homeaway-caddy-dns01:2.11.7-cloudflare-v0.2.4
+    build:
+      context: ./control/gateway
+      dockerfile: Dockerfile.dns01
+    entrypoint: ["/usr/local/bin/start-dns01"]
+    secrets:
+      - cloudflare_dns01_token
+    volumes:
+      - ./control/gateway/Caddyfile.production:/etc/caddy/Caddyfile:ro
+
+  pc-control:
+    environment:
+      HOMEAWAY_CONTROL_ALT_ORIGIN: "https://home.homeawayfromhome.house:8443"
+
+  portal:
+    environment:
+      HOMEAWAY_CONTROL_URL: "https://home.homeawayfromhome.house:8443/control/"
+      HOMEAWAY_METRICS_ORIGIN: "https://metrics.homeawayfromhome.house:8443"
+
+  grafana:
+    environment:
+      GF_SERVER_ROOT_URL: "https://metrics.homeawayfromhome.house:8443"
+
+secrets:
+  cloudflare_dns01_token:
+    file: ./secrets/control/cloudflare_dns01_token
