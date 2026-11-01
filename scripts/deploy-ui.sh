@@ -46,7 +46,7 @@ command -v python3 >/dev/null || fail "python3 is required."
 command -v sudo >/dev/null || fail "sudo is required for Docker."
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 [[ -f .env ]] || fail "Missing .env; refusing to initialize or change configuration."
-[[ -f compose.yaml && -f compose.control.yaml && -f compose.accounts.yaml && -f compose.computers.yaml ]] ||
+[[ -f compose.yaml && -f compose.control.yaml && -f compose.accounts.yaml && -f compose.computers.yaml && -f compose.production.yaml ]] ||
   fail "Missing one or more required Compose overlays."
 [[ "$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)" == "Production" ]] ||
   fail "Switch to the Production branch before deploying (no worktrees or feature branches)."
@@ -60,9 +60,21 @@ compose=(sudo docker compose
   -f compose.control.yaml
   -f compose.accounts.yaml
   -f compose.computers.yaml
+  -f compose.production.yaml
   --profile control
   --profile accounts
   --profile metrics)
+
+# Refuse UI deploys if running gateway has not been migrated to canonical production.
+# This guards against silently replacing active app URLs through a stale stack.
+check_gateway() {
+  local cid mounted expected
+  cid="$(sudo docker ps -q --filter name=^/homeawayfromhome-gateway-1$ --filter status=running)"
+  [[ -n "$cid" ]] || fail "The production gateway is not running."
+  mounted="$(sudo docker inspect --format '{{range .Mounts}}{{if eq .Destination "/etc/caddy/Caddyfile"}}{{.Source}}{{end}}{{end}}' "$cid")" || fail "Cannot inspect gateway mount."
+  expected="$(realpath control/gateway/Caddyfile.production)"
+  [[ "$mounted" == "$expected" ]] || fail "Gateway uses non-canonical Caddyfile; follow the consolidation cutover runbook first."
+}
 
 # Validate all overlays without printing values that might contain credentials.
 "${compose[@]}" config -q || fail "Compose validation failed; no changes applied."
@@ -73,6 +85,7 @@ project="$("${compose[@]}" config --format json |
   fail "Unexpected Compose project name; refusing to touch containers."
 
 # Do not unintentionally start an optional service or adopt another project.
+check_gateway
 for service in "${services[@]}"; do
   running="$("${compose[@]}" ps --status running --quiet "$service")" ||
     fail "Cannot inspect $service; no changes applied."
@@ -101,6 +114,7 @@ git merge --ff-only origin/Production || fail "Fast-forward failed; containers u
 [[ "$("${compose[@]}" config --format json | python3 -c 'import json,sys; print(json.load(sys.stdin).get("name",""))')" == "homeawayfromhome" ]] ||
   fail "Updated Compose project differs; no containers restarted."
 
+check_gateway
 printf 'Rebuilding ONLY %s (no dependencies)...\n' "${services[*]}"
 "${compose[@]}" up -d --no-deps --build "${services[@]}" ||
   fail "Targeted deployment failed. Inspect selected container logs; other services were not requested."
