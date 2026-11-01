@@ -30,7 +30,7 @@ if [[ "${1:-}" == docker && "${2:-}" == ps ]]; then
   exit 0
 fi
 if [[ "${1:-}" == docker && "${2:-}" == inspect ]]; then
-  printf '%s\\n' "$PWD/control/gateway/Caddyfile.production"
+  printf '%s\n' "$PWD/control/gateway/Caddyfile.production"
   exit 0
 fi
 [[ "${1:-}" == docker && "${2:-}" == compose ]] || exit 88
