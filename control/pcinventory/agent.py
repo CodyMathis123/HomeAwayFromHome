@@ -217,8 +217,10 @@ class InventoryManager:
                 active, revision = self._active()
                 drafts = _read_drafts()["drafts"]
                 return {"active": active["hosts"], "revision": revision,
-                        "drafts": [{**d, "revision": revision_of(d)} for d in drafts],
-                        "activationAvailable": False}
+                        "drafts": [{**d, "revision": revision_of(d),
+                                    "cleanupPending": any(h["id"] == d["id"] for h in active["hosts"])}
+                                   for d in drafts],
+                        "activationAvailable": True}
 
             if op == "draft-create":
                 expected = {"id", "name", "address", "mac", "broadcast", "ssh_user", "ssh_port"}
