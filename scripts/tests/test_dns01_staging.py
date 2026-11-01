@@ -13,6 +13,15 @@ class DNS01StagingContracts(unittest.TestCase):
         self.assertIn("xcaddy build v2.11.7 --with github.com/caddy-dns/cloudflare@v0.2.4", docker)
         self.assertIn("FROM caddy:2.11.7-alpine", docker)
         self.assertIn("dns.providers.cloudflare", docker)
+        # /usr/bin/caddy in the official image has a file capability for
+        # privileged ports; this must NOT be the executable used under
+        # cap_drop ALL and no-new-privileges.
+        self.assertIn("/usr/local/bin/homeaway-caddy", docker)
+        self.assertIn("COPY --from=builder --chmod=0755 /usr/bin/caddy", docker)
+        self.assertIn("setcap -r /usr/local/bin/homeaway-caddy", docker)
+        self.assertIn('test -z "$(getcap /usr/local/bin/homeaway-caddy)"', docker)
+        self.assertIn("exec /usr/local/bin/homeaway-caddy run", wrapper)
+        self.assertNotIn("exec /usr/bin/caddy", wrapper)
         self.assertIn("/run/secrets/cloudflare_dns01_token", wrapper)
         self.assertIn("read -r CF_API_TOKEN", wrapper)
         self.assertIn("export CF_API_TOKEN", wrapper)
@@ -63,6 +72,8 @@ class DNS01StagingContracts(unittest.TestCase):
         self.assertIn("homeaway-dns01-staging", script)
         self.assertIn("up -d --no-deps --build dns01-staging", script)
         self.assertNotIn("up -d gateway", script)
+        self.assertIn('ps --all dns01-staging', script)
+        self.assertIn('ps --status running --quiet dns01-staging', script)
 
 
 if __name__ == "__main__":

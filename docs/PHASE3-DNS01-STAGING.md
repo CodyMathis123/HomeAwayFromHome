@@ -94,6 +94,37 @@ directory. The staging helper checks the root-owned file using `sudo`.
 The token is never needed in the current HomeAway gateway; do not add
 it to `.env`, Caddy's live configuration or other Compose overlays.
 
+## Pi incident fix — custom Caddy exec under dropped capabilities
+
+On November 1, 2026, the Pi successfully compiled the custom Caddy image,
+but the staging entrypoint exited immediately with:
+
+```text
+/usr/local/bin/start-dns01: exec: line 19: /usr/bin/caddy: Operation not permitted
+```
+
+Caddy's `xcaddy build` step **explicitly adds** a
+`cap_net_bind_service` file capability to its output. In the first
+fix attempt, copying the new build to a different executable path did
+not solve the issue: CI reproduced the same `Operation not permitted`
+error under dropped capabilities. This confirmed the file capability
+survived the image build.
+
+The corrected image **explicitly strips the file capability** with
+`setcap -r` on `/usr/local/bin/homeaway-caddy` and verifies `getcap`
+reports none. Only the build-time libcap package is installed, then
+removed. The staging entrypoint executes that capability-free binary.
+Do **not** weaken `no-new-privileges`, add `NET_BIND_SERVICE`,
+or make any change to the live HomeAway gateway. CI smoke-tests the
+real entrypoint under the same restrictions, using a synthetic
+token with networking disabled.
+
+After a version containing this fix is merged into Production and
+fast-forwarded on the Pi, rerun `--apply`; Docker will replace only
+the isolated staging service, reusing cached builder layers where
+available. `--status` shows **all** containers, including exited
+ones, so failed startups no longer look like missing containers.
+
 ## Step 3 — Offline plan and isolated staging issuance
 
 Only after Step 1 is confirmed and PR #28 is merged:

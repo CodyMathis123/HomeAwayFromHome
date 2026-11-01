@@ -114,7 +114,7 @@ jobs:
 
   dns01-staging:
     # Build/test isolated ACME staging without a token or live DNS changes.
-    if: github.head_ref == 'feature/phase3-dns01-staging-prep' || github.ref == 'refs/heads/feature/phase3-dns01-staging-prep'
+    if: github.head_ref == 'feature/phase3-dns01-staging-prep' || github.head_ref == 'fix/dns01-caddy-noexec' || github.ref == 'refs/heads/feature/phase3-dns01-staging-prep' || github.ref == 'refs/heads/fix/dns01-caddy-noexec'
     runs-on: ubuntu-latest
     timeout-minutes: 18
     steps:
@@ -122,13 +122,35 @@ jobs:
       - name: Build exact pinned Caddy DNS module
         run: |
           docker build -f control/gateway/Dockerfile.dns01 -t homeaway-caddy-dns01:ci ./control/gateway
-          docker run --rm --entrypoint caddy homeaway-caddy-dns01:ci list-modules | grep -Fx dns.providers.cloudflare
-      - name: Adapt staging-only Caddyfile offline (no issuance)
+          # Reproduce the Pi's hardened Compose restrictions, including the
+          # no-new-privileges + dropped capabilities combination that failed.
+          docker run --rm --cap-drop ALL --security-opt no-new-privileges:true \
+            --read-only --entrypoint /usr/local/bin/homeaway-caddy \
+            homeaway-caddy-dns01:ci list-modules | grep -Fx dns.providers.cloudflare
+      - name: Adapt staging-only Caddyfile offline under hardened restrictions
         run: |
-          docker run --rm --entrypoint caddy \
+          docker run --rm --cap-drop ALL --security-opt no-new-privileges:true \
+            --read-only --entrypoint /usr/local/bin/homeaway-caddy \
             -e CF_API_TOKEN=ci-synthetic-placeholder \
             -v "$PWD/control/gateway/Caddyfile.dns01-staging:/etc/caddy/Caddyfile:ro" \
             homeaway-caddy-dns01:ci adapt --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null
+      - name: Smoke-test real staging entrypoint with synthetic, offline configuration
+        run: |
+          mkdir -p secrets/control
+          printf 'ci-synthetic-not-a-token\n' > secrets/control/cloudflare_dns01_token
+          # Network disabled: even an accidental ACME request cannot reach a
+          # real DNS provider. The smoke config does not request certificates.
+          printf '{\n  auto_https off\n}\n:8443 {\n  respond "staging smoke test"\n}\n' > /tmp/homeaway-staging-smoke.Caddyfile
+          cid=$(docker run -d --cap-drop ALL --security-opt no-new-privileges:true \
+            --read-only --network none --tmpfs /tmp --tmpfs /data --tmpfs /config \
+            -v "$PWD/secrets/control/cloudflare_dns01_token:/run/secrets/cloudflare_dns01_token:ro" \
+            -v "/tmp/homeaway-staging-smoke.Caddyfile:/etc/caddy/Caddyfile:ro" \
+            --entrypoint /usr/local/bin/start-dns01 homeaway-caddy-dns01:ci)
+          trap 'docker rm -f "$cid" >/dev/null 2>&1 || true' EXIT
+          sleep 3
+          docker ps --filter "id=$cid" --filter status=running --quiet | grep -q .
+          docker logs "$cid" 2>&1 | grep -q 'serving initial configuration'
+
       - name: Validate isolated Compose project (synthetic token only)
         run: |
           mkdir -p secrets/control

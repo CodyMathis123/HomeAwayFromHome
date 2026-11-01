@@ -16,4 +16,4 @@ if [ -z "$CF_API_TOKEN" ]; then
   exit 1
 fi
 export CF_API_TOKEN
-exec /usr/bin/caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
+exec /usr/local/bin/homeaway-caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
