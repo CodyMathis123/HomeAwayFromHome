@@ -27,7 +27,9 @@ Grafana is LAN/VPN-only at `http://PI_LAN_IP:3000`. VictoriaMetrics never publis
 
 First run `sudo bash scripts/backup.sh --plan` to verify the Compose project and number of running containers **without any outage or archive**. Then, in a planned maintenance window, run `sudo bash scripts/backup.sh --offline`. It stops **all running containers labeled with this checkout's HomeAway Compose project**, including optional Caddy/Authelia, computer control, LLDAP and account broker services (if deployed), before archiving their data. Previously running containers are restarted in an exit trap even if the archive step fails; restart failures are reported as errors. **DNS, VPN, login and monitoring may all be temporarily unavailable.** Root-owned tar archives go to `/var/backups/homeawayfromhome/` mode 0600 with SHA-256 checksums.
 
-The backup includes `.env`, `secrets/` and `data/` (including the account directory and Authelia SQLite if present). The project selection follows Docker Compose's resolved project name. **Any HomeAway service deliberately started under another Compose project or outside Compose is outside this script's stop scope**; do not claim a consistent snapshot of those services. After a new account-backend migration, verify an off-device encrypted backup and perform a supervised isolated restore; a successful archive is not by itself a recovery test.
+The backup includes `.env`, `secrets/` and `data/` (including the account directory and Authelia SQLite if present).
+
+**Phase 2 host-state coverage is NOT included:** This script does not archive `/etc/homeaway-pcctl/hosts.json`, `/home/pcctl/.ssh` and other host-side pcctl credentials/trust, `/var/lib/homeaway-pcinventory/` draft/retirement/audit metadata, or installed systemd unit/socket state. It stops only Compose containers; the independent host agents are not quiesced by it. A Compose backup alone cannot restore the active PC inventory and pairing guarantees to a replacement Pi. Plan an encrypted off-device host-state backup, safe snapshot coordination and a tested restore **before** relying on Phase 2 as disaster-recovery-ready. Do not copy these sensitive resources into the Git repository. See [roadmap](ROADMAP.md) and the Phase 4 planning spec. The project selection follows Docker Compose's resolved project name. **Any HomeAway service deliberately started under another Compose project or outside Compose is outside this script's stop scope**; do not claim a consistent snapshot of those services. After a new account-backend migration, verify an off-device encrypted backup and perform a supervised isolated restore; a successful archive is not by itself a recovery test.
 
 **The archive contains WireGuard private keys, peers, Pi-hole admin password, DNS query history and .env. Encrypt it and move it off the Pi.** A backup exclusively on the Pi will not save you from an SSD failure.
 
@@ -89,8 +91,10 @@ Enable this exporter on an already-running Pi:
 
 ```bash
 cd ~/HomeAwayFromHome
-git status --short
-git pull --ff-only origin feature/pi4-home-infrastructure
+git status --short  # Review changes first; do not switch over local edits.
+git fetch origin
+git switch Production
+git merge --ff-only origin/Production
 sudo docker compose --profile metrics up -d pi-node-exporter
 sudo docker compose --profile metrics up -d --no-deps --force-recreate victoria-metrics
 sudo bash scripts/verify-pi-health.sh main-desktop

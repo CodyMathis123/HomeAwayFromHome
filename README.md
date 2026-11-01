@@ -2,17 +2,20 @@
 
 **Self-hosted home infrastructure and monitoring on a Raspberry Pi 4 (8 GB).** Core services are Pi-hole and WireGuard; optional profiles add VictoriaMetrics/Grafana and a private HTTPS HomeAway control gateway. Windows SensorDash owns hardware sampling and fan control. HomeAway displays history and can separately manage registered PCs through its restricted `pcctl` agent; it never controls radiator PWM.
 
-> **Implementation status (October 31, 2026):** The live Pi has passed baseline DNS/VPN/portal checks, and the operator reports ongoing VictoriaMetrics ingestion. The newest Grafana embed, authentication, and PC-control features are implemented on review branches but **not deployed to the Pi or verified on real PCs/iOS**. Automated CI is not a substitute for live auth, power-command, and cooling-safety validation. This repository's `Production` branch does not yet include the three stacked feature PRs described below.
+> **Current status (November 1, 2026):** `Production` contains the Pi infrastructure, Grafana/VictoriaMetrics, authenticated HomeAway control, LLDAP-backed household account administration and Phase 2 Computer Management (merged in [PR #14](https://github.com/CodyMathis123/HomeAwayFromHome/pull/14)). The operator completed live Pi socket checks, role/UI checks and an inactive computer draft exercise; the Production container cutover was subsequently reported complete. **Real enrollment and disable/archive/restore on a second Windows PC remain unverified.** Future setup/monitoring and operations/maintenance phases are **planning**, not shipped. See the [current roadmap](docs/ROADMAP.md) for branch ownership and outstanding acceptance.
+ 
+## Start with Production
 
-## Choose the correct starting point
+| Capability | Current state | Guide |
+| --- | --- | --- |
+| Core DNS/VPN/portal and metrics | Implemented in `Production`; opt-in Compose profiles still apply | [Install](docs/INSTALL.md) · [Telemetry](docs/TELEMETRY.md) |
+| Read-only Grafana embed | Implemented; sharing is opt-in and separate from Grafana administration | [Embed](docs/PORTAL-METRICS-EMBED.md) |
+| Private HTTPS, Authelia/LLDAP, roles and PC power | Implemented; preserve existing user and host data | [PC controls](docs/PC-CONTROL.md) · [Operations](docs/OPERATIONS.md) |
+| Household account administration | Implemented; SMTP invitations/recovery are deferred to [issue #9](https://github.com/CodyMathis123/HomeAwayFromHome/issues/9) | [Account plan](docs/PLANS/ACCOUNT-MANAGEMENT.md) |
+| Phase 2 Computer Management | Implemented; new-Windows-PC physical lifecycle acceptance deferred | [Rollout and recovery](docs/COMPUTER-ADMIN-ROLLOUT.md) |
+| Phase 3 Setup/Monitoring; Phase 4 Operations/Maintenance | Design-only branches; **not** deployment branches | [Roadmap](docs/ROADMAP.md) |
 
-| Layer | What it adds | Review branch / PR | Operator guide |
-| --- | --- | --- | --- |
-| Core infrastructure | DNS, WireGuard, read-only service portal, Grafana and VictoriaMetrics | `feature/pi4-home-infrastructure` ([PR #1](https://github.com/CodyMathis123/HomeAwayFromHome/pull/1)) | [Install and recovery](docs/INSTALL.md) |
-| Read-only metrics embed | Dedicated Grafana portal dashboard and single opt-in iframe | `feature/homeaway-grafana-embed` ([PR #2](https://github.com/CodyMathis123/HomeAwayFromHome/pull/2)) | [Grafana embed](docs/PORTAL-METRICS-EMBED.md) |
-| Authenticated computer control | Private HTTPS, local Authelia 2FA, multi-PC WOL/SSH actions and audit history | `feature/homeaway-auth-pc-control` ([PR #3](https://github.com/CodyMathis123/HomeAwayFromHome/pull/3)) | [PC onboarding / rollback](docs/PC-CONTROL.md) |
-
-The implementation and housekeeping PRs are stacked **#1 → #2 → #3 → #4**. For a complete end-to-end test, use **`chore/docs-and-legacy-cleanup`** in this repository together with **`chore/sensordash-telemetry-docs`** in SensorDash; both tips include all earlier stacked work. Follow the [two-repository integration test guide](docs/INTEGRATION-TEST.md). For core-only setup use `feature/pi4-home-infrastructure`. Do not cherry-pick partial files between incompatible Compose or telemetry schema revisions, and do not merge to `Production` before the operator's live validation.
+Legacy feature branches such as `feature/pi4-home-infrastructure`, `feature/homeaway-grafana-embed` and `feature/homeaway-computer-management-impl` are historical ancestors, **not** alternate installation targets. For new installations use `Production`; for an existing Pi preserve `.env`, `secrets/`, `data/`, its host-side configuration and each opt-in Compose overlay. Do not replace a working DNS/VPN deployment with the quick-start commands below.
 
 ## Service boundaries
 
@@ -33,10 +36,10 @@ For the simplified architecture and intended trust boundaries, read [security](d
 **Do not run this blindly on a Pi currently serving household DNS or VPN.** You will interrupt those services during replacement. Work from a local machine with a fallback DNS connection, and export anything you may want to keep first.
 
 1. Install **Raspberry Pi OS Lite 64-bit**, connect Ethernet, enable SSH, configure SSH keys, OS updates, and a reliable static/reserved Pi LAN IP. Install Docker Engine + the Compose plugin using [Docker's Debian instructions](https://docs.docker.com/engine/install/debian/). Recommended: USB SSD, recent Raspberry Pi kernel, good power supply.
-2. For the **combined staged feature set**, clone the top review branch shown below; for core-only deployment use `feature/pi4-home-infrastructure`. Then create the local configuration and secret:
+2. For a **new installation only**, clone the reviewed `Production` branch, then create local configuration and secrets. For an existing Pi, **do not** rerun initialization or replace saved state; use the relevant operator runbooks instead:
 
    ```bash
-   git clone -b chore/docs-and-legacy-cleanup https://github.com/CodyMathis123/HomeAwayFromHome.git
+   git clone -b Production https://github.com/CodyMathis123/HomeAwayFromHome.git
    cd HomeAwayFromHome
    bash scripts/init.sh
    nano .env
@@ -97,7 +100,7 @@ sudo bash scripts/backup.sh --offline  # consistent backup; temporarily stops DN
 bash scripts/update.sh --apply     # manual reviewed update; core services only
 ```
 
-The backup file includes **private keys and passwords**, is chmod 0600, and must be copied to encrypted storage away from the Pi. No unattended image updates are configured; pin images in `compose.yaml` and review upstream security releases regularly. See [operations](docs/OPERATIONS.md).
+The Compose backup contains **private keys and passwords**, is chmod 0600, and must be copied to encrypted storage away from the Pi. **It does not include host-side PC inventory, host-side pairing keys, or the separate inventory-service state**; see [backup coverage and recovery gaps](docs/OPERATIONS.md). No unattended image updates are configured; pin images in `compose.yaml` and review upstream security releases regularly. See [operations](docs/OPERATIONS.md).
 
 ## Development
 
