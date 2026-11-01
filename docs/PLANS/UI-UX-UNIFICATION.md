@@ -33,9 +33,37 @@ The shared CSS `portal/theme.css` is the common source for HomeAway's colors, pa
 
 The shared stylesheet is a static asset, not a shared authentication context, API proxy, dynamic script, or Docker mount. Caddy continues to authorize `/control/` without exposing privileged operations to `/`. Full-page navigation across the two frontends still performs a document load; matched styling reduces visual discontinuity, but a future genuine single-page shell would need a separately reviewed frontend/router architecture with strict server-side authorization.
 
+## Step 1 of single-frontend migration: persistent read-only views
+
+The Portal now has one persistent browser document for **Overview** and
+**Architecture** on the same origin. `portal/router.js` intercepts only these
+two known read-only routes; the sidebar is preserved while each page's `main`
+is cached in one content slot, with the inactive view hidden and inert. Browser
+history, Back/Forward, normal same-page fragments and direct-link refreshes
+remain supported. The Overview view pauses its service-status requests when
+inactive; a return to it refreshes status without reconstructing the view
+or needlessly discarding its prior content.
+
+The same read-only `portal/navigation.js` now renders the left navigation for
+both the portal and authenticated `/control/` page. The latter retains a static
+role-hidden fallback menu and local CSS, so a temporary portal failure does not
+break signed-in power controls. Only `control/app.js` may reveal administrator
+links after receiving fresh `/control/api/me` permissions. The Caddy
+`forward_auth` and separate backend capabilities remain authoritative.
+
+**Still separate, intentionally:** Entering `/control/` is a full document
+navigation through Authelia. The browser must not fetch privileged control
+HTML or make power commands merely to keep the public read-only shell alive.
+This PR does not claim a complete single-page frontend across authenticated
+management. A subsequent reviewed phase can introduce a dedicated frontend
+for private pages with separately authenticated APIs, but only after a
+cross-origin/login-redirect, asset lifecycle, and fail-closed authorization
+test plan. No new Caddy routes, exposed ports or Docker capabilities are
+introduced in this step.
+
 ## UX audit plan, in small PRs
 
-1. **Portal shell and architecture map (this PR)** — responsive desktop left rail / mobile horizontal links, route `/architecture/`, service descriptions and navigation; preserve the current `/control/` boundary. Verify all static pages return correct CSP and HTTP 405 for mutation methods.
+1. **Portal shell and architecture map (implemented)** — responsive desktop left rail / mobile horizontal links, route `/architecture/`, service descriptions and navigation; preserve the current `/control/` boundary. Verify all static pages return correct CSP and HTTP 405 for mutation methods.
 2. **Authenticated `/control/` shell parity (this PR)** — use the same left-rail / phone navigation to link back to Overview, Architecture and metrics, and keep management links tied to fresh server-reported capabilities. Failed identity lookups hide privileged UI; failed reachability refreshes mark old host results as stale. Do not share authentication state with the public portal or iframe admin pages; no duplicate user inventory.
 3. **Interaction and status review** — loading/empty/error feedback, action-requested vs action-completed semantics, screen-reader labels, keyboard focus, Safari phone layout, touch hit targets and scroll position. Maintain readable tables; no new high-frequency sensor polling.
 4. **Phase 3 integration** — once its read-only diagnostics schema is implemented, display verified readiness/health badges without claiming DNS probe = functioning VPN, SSH port = PC power state, or blank Grafana chart = failed Windows host. Phase 4 may later add an authenticated Operations area with independently reviewed brokers.
