@@ -70,6 +70,8 @@ That archive contains sensitive private material. Store it off-device securely f
 
 ## Apply (brief interruption of gateway, portal, control API and Grafana)
 
+Build the control API before touching the running gateway. The Dockerfile explicitly normalizes copied files to mode 0644 so a mode-600 source checkout cannot cause the non-root Python runtime to crash-loop. If the control API fails with `python: can't open file '/app/app.py': [Errno 13] Permission denied`, fetch this fix, rebuild **only** `pc-control`, and recreate only that container; do not restart Caddy or Authelia.
+
 Build the control API before touching the running gateway:
 
 ```bash
