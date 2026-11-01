@@ -9,6 +9,7 @@ async function loadIdentity() {
   if (!response.ok) throw new Error('Account authorization unavailable');
   identity = await response.json();
   $('identity').textContent = identity.user + ' · ' + identity.capabilities.role;
+  if (typeof HomeAwayAccounts !== 'undefined') HomeAwayAccounts.start(identity);
   return identity;
 }
 const actions = [
