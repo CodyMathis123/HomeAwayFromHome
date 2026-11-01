@@ -91,7 +91,8 @@ done < <(docker ps --filter "label=com.docker.compose.project=$project" --format
 echo "HomeAway encrypted full-state backup: $mode"
 echo "Compose containers currently running: ${#running[@]}"
 echo "Host socket/services currently active: ${#active_units[@]}"
-echo "Application paths: .env, secrets/, data/"
+echo "Application paths: .env, secrets/, data/ (excluding VictoriaMetrics historical data)"
+echo "Recovery focus: configuration, identities, keys, service state and PC pairing; metrics history is regenerated."
 echo "Host-side required paths: ${#host_paths[@]} (registry, SSH trust, agent code, units and inventory)"
 echo "Scope: all running Compose-project containers + six fixed host units (only those currently active)"
 echo "Outage: DNS, WireGuard, HTTPS login/portal and PC operations may be unavailable."
@@ -115,7 +116,7 @@ archive="$archive_dir/full-$stamp-$$.tar.age"
 partial="$archive.partial"
 metadata="$(mktemp -d)"
 chmod 700 "$metadata"
-printf 'format=homeaway-full-v1\ncreated_utc=%s\nproject=%s\ncommit=%s\n' \
+printf 'format=homeaway-full-v1\ncreated_utc=%s\nproject=%s\ncommit=%s\nmetrics_history_included=no\n' \
   "$stamp" "$project" "$(git rev-parse HEAD 2>/dev/null || echo unknown)" \
   > "$metadata/backup-metadata.txt"
 chmod 600 "$metadata/backup-metadata.txt"
@@ -169,6 +170,7 @@ done
 
 echo "Streaming tar directly into age; only encrypted output goes to disk."
 tar --acls --xattrs --numeric-owner -cf - \
+  --exclude='data/victoria-metrics' \
   -C "$root" .env secrets data \
   -C / "${host_paths[@]}" \
   -C "$metadata" backup-metadata.txt |
