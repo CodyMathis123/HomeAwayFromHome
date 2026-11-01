@@ -26,6 +26,8 @@ esac
 [[ "$EUID" == 0 ]] || die "Run with sudo."
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
+# Recovery helper is shell-only; never execute extra commands on import.
+source "$root/scripts/backup-recovery.sh"
 
 for tool in docker python3 systemctl tar sha256sum flock; do
   command -v "$tool" >/dev/null || die "Missing prerequisite: $tool"
@@ -122,21 +124,7 @@ cleanup() {
   original_status=$?
   trap - EXIT HUP INT TERM
   if (( recovery_needed )); then
-    # Restore socket listeners before their dependent activated services.
-    local failed=0 unit cid state
-    for unit in "${active_units[@]}"; do
-      systemctl start "$unit" || failed=1
-    done
-    for cid in "${running[@]}"; do
-      state="$(docker inspect --format '{{.State.Running}}' "$cid" 2>/dev/null || true)"
-      if [[ "$state" == false ]]; then
-        docker start "$cid" || failed=1
-      elif [[ "$state" != true ]]; then
-        echo "ERROR: previously running container disappeared: $cid" >&2
-        failed=1
-      fi
-    done
-    if (( failed )); then
+    if ! homeaway_restore_active; then
       echo "ERROR: one or more previously active units/containers could not be restarted." >&2
       original_status=1
     fi
