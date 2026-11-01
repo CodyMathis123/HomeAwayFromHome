@@ -496,7 +496,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "count(sensordash_reading_value{host=~\"$host\",sensor=~\"$sensor\"})",
-          "instant": true
+          "instant": true,
+          "legendFormat": "Sensors reporting"
         }
       ]
     },
@@ -556,7 +557,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "max(sensordash_reading_value{host=~\"$host\",sensor=~\"$sensor\",kind=\"Temperature\"})",
-          "instant": true
+          "instant": true,
+          "legendFormat": "Highest temperature · now"
         }
       ]
     },
@@ -616,7 +618,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "max(max_over_time(sensordash_reading_value{host=~\"$host\",sensor=~\"$sensor\",kind=\"Temperature\"}[$__range]))",
-          "instant": true
+          "instant": true,
+          "legendFormat": "Temperature peak · range"
         }
       ]
     },
@@ -676,7 +679,8 @@
             "uid": "homeaway-vm"
           },
           "expr": "count(sensordash_reading_value{host=~\"$host\",sensor=~\"$sensor\",kind=\"Fan\"})",
-          "instant": true
+          "instant": true,
+          "legendFormat": "Tachometer signals"
         }
       ]
     },

@@ -44,3 +44,79 @@ byId('refresh').addEventListener('click', refresh);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) void refresh(); });
 setInterval(() => { if (!document.hidden) void refresh(); }, 30000);
 void refresh();
+
+async function setupEmbeddedMetrics() {
+  const details = byId('metrics-section');
+  const holder = byId('metrics-frame');
+  const description = byId('metrics-description');
+  const link = byId('metrics-open');
+  try {
+    const response = await fetch('/api/embed-config', {cache: 'no-store'});
+    if (!response.ok) throw new Error('Embed configuration unavailable');
+    const config = await response.json();
+    if (!config.enabled || !config.url) {
+      description.textContent = 'No embedded view configured yet. Share the HomeAway Portal Metrics dashboard from Grafana, then configure its link on the Pi.';
+      return;
+    }
+    const url = new URL(config.url);
+    // Defense in depth: never load an arbitrary origin or admin path.
+    // HomeAway may be opened by a local DNS name while Grafana uses the Pi's LAN IP.
+    // The server has already validated and constructed that private LAN origin.
+    if (!((url.protocol === 'http:' && url.port === '3000') ||
+          (url.protocol === 'https:' && url.port === '8443')) ||
+        !url.pathname.startsWith('/public-dashboards/') ||
+        !/^[a-fA-F0-9]{32,128}$/.test(url.pathname.slice('/public-dashboards/'.length))) {
+      throw new Error('Embedded URL must use this Pi host and a shared-dashboard link');
+    }
+    link.href = url.href;
+    link.hidden = false;
+    description.textContent = 'Live, read-only metrics. The embedded view refreshes every 30 seconds while visible.';
+    let nearViewport = false;
+    function updateEmbed() {
+      if (!details.open || document.hidden || !nearViewport) {
+        holder.replaceChildren();
+        return;
+      }
+      if (holder.firstChild) return;
+      const frame = document.createElement('iframe');
+      frame.title = 'HomeAway read-only Grafana metrics';
+      frame.className = 'metrics-iframe';
+      frame.loading = 'lazy';
+      frame.referrerPolicy = 'no-referrer';
+      frame.src = url.href;
+      holder.appendChild(frame);
+    }
+    details.addEventListener('toggle', updateEmbed);
+    document.addEventListener('visibilitychange', updateEmbed);
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver(entries => {
+        nearViewport = entries.some(entry => entry.isIntersecting);
+        updateEmbed();
+      }, {rootMargin: '200px'});
+      observer.observe(details);
+    } else {
+      nearViewport = true;
+    }
+    updateEmbed();
+  } catch (error) {
+    description.textContent = 'Embedded metrics unavailable: ' + error.message;
+  }
+}
+void setupEmbeddedMetrics();
+
+async function setupPcControls() {
+  try {
+    const response = await fetch('/api/control-config', {cache: 'no-store'});
+    if (!response.ok) return;
+    const data = await response.json();
+    if (!data.enabled || !data.url) return;
+    const parsed = new URL(data.url);
+    if (parsed.protocol !== 'https:' || parsed.port !== '8443' ||
+        parsed.pathname !== '/control/' || parsed.search || parsed.hash) return;
+    const link = byId('link-pc-control');
+    link.href = (location.protocol === 'https:' && location.host === parsed.host)
+      ? '/control/' : parsed.href;
+    byId('pc-access').hidden = false;
+  } catch (_) { /* Optional control stack can be stopped. */ }
+}
+void setupPcControls();

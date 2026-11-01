@@ -5,12 +5,13 @@ do NOT prove WireGuard client handshakes or end-to-end VPN reachability.
 """
 from __future__ import annotations
 
+import ipaddress
 import json
+import re
 import os
 import secrets
 import socket
 import struct
-import time
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -59,7 +60,7 @@ def tcp_probe(host: str, port: int, timeout: float = TIMEOUT) -> tuple[bool, str
 def snapshot() -> dict:
     dns_ok, dns_message = dns_probe(os.getenv("PIHOLE_DNS_HOST", "pihole"))
     wg_ok, wg_message = tcp_probe(os.getenv("WG_ADMIN_HOST", "wg-easy"), 51821)
-    kuma_ok, kuma_message = tcp_probe(os.getenv("GRAFANA_HOST", "grafana"), 3000)
+    grafana_ok, grafana_message = tcp_probe(os.getenv("GRAFANA_HOST", "grafana"), 3000)
     return {
         "checkedAt": datetime.now(timezone.utc).isoformat(),
         "checks": [
@@ -68,12 +69,55 @@ def snapshot() -> dict:
             {"id": "wireguard", "ok": wg_ok, "label": "WireGuard manager",
              "detail": wg_message if not wg_ok else "Admin listener reachable; tunnel not verified",
              "scope": "Admin listener only"},
-            {"id": "monitor", "ok": kuma_ok, "label": "Grafana",
-             "detail": kuma_message if kuma_ok else "Optional Grafana metrics profile may be disabled",
+            {"id": "monitor", "ok": grafana_ok, "label": "Grafana",
+             "detail": grafana_message if grafana_ok else "Optional Grafana metrics profile may be disabled",
              "scope": "Optional HTTP service"},
         ],
     }
 
+
+
+def shared_embed_url() -> str | None:
+    """Build an iframe URL only for this Pi's private LAN address and a valid token.
+
+    This is a shared-dashboard access token, NOT a Grafana admin credential.
+    The bearer-style link is readable by every visitor to the portal.
+    """
+    token = os.getenv("GRAFANA_PUBLIC_EMBED_TOKEN", "").strip()
+    address = os.getenv("PI_LAN_IP", "").strip()
+    if not re.fullmatch(r"[a-fA-F0-9]{32,128}", token):
+        return None
+    try:
+        ip = ipaddress.IPv4Address(address)
+    except ipaddress.AddressValueError:
+        return None
+    if not ip.is_private:
+        return None
+    return f"http://{ip}:3000/public-dashboards/{token}?theme=dark"
+
+
+
+def control_url() -> str | None:
+    """An explicitly configured private HTTPS entry point, never an arbitrary URL."""
+    value = os.getenv("HOMEAWAY_CONTROL_URL", "").strip()
+    parsed = urlsplit(value)
+    if (parsed.scheme != "https" or parsed.port != 8443 or
+            parsed.username is not None or parsed.password is not None or
+            parsed.query or parsed.fragment or parsed.path != "/control/" or
+            not re.fullmatch(r"[a-zA-Z0-9.-]+", parsed.hostname or "")):
+        return None
+    return value
+
+
+def metrics_origin() -> str | None:
+    value = os.getenv("HOMEAWAY_METRICS_ORIGIN", "").strip()
+    parsed = urlsplit(value)
+    if (parsed.scheme != "https" or parsed.port != 8443 or
+            parsed.username is not None or parsed.password is not None or
+            parsed.path or parsed.query or parsed.fragment or
+            not re.fullmatch(r"[a-zA-Z0-9.-]+", parsed.hostname or "")):
+        return None
+    return value
 
 class Handler(BaseHTTPRequestHandler):
     server_version = "HomeAwayPortal/1"
@@ -86,15 +130,36 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
         self.send_header("X-Frame-Options", "DENY")
+        embed = shared_embed_url()
+        frame_origin = embed.split("/public-dashboards/")[0] if embed else "'none'"
+        if self.headers.get("X-Forwarded-Proto") == "https" and metrics_origin():
+            frame_origin = metrics_origin()
         self.send_header("Content-Security-Policy",
                          "default-src 'none'; script-src 'self'; style-src 'self'; "
-                         "connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'")
+                         "connect-src 'self'; img-src 'self'; base-uri 'none'; "
+                         "form-action 'none'; frame-src " + frame_origin)
         self.end_headers()
 
     def do_GET(self) -> None:  # noqa: N802
         path = urlsplit(self.path).path
         if path == "/api/status":
             payload = json.dumps(snapshot(), separators=(",", ":")).encode("utf-8")
+            self._headers(200, "application/json; charset=utf-8", len(payload))
+            self.wfile.write(payload)
+            return
+        if path == "/api/control-config":
+            url = control_url()
+            payload = json.dumps({"enabled": url is not None, "url": url},
+                                 separators=(",", ":")).encode("utf-8")
+            self._headers(200, "application/json; charset=utf-8", len(payload))
+            self.wfile.write(payload)
+            return
+        if path == "/api/embed-config":
+            url = shared_embed_url()
+            if self.headers.get("X-Forwarded-Proto") == "https" and metrics_origin() and url:
+                url = metrics_origin() + url[url.index("/public-dashboards/"):]
+            payload = json.dumps({"enabled": url is not None, "url": url},
+                                 separators=(",", ":")).encode("utf-8")
             self._headers(200, "application/json; charset=utf-8", len(payload))
             self.wfile.write(payload)
             return
