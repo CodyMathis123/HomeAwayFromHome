@@ -271,6 +271,16 @@ def main() -> None:
     else:
         raise AssertionError("All three raw NVMe sensors should remain stored: " + repr(raw_storage))
     assert {float(x["value"][1]) for x in raw_storage} == {38.0, 89.0, 94.0}, raw_storage
+    for _ in range(20):
+        bound_threshold = query(
+            'sensordash_cooling_binding_value{host="CI",'
+            'sensor="/hdd/0/temperature/1",system="loop"} == 1'
+        )
+        if len(bound_threshold) == 1:
+            break
+        time.sleep(0.5)
+    else:
+        raise AssertionError("Test threshold is not assigned to cooling system")
     root = Path(__file__).resolve().parents[1]
     for dashboard, panel_ids in (
         ("portal-metrics.json", (9,)),
@@ -287,7 +297,11 @@ def main() -> None:
             expr = expr.replace('system=~"$system"', 'system="loop"')
             result = query(expr)
             observed = {x["metric"].get("sensor") for x in result}
-            assert "/hdd/0/temperature/0" in observed, (dashboard, panel_id, observed)
+            # The Cooling chart only includes explicitly assigned sensors;
+            # the physical NVMe Composite sensor is not assigned here.
+            expected_physical = ("cpu_temp" if dashboard == "cooling-systems.json"
+                                 else "/hdd/0/temperature/0")
+            assert expected_physical in observed, (dashboard, panel_id, observed)
             assert "/hdd/0/temperature/1" not in observed, (dashboard, panel_id, observed)
             assert "/hdd/0/temperature/2" not in observed, (dashboard, panel_id, observed)
     metadata = query('sensordash_sensor_info_value{host="CI",device_type="Storage"} == 1')
