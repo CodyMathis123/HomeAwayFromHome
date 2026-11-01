@@ -56,6 +56,10 @@ def to_ldap(document: str, password: str) -> str:
     )
     document = replace_section(document, "authentication_backend", new_backend)
     rule = "- 'group:admins'\n      policy: two_factor"
+    if (document.count("- 'group:admins'") != 1 or
+        "- 'group:operators'" in document or
+        "- 'group:viewers'" in document):
+        raise ValueError("Unexpected existing role policy")
     if document.count(rule) != 1:
         raise ValueError("Expected one HomeAway two-factor admin rule")
     document = document.replace(
