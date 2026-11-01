@@ -25,8 +25,16 @@ services:
       - lldap_key_seed
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
-    networks: [account-directory]
-    # LDAP and GraphQL are Docker-only; web UI port is Pi loopback/SSH-only.
+    # Docker does not publish host ports for a container attached exclusively
+    # to internal networks (no default gateway). Keep the directory interface
+    # to broker/Authelia on its isolated network and give only LLDAP a second
+    # dedicated non-internal bridge for the localhost-only admin UI binding.
+    # This also permits LLDAP outbound network access; no other service joins
+    # the UI bridge. Never attach LLDAP to the shared infra network.
+    networks:
+      - account-directory
+      - account-ui
+    # LDAP and GraphQL are private; the web UI is Pi loopback/SSH-only.
 
   account-broker:
     profiles: [accounts]
@@ -76,6 +84,10 @@ networks:
   account-directory:
     driver: bridge
     internal: true
+  account-ui:
+    # Non-internal gateway is required for Docker host port publishing.
+    # Separate bridge rather than joining DNS/VPN/metrics infra.
+    driver: bridge
 
 secrets:
   lldap_admin_password:
