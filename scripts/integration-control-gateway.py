@@ -20,12 +20,69 @@ def main():
         "HOMEAWAY_METRICS_DOMAIN": "metrics.homeaway.home.arpa",
     }
     print("Checking Caddyfile syntax (pinned image)...", flush=True)
-    subprocess.run(["docker", "run", "--rm",
+    adapted = subprocess.run(["docker", "run", "--rm",
                     "-v", str(ROOT / "control/gateway/Caddyfile") + ":/etc/caddy/Caddyfile:ro",
                     *sum((["-e", k + "=" + v] for k, v in env.items()), []),
-                    "caddy:2.10.2", "caddy", "adapt",
+                    "caddy:2.11.7-alpine", "caddy", "adapt",
                     "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"],
-                   stdout=subprocess.DEVNULL, check=True, timeout=180)
+                   capture_output=True, text=True, check=True, timeout=180)
+
+    # Do not settle for a syntactically valid Caddyfile. Caddy's normal sorting
+    # evaluates forward_auth before request_header; the old config erased the
+    # authenticated user and made the control API answer "Not authenticated".
+    caddy_json = json.loads(adapted.stdout)
+
+    def find_control(value):
+        if isinstance(value, dict):
+            matchers = value.get("match", [])
+            if isinstance(matchers, list) and any(
+                isinstance(m, dict) and "/control" in m.get("path", [])
+                for m in matchers
+            ):
+                return value
+            for child in value.values():
+                found = find_control(child)
+                if found is not None:
+                    return found
+        elif isinstance(value, list):
+            for child in value:
+                found = find_control(child)
+                if found is not None:
+                    return found
+        return None
+
+    control = find_control(caddy_json)
+    assert control is not None, "No /control route in adapted Caddy JSON"
+    order = []
+
+    def walk(value):
+        if isinstance(value, dict):
+            kind = value.get("handler")
+            if kind == "headers":
+                removed = value.get("request", {}).get("delete", [])
+                if "Remote-User" in removed and "X-HomeAway-User" in removed:
+                    order.append("remove_untrusted_identity")
+            elif kind == "reverse_proxy":
+                dial = " ".join(x.get("dial", "") for x in value.get("upstreams", []))
+                if "authelia:9091" in dial:
+                    order.append("forward_auth")
+                elif "pc-control:8081" in dial:
+                    order.append("pc_control")
+            for child in value.values():
+                walk(child)
+        elif isinstance(value, list):
+            for child in value:
+                walk(child)
+
+    walk(control)
+    assert order[:3] == ["remove_untrusted_identity", "forward_auth", "pc_control"], (
+        "Unsafe adapted control identity order: " + repr(order)
+    )
+    caddy_source = (ROOT / "control/gateway/Caddyfile").read_text()
+    assert "copy_headers Remote-User>X-HomeAway-User" in caddy_source
+    assert "header_up X-HomeAway-User {http.request.header.Remote-User}" not in caddy_source
+    print("PASS: Caddy clears spoofed identity before auth and forwards verified username", flush=True)
+
     with tempfile.TemporaryDirectory() as root:
         folder = Path(root)
         (folder / "configuration.yml").write_text(
