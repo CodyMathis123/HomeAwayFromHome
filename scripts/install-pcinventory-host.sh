@@ -38,15 +38,18 @@ PY
 if ! id homeaway-inventory >/dev/null 2>&1; then
   useradd --system --user-group --no-create-home --shell /usr/sbin/nologin homeaway-inventory
 fi
-pcctl_group="$(id -gn pcctl)"
+# Keep the inventory-writer group distinct from pcctl's power-command group.
+# The inventory is connection metadata (no passwords/keys), and uses the
+# original 0644 read model; the inventory socket is private mode 0660.
+# NEVER add the inventory service user to the pcctl socket's group.
 backup=/var/backups/homeaway-pcinventory
 install -d -m 0700 -o root -g root "$backup"
 snapshot="$backup/hosts-preinstall-$(date -u +%Y%m%dT%H%M%SZ).json"
 install -m 0600 -o root -g root "$inventory" "$snapshot"
 
 install -d -m 0755 -o homeaway-inventory -g homeaway-inventory "$directory"
-chown "homeaway-inventory:$pcctl_group" "$inventory"
-chmod 0640 "$inventory"
+chown homeaway-inventory:homeaway-inventory "$inventory"
+chmod 0644 "$inventory"
 lock="$directory/.hosts.json.lock"
 if [[ -L "$lock" ]]; then echo "Unsafe inventory lock" >&2; exit 1; fi
 if [[ -e "$lock" && ! -f "$lock" ]]; then echo "Inventory lock must be regular" >&2; exit 1; fi
