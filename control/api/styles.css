@@ -61,11 +61,30 @@ button{min-height:42px}
 body.control-views-ready main[data-active-view="hosts"] > [data-view-section]:not([data-view-section="hosts"]),
 body.control-views-ready main[data-active-view="computer-admin"] > [data-view-section]:not([data-view-section="computer-admin"]),
 body.control-views-ready main[data-active-view="accounts"] > [data-view-section]:not([data-view-section="accounts"]),
-body.control-views-ready main[data-active-view="recent-activity"] > [data-view-section]:not([data-view-section="recent-activity"]){display:none!important}
+body.control-views-ready main[data-active-view="recent-activity"] > [data-view-section]:not([data-view-section="recent-activity"]),
+body.control-views-ready main[data-active-view="setup-readiness"] > [data-view-section]:not([data-view-section="setup-readiness"]){display:none!important}
 main [data-view-section]:focus{outline:none}
 main [data-view-section]:focus-visible{outline:2px solid var(--accent);outline-offset:5px}
 @media(min-width:901px){
   main[data-active-view="computer-admin"] > #computer-admin,
   main[data-active-view="accounts"] > #accounts,
-  main[data-active-view="recent-activity"] > #recent-activity{margin-top:48px}
+  main[data-active-view="recent-activity"] > #recent-activity,
+  main[data-active-view="setup-readiness"] > #setup-readiness{margin-top:48px}
 }
+
+/* Admin-only Phase 3 assisted setup diagnostics. Never equate response with
+   end-to-end health, VPN handshakes, certificate renewal or backups. */
+.readiness-page .heading{align-items:center}
+#readiness-updated{margin:8px 0 18px;font-size:12px;color:var(--muted)}
+.readiness-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:18px 0 28px}
+.readiness-item{padding:17px 18px;border:1px solid var(--line);border-radius:12px;background:#112638;min-width:0}
+.readiness-item h3{font-size:14px;margin:0 0 10px}
+.readiness-badge{display:inline-block;padding:5px 10px;border-radius:999px;font-size:11px;font-weight:750;background:#284052;color:#c9d8e0}
+.readiness-badge[data-state="observed"]{background:#17433f;color:#a1ebd2}
+.readiness-badge[data-state="attention"]{background:#48313b;color:#ffd3c4}
+.readiness-badge[data-state="optional"]{background:#283e50;color:#c3d4df}
+.readiness-item p{font-size:12px;line-height:1.6;margin:10px 0 0;color:var(--muted)}
+.readiness-manual{border:1px solid var(--line);border-radius:12px;padding:10px 17px;background:#0d202e}
+.readiness-manual p{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12px;line-height:1.65}
+.readiness-manual code{font-size:11px;overflow-wrap:anywhere;color:#b3ebe1}
+@media(max-width:720px){.readiness-grid{grid-template-columns:1fr}}
