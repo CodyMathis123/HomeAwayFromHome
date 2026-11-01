@@ -51,3 +51,12 @@ Automatic password invitations, SMTP configuration, factor restoration, password
 - `docs/ADR/0001-identity-backend.md`
 
 Do not switch the Pi checkout from its verified `Production` installation just to try this branch.
+
+## Development validation cadence
+
+The heavyweight Compose, Grafana, VictoriaMetrics and identity-lab CI runs are
+for **code, configuration, test, and workflow changes**. Markdown-only edits
+are documentation updates and must not start or require the full workflow.
+Branch push filters now compare the newly pushed files; existing PRs no
+longer rerun CI for each documentation-only synchronization. Run the workflow
+manually if documentation changes materially affect installation commands.
