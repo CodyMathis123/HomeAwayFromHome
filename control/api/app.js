@@ -59,11 +59,11 @@ async function loadIdentity() {
     if (!nextIdentity?.capabilities?.role) throw new Error('Account capabilities unavailable');
     identity = nextIdentity;
     authChecked = true;
+    if (typeof HomeAwayReadiness !== 'undefined') HomeAwayReadiness.start(identity);
     updateSectionNavigation(identity.capabilities);
     $('identity').textContent = identity.user + ' · ' + identity.capabilities.role;
     if (typeof HomeAwayAccounts !== 'undefined') HomeAwayAccounts.start(identity);
     if (typeof HomeAwayComputers !== 'undefined') HomeAwayComputers.start(identity);
-    if (typeof HomeAwayReadiness !== 'undefined') HomeAwayReadiness.start(identity);
     return identity;
   } catch (error) {
     // A lost connection or revoked session must not leave stale admin UI visible.
