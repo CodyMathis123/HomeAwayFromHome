@@ -1,0 +1,31 @@
+# STAGING ONLY. This file imports the exact existing .home.arpa routes
+# before adding separately named DNS-01 validation sites.
+# This is not the final authentication/Grafana hostname cutover.
+import /etc/caddy/Caddyfile.legacy
+
+{$HOMEAWAY_PUBLIC_HOME}:8443 {
+  tls {
+    dns cloudflare {env.CF_API_TOKEN}
+    ca https://acme-staging-v02.api.letsencrypt.org/directory
+    resolvers 1.1.1.1
+  }
+  respond "HomeAway ACME staging validation only" 200
+}
+
+{$HOMEAWAY_PUBLIC_AUTH}:8443 {
+  tls {
+    dns cloudflare {env.CF_API_TOKEN}
+    ca https://acme-staging-v02.api.letsencrypt.org/directory
+    resolvers 1.1.1.1
+  }
+  respond "HomeAway ACME staging validation only" 200
+}
+
+{$HOMEAWAY_PUBLIC_METRICS}:8443 {
+  tls {
+    dns cloudflare {env.CF_API_TOKEN}
+    ca https://acme-staging-v02.api.letsencrypt.org/directory
+    resolvers 1.1.1.1
+  }
+  respond "HomeAway ACME staging validation only" 200
+}
