@@ -1,9 +1,22 @@
 name: Validate Pi infrastructure
 on:
+  # PR creation tests the merge ref once. Later PR synchronize events are
+  # intentionally omitted: GitHub computes PR path filters from the entire
+  # PR diff, so a docs-only follow-up would rerun expensive CI.
   pull_request:
+    types: [opened, reopened, ready_for_review]
     branches: [Production, feature/pi4-home-infrastructure, feature/homeaway-grafana-embed, feature/homeaway-auth-pc-control]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+  # Every code-bearing push to an integration branch is still validated.
+  # GitHub push filters compare the newly pushed commit(s), not the full PR.
+  # Markdown-only edits therefore do NOT start the full Docker test suite.
   push:
-    branches: [Production]
+    branches: [Production, 'feature/**', 'fix/**', 'chore/**']
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
   workflow_dispatch:
 
 permissions:
@@ -85,7 +98,7 @@ jobs:
   identity-lab:
     # Disposable fake users only; never mount the Pi's live Authelia files,
     # never publish a directory service on a non-loopback interface.
-    if: github.event_name == 'pull_request' && github.head_ref == 'feature/homeaway-account-management'
+    if: (github.event_name == 'pull_request' && github.head_ref == 'feature/homeaway-account-management') || (github.event_name == 'push' && github.ref == 'refs/heads/feature/homeaway-account-management')
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -98,7 +111,7 @@ jobs:
   authelia-ldap-session-lab:
     # Disposable isolated identity store only. Tests two independent real
     # password + TOTP sessions with role revocation; never mounts live data.
-    if: github.event_name == 'pull_request' && github.head_ref == 'feature/homeaway-account-management'
+    if: (github.event_name == 'pull_request' && github.head_ref == 'feature/homeaway-account-management') || (github.event_name == 'push' && github.ref == 'refs/heads/feature/homeaway-account-management')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

@@ -64,3 +64,5 @@ print("PASS: VictoriaMetrics is receiving recent Windows sensor measurements")
 PY
 echo "Note: Active series counts exclude history older than instant-query lookback."
 echo "These checks do not prove WireGuard handshakes or physical fan-control behavior."
+echo "NOT CHECKED: Pi host CPU/RAM/thermal/uptime series (separate node exporter)."
+echo "For HomeAway · System Health, run: sudo bash scripts/verify-pi-metrics.sh"
