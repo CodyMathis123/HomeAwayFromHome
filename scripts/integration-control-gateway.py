@@ -75,6 +75,8 @@ def main():
                 walk(child)
 
     walk(control)
+    if order[:3] != ["remove_untrusted_identity", "forward_auth", "pc_control"]:
+        print("Adapted control route (CI synthetic, no secrets):", json.dumps(control, indent=2)[:14000], flush=True)
     assert order[:3] == ["remove_untrusted_identity", "forward_auth", "pc_control"], (
         "Unsafe adapted control identity order: " + repr(order)
     )
