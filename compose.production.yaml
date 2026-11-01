@@ -15,7 +15,8 @@ services:
 
   pc-control:
     environment:
-      HOMEAWAY_CONTROL_ALT_ORIGIN: "https://home.homeawayfromhome.house:8443"
+      HOMEAWAY_CONTROL_ORIGIN: "https://home.homeawayfromhome.house:8443"
+      HOMEAWAY_CONTROL_ALT_ORIGIN: ""
 
   portal:
     environment:
