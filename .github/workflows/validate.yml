@@ -74,6 +74,8 @@ jobs:
         run: |
           docker compose build portal wg-easy
           docker compose --profile metrics build telemetry-ingest pihole-exporter
+          HOMEAWAY_DOMAIN=homeaway.home.arpa HOMEAWAY_AUTH_DOMAIN=auth.homeaway.home.arpa HOMEAWAY_METRICS_DOMAIN=metrics.homeaway.home.arpa PCCTL_GID=999 \
+            docker compose -f compose.yaml -f compose.control.yaml --profile control --profile metrics build metrics-diagnostics
           # Verify that the official pinned multi-arch image is available.
           docker compose --profile metrics run --rm --no-deps pi-node-exporter --version
           docker compose run --rm --no-deps --entrypoint sh wg-easy -c \
@@ -93,6 +95,7 @@ jobs:
             -retentionPeriod=1d -search.latencyOffset=0s -promscrape.config=/etc/victoria-metrics/prometheus.yml
           trap 'docker rm -f homeaway-vm-ci >/dev/null 2>&1 || true' EXIT
           python3 scripts/integration-victoriametrics.py
+          python3 scripts/integration-diagnostics.py
       - name: Verify Grafana bootstrap and provisioned dashboard import
         run: |
           docker run --rm -d --name homeaway-grafana-ci \
