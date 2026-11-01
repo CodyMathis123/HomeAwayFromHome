@@ -18,6 +18,8 @@ class DNS01StagingContracts(unittest.TestCase):
         # cap_drop ALL and no-new-privileges.
         self.assertIn("/usr/local/bin/homeaway-caddy", docker)
         self.assertIn("COPY --from=builder --chmod=0755 /usr/bin/caddy", docker)
+        self.assertIn("setcap -r /usr/local/bin/homeaway-caddy", docker)
+        self.assertIn('test -z "$(getcap /usr/local/bin/homeaway-caddy)"', docker)
         self.assertIn("exec /usr/local/bin/homeaway-caddy run", wrapper)
         self.assertNotIn("exec /usr/bin/caddy", wrapper)
         self.assertIn("/run/secrets/cloudflare_dns01_token", wrapper)
