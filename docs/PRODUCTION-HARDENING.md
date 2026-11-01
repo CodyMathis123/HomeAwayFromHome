@@ -41,6 +41,27 @@ A failing audit blocks a manual deployment decision; it does not mutate the
 live system. Keep the gateway and Windows fan-control service running while
 investigating a failed check.
 
+## Host backup scope preflight (no outage)
+
+Run the separate host backup discovery before implementing a unified archive:
+
+```bash
+sudo python3 scripts/plan-host-backup.py --plan
+```
+
+It checks the existence/type of the fixed PC registry, SSH identity directory,
+inventory state, installed host agents, systemd service/socket units and
+tmpfiles definitions; reports only path labels and service states. It does
+**not** read credentials, stop sockets, create archives, or modify permissions.
+It deliberately fails when a required resource is missing or unsafe. The
+inventory writer uses cooperative filesystem locks for host entries and its
+own service for drafts/audit/retired files, so a consistent backup must
+coordinate the writer service/socket along with Docker. Merely capturing
+`hosts.json` atomically is insufficient for consistent full-state recovery.
+
+This preflight is not yet a backup, and neither encryption, off-device storage,
+nor a restore test has happened.
+
 ## Full recovery is NOT done by the current backup
 
 `scripts/backup.sh --offline` quiesces Compose containers and archives only
