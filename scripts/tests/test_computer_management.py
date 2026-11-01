@@ -41,6 +41,7 @@ class InventoryAgentTests(unittest.TestCase):
         self.live.chmod(0o640)
         self.patcher=patch.multiple(agent,STATE_DIR=self.state,
                                     DRAFTS=self.state/"drafts.json",
+                                    RETIRED=self.state/"retired.json",
                                     AUDIT=self.state/"audit.jsonl")
         self.patcher.start()
         self.addCleanup(self.patcher.stop)
@@ -155,6 +156,170 @@ class InventoryAgentTests(unittest.TestCase):
         self.manager.execute("homeowner","draft-discard",{
             "id":entry["id"],"revision":draft["revision"]})
         self.assertEqual(len(self.manager.execute("homeowner","list",{})["active"]),2)
+
+    def disable(self, computer="gaming"):
+        current = self.manager.execute("homeowner", "list", {})
+        return self.manager.execute("homeowner", "disable", {
+            "id": computer, "revision": current["revision"], "confirm": computer})
+
+    def test_disable_removes_only_selected_host_from_command_inventory(self):
+        # A disabled host is immediately unknown to the pcctl command router.
+        from core import load_hosts, perform
+        agent.update_inventory(self.live, lambda document: {
+            "hosts": document["hosts"] + [
+                host("other", "192.168.50.45", "02:11:22:33:44:57")]})
+        result = self.disable()
+        self.assertEqual(result["disabled"], "gaming")
+        self.assertNotIn("gaming", load_hosts(str(self.live)))
+        self.assertIn("other", load_hosts(str(self.live)))
+        with self.assertRaisesRegex(ValueError, "Unknown computer"):
+            perform("gaming", "wake", str(self.live))
+        retired = self.manager.execute("homeowner", "list", {})["retired"]
+        self.assertEqual(len(retired), 1)
+        self.assertEqual(retired[0]["host"], host())
+        self.assertFalse(retired[0]["archived"])
+        self.assertFalse(retired[0]["cleanupPending"])
+        self.assertEqual(agent.RETIRED.stat().st_mode & 0o777, 0o600)
+
+    def test_archive_keeps_config_and_restore_requires_new_verified_ssh(self):
+        self.disable()
+        listed = self.manager.execute("homeowner", "list", {})
+        record = listed["retired"][0]
+        with self.assertRaises(agent.InventoryFault) as denied:
+            self.manager.execute("homeowner", "archive", {
+                "id": "gaming", "revision": record["revision"], "confirm": "wrong"})
+        self.assertEqual(denied.exception.status, 400)
+        archived = self.manager.execute("homeowner", "archive", {
+            "id": "gaming", "revision": record["revision"], "confirm": "gaming"})
+        self.assertEqual(archived["archived"], "gaming")
+        data = self.manager.execute("homeowner", "list", {})
+        self.assertTrue(data["retired"][0]["archived"])
+        restore = {"id": "gaming", "revision": data["retired"][0]["revision"],
+                   "inventoryRevision": data["revision"], "confirm": "gaming"}
+        with patch.object(agent, "_probe", return_value={
+            "verified": False, "code": "host_key_not_pinned"}) as checked:
+            with self.assertRaises(agent.InventoryFault) as rejected:
+                self.manager.execute("homeowner", "restore", restore)
+            self.assertEqual(rejected.exception.status, 409)
+            checked.assert_called_once_with(host())
+        self.assertFalse(self.manager.execute("homeowner", "list", {})["active"])
+        with patch.object(agent, "_probe", return_value={
+            "verified": True, "code": "ssh_key_and_status_verified"}) as checked:
+            restored = self.manager.execute("homeowner", "restore", restore)
+            checked.assert_called_once_with(host())
+        self.assertEqual(restored["restored"], "gaming")
+        self.assertFalse(restored["cleanupPending"])
+        self.assertEqual(self.manager.execute("homeowner", "list", {})["retired"], [])
+        self.assertEqual(self.manager.execute("homeowner", "list", {})["active"][0]["id"], "gaming")
+        self.assertEqual(self.manager.execute("homeowner", "list", {})["active"][0]["address"],
+                         "192.168.50.12")
+
+    def test_disable_requires_exact_confirmation_and_current_revision(self):
+        before = self.manager.execute("homeowner", "list", {})["revision"]
+        for wrong in ("other", "", None):
+            with self.assertRaises(agent.InventoryFault) as error:
+                self.manager.execute("homeowner", "disable", {
+                    "id": "gaming", "revision": before, "confirm": wrong})
+            self.assertEqual(error.exception.status, 400)
+        agent.update_inventory(self.live, lambda doc: {
+            "hosts": doc["hosts"] + [host("other", "192.168.50.45",
+                                           "02:11:22:33:44:57")]})
+        with self.assertRaises(agent.InventoryFault) as error:
+            self.manager.execute("homeowner", "disable", {
+                "id": "gaming", "revision": before, "confirm": "gaming"})
+        self.assertEqual(error.exception.status, 409)
+        self.assertFalse(agent.RETIRED.exists())
+        self.assertIn("gaming", self.live.read_text())
+
+    def test_failed_retirement_snapshot_preserves_active_host(self):
+        with patch.object(agent, "_save_retired",
+                          side_effect=agent.InventoryFault(503, "Disk unavailable")):
+            with self.assertRaises(agent.InventoryFault) as error:
+                self.disable()
+            self.assertEqual(error.exception.status, 503)
+        self.assertIn("gaming", self.live.read_text())
+        self.assertFalse(agent.RETIRED.exists())
+
+    def test_failure_after_snapshot_can_be_retried_without_data_loss(self):
+        # Snapshot commits before removing the command target. A simulated
+        # atomic replace failure must retain the PC and its recovery copy.
+        original = self.live.read_bytes()
+        with patch.object(agent, "update_inventory", side_effect=OSError("Disk full")):
+            with self.assertRaises(OSError):
+                self.disable()
+        self.assertEqual(original, self.live.read_bytes())
+        self.assertTrue(agent.RETIRED.exists())
+        pending = self.manager.execute("homeowner", "list", {})
+        self.assertTrue(pending["retired"][0]["cleanupPending"])
+        self.assertTrue(pending["active"][0]["lifecyclePending"])
+        self.disable()
+        after = self.manager.execute("homeowner", "list", {})
+        self.assertEqual(after["active"], [])
+        self.assertEqual(after["retired"][0]["host"], host())
+
+    def test_restore_failure_and_stale_revisions_leave_host_disabled(self):
+        self.disable()
+        entry = self.manager.execute("homeowner", "list", {})
+        record = entry["retired"][0]
+        request = {"id": "gaming", "revision": record["revision"],
+                   "inventoryRevision": entry["revision"], "confirm": "gaming"}
+        with patch.object(agent, "_probe") as checked:
+            with self.assertRaises(agent.InventoryFault) as error:
+                self.manager.execute("homeowner", "restore", {
+                    **request, "revision": "0" * 24})
+            self.assertEqual(error.exception.status, 409)
+            checked.assert_not_called()
+        agent.update_inventory(self.live, lambda doc: {
+            "hosts": [host("other", "192.168.50.45",
+                            "02:11:22:33:44:57")]})
+        with patch.object(agent, "_probe") as checked:
+            with self.assertRaises(agent.InventoryFault) as error:
+                self.manager.execute("homeowner", "restore", request)
+            self.assertEqual(error.exception.status, 409)
+            checked.assert_not_called()
+        self.assertNotIn("gaming", self.live.read_text())
+
+    def test_corrupted_retirement_metadata_fails_closed(self):
+        self.disable()
+        agent.RETIRED.write_text('{"retired":[{"host":{}}]}')
+        with self.assertRaises(agent.InventoryFault) as error:
+            self.manager.execute("homeowner", "list", {})
+        self.assertEqual(error.exception.status, 503)
+        self.assertNotIn("gaming", self.live.read_text())
+
+    def test_disabled_host_identity_is_reserved_from_new_drafts(self):
+        self.disable()
+        for proposed in [
+            host("gaming", "192.168.50.44", "02:11:22:33:44:56"),
+            host("other", "192.168.50.12", "02:11:22:33:44:56"),
+            host("other", "192.168.50.44", "02:11:22:33:44:55"),
+        ]:
+            with self.subTest(proposed=proposed), self.assertRaises(agent.InventoryFault) as err:
+                self.manager.execute("homeowner", "draft-create", proposed)
+            self.assertEqual(err.exception.status, 409)
+
+    def test_restore_cleanup_failure_flags_active_overlap_without_erasing_metadata(self):
+        self.disable()
+        state = self.manager.execute("homeowner", "list", {})
+        request = {"id": "gaming", "revision": state["retired"][0]["revision"],
+                   "inventoryRevision": state["revision"], "confirm": "gaming"}
+        with patch.object(agent, "_probe", return_value={
+            "verified": True, "code": "ssh_key_and_status_verified"}):
+            original = agent._save_retired
+            calls = 0
+            def fail_cleanup(s):
+                raise agent.InventoryFault(503, "cleanup failed")
+            with patch.object(agent, "_save_retired", side_effect=fail_cleanup):
+                answer = self.manager.execute("homeowner", "restore", request)
+        self.assertTrue(answer["cleanupPending"])
+        listed = self.manager.execute("homeowner", "list", {})
+        self.assertTrue(listed["active"][0]["lifecyclePending"])
+        self.assertTrue(listed["retired"][0]["cleanupPending"])
+        with self.assertRaises(agent.InventoryFault) as error:
+            self.manager.execute("homeowner", "archive", {
+                "id": "gaming", "revision": listed["retired"][0]["revision"],
+                "confirm": "gaming"})
+        self.assertEqual(error.exception.status, 409)
 
     def test_duplicate_id_address_mac_are_denied(self):
         originals=self.live.read_bytes()
