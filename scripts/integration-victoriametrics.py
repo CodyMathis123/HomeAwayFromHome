@@ -246,6 +246,55 @@ def main() -> None:
         'sensordash_reading_value{host="CI",kind="Power"}'
     )} == {"/amdcpu/0/power/0", "/amdcpu/0/power/1"}
 
+    # NVMe "Warning Temperature" and "Critical Temperature" are fixed
+    # drive limits, not live physical observations. Keep the raw series for
+    # sensor reference, but ensure every selected *operational* chart drops
+    # them even if a user assigns an alias.
+    threshold_lines = [
+        f"sensordash_reading,host=CI,sensor=/hdd/0/temperature/1,kind=Temperature value=89 {stamp + 2000}",
+        f"sensordash_sensor_info,host=CI,sensor=/hdd/0/temperature/1,kind=Temperature,name=Warning_Temperature,alias=Drive_Warning,device=FireCuda,device_type=Storage value=1 {stamp + 2000}",
+        f"sensordash_reading,host=CI,sensor=/hdd/0/temperature/2,kind=Temperature value=94 {stamp + 2000}",
+        f"sensordash_sensor_info,host=CI,sensor=/hdd/0/temperature/2,kind=Temperature,name=Critical_Temperature,alias=unassigned,device=FireCuda,device_type=Storage value=1 {stamp + 2000}",
+        f"sensordash_cooling_binding,host=CI,sensor=/hdd/0/temperature/1,system=loop,system_name=Lab_Loop,component=test,component_name=Aux_Sensor,role=other,kind=Temperature value=1 {stamp + 2000}",
+    ]
+    with urllib.request.urlopen(urllib.request.Request(
+        BASE + "/api/v2/write?precision=ms",
+        data=("\n".join(threshold_lines) + "\n").encode("ascii"),
+        headers={"Content-Type": "text/plain"}, method="POST",
+    ), timeout=10) as response:
+        assert 200 <= response.status < 300
+    for _ in range(20):
+        raw_storage = query('sensordash_reading_value{host="CI",kind="Temperature",sensor=~"/hdd/.*"}')
+        if len(raw_storage) == 3:
+            break
+        time.sleep(0.5)
+    else:
+        raise AssertionError("All three raw NVMe sensors should remain stored: " + repr(raw_storage))
+    assert {float(x["value"][1]) for x in raw_storage} == {38.0, 89.0, 94.0}, raw_storage
+    root = Path(__file__).resolve().parents[1]
+    for dashboard, panel_ids in (
+        ("portal-metrics.json", (9,)),
+        ("cooling-systems.json", (2,)),
+        ("overview.json", (200, 301)),
+        ("storage.json", (5,)),
+        ("sensordash.json", (1,)),
+    ):
+        panels = json.loads((root / "grafana/dashboards" / dashboard).read_text())["panels"]
+        for panel_id in panel_ids:
+            expr = next(p["targets"][0]["expr"] for p in panels if p["id"] == panel_id)
+            expr = expr.replace('host=~"$host"', 'host="CI"').replace('host=~".+"', 'host="CI"')
+            expr = expr.replace('sensor=~"$sensor"', 'sensor=~".*"')
+            expr = expr.replace('system=~"$system"', 'system="loop"')
+            result = query(expr)
+            observed = {x["metric"].get("sensor") for x in result}
+            assert "/hdd/0/temperature/0" in observed, (dashboard, panel_id, observed)
+            assert "/hdd/0/temperature/1" not in observed, (dashboard, panel_id, observed)
+            assert "/hdd/0/temperature/2" not in observed, (dashboard, panel_id, observed)
+    metadata = query('sensordash_sensor_info_value{host="CI",device_type="Storage"} == 1')
+    assert {x["metric"]["sensor"] for x in metadata} == {
+        "/hdd/0/temperature/0", "/hdd/0/temperature/1", "/hdd/0/temperature/2"
+    }, "Static thresholds must stay visible as reference sensor metadata"
+
     print("PASS: VictoriaMetrics raw + derived watts, metadata, threshold events,"
           " spool footprint, storage joins and removal tombstones")
 
