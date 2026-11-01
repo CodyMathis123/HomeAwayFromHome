@@ -223,6 +223,71 @@ def diagnostics_snapshot() -> dict:
         raise BrokerError(503, "Metrics diagnostics unavailable") from exc
 
 
+CERT_DIAG_URL = "http://metrics-diagnostics:8095/v1/certificates"
+CERT_IDS = frozenset(("browser-home", "browser-auth", "browser-metrics", "telemetry-receiver"))
+CERT_STATES = frozenset(("observed", "attention", "unknown"))
+CERT_TRUST = frozenset(("verified", "not_trusted", "not_checked", "unavailable"))
+
+
+def certificates_snapshot() -> dict:
+    """Redact and validate fixed certificate observations; no raw PEM or keys."""
+    if os.getenv("HOMEAWAY_DIAGNOSTICS_URL") != DIAG_URL:
+        raise BrokerError(503, "Certificate diagnostics observer not configured")
+    try:
+        req = Request(CERT_DIAG_URL, headers={"Accept": "application/json"}, method="GET")
+        with urlopen(req, timeout=14) as response:
+            raw = response.read(32769)
+        if len(raw) > 32768:
+            raise ValueError("Oversized certificate response")
+        data = json.loads(raw)
+        if not isinstance(data, dict) or type(data.get("schemaVersion")) is not int or data["schemaVersion"] != 1:
+            raise ValueError("Invalid certificate schema")
+        stamp = data.get("checkedAt")
+        if not isinstance(stamp, str) or not 12 <= len(stamp) <= 48:
+            raise ValueError("Missing certificate check time")
+        raw_items = data.get("certificates")
+        if not isinstance(raw_items, list) or len(raw_items) != len(CERT_IDS):
+            raise ValueError("Invalid certificate list")
+        seen = set()
+        items = []
+        for item in raw_items:
+            if not isinstance(item, dict):
+                raise ValueError("Invalid certificate entry")
+            identity = item.get("id")
+            state = item.get("state")
+            trust = item.get("publicTrust")
+            days = item.get("daysRemaining")
+            issuer = item.get("issuer")
+            expires = item.get("notAfter")
+            matches = item.get("hostnameMatch")
+            sans = item.get("subjectAltNames")
+            detail = item.get("detail")
+            if (identity not in CERT_IDS or identity in seen or
+                    state not in CERT_STATES or trust not in CERT_TRUST or
+                    (type(days) not in (float, int) and days is not None) or
+                    (days is not None and not -3650 <= days <= 3650) or
+                    (issuer is not None and
+                     (not isinstance(issuer, str) or len(issuer) > 160)) or
+                    (expires is not None and
+                     (not isinstance(expires, str) or not 12 <= len(expires) <= 48)) or
+                    (type(matches) is not bool and matches is not None) or
+                    not isinstance(sans, list) or len(sans) > 24 or
+                    any(not isinstance(s, str) or len(s) > 180 for s in sans) or
+                    not isinstance(detail, str) or not 1 <= len(detail) <= 210):
+                raise ValueError("Invalid certificate entry")
+            seen.add(identity)
+            items.append({"id": identity, "state": state, "daysRemaining": days,
+                          "notAfter": expires, "issuer": issuer,
+                          "subjectAltNames": sans, "hostnameMatch": matches,
+                          "publicTrust": trust, "detail": detail})
+        return {"schemaVersion": 1, "checkedAt": stamp,
+                "source": "Observed leaf certificate via fixed private TLS connections",
+                "certificates": items}
+    except (OSError, TimeoutError, ValueError, TypeError, KeyError,
+            json.JSONDecodeError) as exc:
+        raise BrokerError(503, "Certificate diagnostics unavailable") from exc
+
+
 def capabilities(role: str) -> dict:
     return {
         "role": role,
@@ -419,6 +484,13 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(403, {"error": "Insufficient permissions"})
             try:
                 return self._json(200, diagnostics_snapshot())
+            except BrokerError as exc:
+                return self._json(exc.status, {"error": str(exc)})
+        if path == "/control/api/admin/certificates":
+            if role != "admins":
+                return self._json(403, {"error": "Insufficient permissions"})
+            try:
+                return self._json(200, certificates_snapshot())
             except BrokerError as exc:
                 return self._json(exc.status, {"error": str(exc)})
         if path == "/control/api/admin/users":
