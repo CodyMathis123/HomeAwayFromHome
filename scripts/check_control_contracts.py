@@ -46,7 +46,7 @@ def check(config: dict, private_ip: str):
     assert "infra" in gateway["networks"] and "pc-control" in gateway["networks"]
     assert "pc-control" not in services["portal"]["networks"]
     assert not services["portal"].get("secrets")
-    assert services["gateway"]["image"] == "caddy:2.10.2"
+    assert services["gateway"]["image"] == "caddy:2.11.7-alpine"
     assert services["authelia"]["image"] == "authelia/authelia:4.39.28"
     print("PASS: isolated, unprivileged PC control stack and private HTTPS port")
 

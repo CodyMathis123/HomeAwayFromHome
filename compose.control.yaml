@@ -3,7 +3,7 @@
 services:
   gateway:
     profiles: [control]
-    image: caddy:2.10.2
+    image: caddy:2.11.7-alpine
     restart: unless-stopped
     ports:
       - "${PI_LAN_IP:?Set PI_LAN_IP in .env}:8443:8443/tcp"

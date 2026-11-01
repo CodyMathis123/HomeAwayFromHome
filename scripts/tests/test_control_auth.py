@@ -40,6 +40,11 @@ class AuthContracts(unittest.TestCase):
         self.assertIn("forward_auth authelia:9091", caddy)
         self.assertIn("/api/authz/forward-auth", caddy)
         self.assertIn("request_header -X-HomeAway-User", caddy)
+        self.assertIn("route {", caddy)
+        self.assertIn("copy_headers Remote-User>X-HomeAway-User", caddy)
+        self.assertNotIn("header_up X-HomeAway-User {http.request.header.Remote-User}", caddy)
+        self.assertLess(caddy.index("request_header -X-HomeAway-User"),
+                        caddy.index("forward_auth authelia:9091"))
         self.assertIn("reverse_proxy pc-control:8081", caddy)
 
 
