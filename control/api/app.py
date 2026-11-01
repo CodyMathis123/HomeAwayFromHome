@@ -328,7 +328,7 @@ def maintenance_status_snapshot() -> dict:
         if (not isinstance(data, dict) or set(data) != set(fallback)
                 or data["schemaVersion"] != 1
                 or data["mode"] != "preflight-only"
-                or data["scheduleEnabled"] is not False
+                or type(data["scheduleEnabled"]) is not bool
                 or not isinstance(data["checkedAt"], str)
                 or len(data["checkedAt"]) > 48
                 or not isinstance(data["checks"], list)
