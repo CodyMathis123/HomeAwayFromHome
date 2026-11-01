@@ -11,6 +11,7 @@ import hmac
 import http.client
 import json
 import os
+import re
 import secrets
 import subprocess
 import tempfile
@@ -28,7 +29,13 @@ AUTH_PORT=19091
 
 def docker(*args, check=True):
     r=subprocess.run(["docker",*args],capture_output=True,text=True,
-                     timeout=150,check=check)
+                     timeout=150,check=False)
+    if check and r.returncode:
+        # Only CI-synthetic secrets exist here; redact opaque tokens regardless
+        # before revealing an actionable Authelia validation error.
+        detail=re.sub(r"[A-Za-z0-9_+/-]{28,}", "<redacted>",
+                      r.stderr[-3200:] or r.stdout[-3200:])
+        raise RuntimeError("Synthetic Docker step failed: " + detail)
     return r.stdout.strip()
 
 def post(url, data, token=None):
