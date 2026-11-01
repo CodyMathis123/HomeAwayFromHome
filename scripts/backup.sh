@@ -58,20 +58,29 @@ restart_containers() {
     failed=0
     for container in "${running[@]}"; do
       # A partial stop failure must still restore any containers that stopped.
-      if [[ "$(docker inspect --format '{{.State.Running}}' "$container" 2>/dev/null || true)" == "false" ]]; then
+      state="$(docker inspect --format '{{.State.Running}}' "$container" 2>/dev/null || true)"
+      if [[ "$state" == "false" ]]; then
         docker start "$container" || failed=1
+      elif [[ "$state" != "true" ]]; then
+        echo "ERROR: A previously running HomeAway container is missing: $container" >&2
+        failed=1
       fi
     done
     if [[ "$failed" == 1 ]]; then
       echo "ERROR: Some containers did not restart; recover immediately with Docker Compose." >&2
+      return 1
     fi
   fi
+  return 0
 }
 archive=""
 temp=""
 cleanup() {
-  if [[ -n "$temp" ]]; then rm -f -- "$temp"; fi
-  restart_containers
+  original_status=$?
+  trap - EXIT
+  if [[ -n "$temp" ]]; then rm -f -- "$temp" || original_status=1; fi
+  restart_containers || original_status=1
+  exit "$original_status"
 }
 trap cleanup EXIT
 if [[ "${#running[@]}" -gt 0 ]]; then
