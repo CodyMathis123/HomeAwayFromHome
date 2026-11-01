@@ -1,6 +1,7 @@
 """Phase 2 computer management tests: no host agent, privileges or network needed."""
 from __future__ import annotations
 import importlib.util
+import io
 import json
 import os
 import socket
@@ -542,6 +543,31 @@ class ComputerApiTests(unittest.TestCase):
             if op=="resolve": return {"role":role}
             raise AssertionError("Account mutation should not be called")
         return mock
+
+    def test_restore_ssh_verification_gets_same_bounded_rpc_timeout_as_activate(self):
+        class FakeSocket:
+            def __init__(self): self.timeout = None
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def settimeout(self, timeout): self.timeout = timeout
+            def connect(self, target):
+                self.target = target
+            def sendall(self, data):
+                self.data = data
+            def makefile(self, mode):
+                return io.BytesIO(b'{"ok":true,"result":{}}\\n')
+        from unittest.mock import Mock
+        outcomes = []
+        def factory(*args, **kwargs):
+            result=FakeSocket()
+            outcomes.append(result)
+            return result
+        with self.config(), patch.object(api.socket,"socket",side_effect=factory):
+            for operation in ("verify", "activate", "restore", "list", "audit-list"):
+                self.assertEqual(api.computer_request("homeowner", operation, {}), {})
+        self.assertEqual([socket.timeout for socket in outcomes], [23, 23, 23, 5, 5])
+        self.assertTrue(all(x.target == "/run/homeaway-pcinventory/agent.sock"
+                            for x in outcomes))
 
     def test_inventory_audit_endpoint_requires_current_admin_role(self):
         path="/control/api/admin/computers/audit"
