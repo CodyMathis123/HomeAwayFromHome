@@ -3,6 +3,7 @@
 // only displays capabilities and submits narrow operations; it cannot authorize.
 const HomeAwayAccounts = (() => {
   let initialized = false;
+  let mutationPending = false;
   const $ = id => document.getElementById(id);
   const make = (tag, className, text) => {
     const element = document.createElement(tag);
@@ -10,7 +11,11 @@ const HomeAwayAccounts = (() => {
     if (text !== undefined) element.textContent = text;
     return element;
   };
-  const message = text => { $('accounts-message').textContent = text; };
+  const message = (text, state = 'info') => {
+    const element = $('accounts-message');
+    element.textContent = text;
+    element.dataset.state = state;
+  };
   async function api(path, data) {
     const request = data === undefined ?
       {credentials:'same-origin',cache:'no-store'} :
@@ -23,16 +28,27 @@ const HomeAwayAccounts = (() => {
     return result;
   }
   async function mutate(path, data, successMessage) {
+    if (mutationPending) {
+      message('Another account change is already in progress. Review its result first.');
+      return false;
+    }
+    mutationPending = true;
+    const createButton = $('accounts-add').querySelector('button[type="submit"]');
+    createButton.disabled = true;
     try {
       await api(path,data);
       const refreshed = await refresh();
       message(refreshed ?
         (successMessage || 'Account directory updated. Permissions are checked again on the next request.') :
-        'Change succeeded, but the user list could not refresh. Use Refresh users to verify.');
+        'Change succeeded, but the user list could not refresh. Use Refresh users to verify.',
+        refreshed ? 'success' : 'warning');
       return true;
     } catch (err) {
-      message('Change failed: ' + err.message + '. No success was confirmed; check the list before retrying.');
+      message('Change failed: ' + err.message + '. No success was confirmed; check the list before retrying.', 'error');
       return false;
+    } finally {
+      mutationPending = false;
+      createButton.disabled = false;
     }
   }
   function renderUser(user) {
@@ -49,6 +65,14 @@ const HomeAwayAccounts = (() => {
     }
     const control = make('div','account-buttons');
     const select = make('select','');
+    select.setAttribute('aria-label', 'HomeAway role for ' + user.id);
+    // No default grant: pending or revoked users must get an explicit selection.
+    const roleValues = ['viewers', 'operators', 'admins'];
+    const placeholder = make('option', '', 'Choose a HomeAway role');
+    placeholder.value = '';
+    placeholder.disabled = true;
+    placeholder.selected = !roleValues.includes(user.role);
+    select.append(placeholder);
     for(const [value,label] of [
       ['viewers','Viewer · status only'],['operators','Operator · wake/sleep'],
       ['admins','Administrator · manage and power']]) {
@@ -59,8 +83,12 @@ const HomeAwayAccounts = (() => {
     }
     const save = make('button','','Set role');
     save.type='button';
+    save.disabled = true;
+    select.addEventListener('change', () => {
+      save.disabled = !select.value || user.role === select.value;
+    });
     save.addEventListener('click', async () => {
-      if (user.role === select.value) return;
+      if (!select.value || user.role === select.value) return;
       if (!confirm('Change HomeAway permissions for ' + user.id + '?')) return;
       await mutate('/set-role',{id:user.id,revision:user.revision,role:select.value});
     });
@@ -85,7 +113,7 @@ const HomeAwayAccounts = (() => {
       if (!result.users.length) $('accounts-users').textContent='No accounts found.';
       return true;
     } catch (err) {
-      message('Account list unavailable: ' + err.message);
+      message('Account list unavailable: ' + err.message, 'error');
       return false;
     } finally { btn.disabled=false; }
   }
