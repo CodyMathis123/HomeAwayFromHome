@@ -18,6 +18,14 @@ services:
       HOMEAWAY_CONTROL_ORIGIN: "https://home.homeawayfromhome.house:8443"
       HOMEAWAY_CONTROL_ALT_ORIGIN: ""
 
+  metrics-diagnostics:
+    environment:
+      # Certificate observer connects to the fixed private gateway address;
+      # these values control only TLS SNI and SAN verification.
+      HOMEAWAY_DOMAIN: "home.homeawayfromhome.house"
+      HOMEAWAY_AUTH_DOMAIN: "auth.homeawayfromhome.house"
+      HOMEAWAY_METRICS_DOMAIN: "metrics.homeawayfromhome.house"
+
   portal:
     environment:
       HOMEAWAY_CONTROL_URL: "https://home.homeawayfromhome.house:8443/control/"
