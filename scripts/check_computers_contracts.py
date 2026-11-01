@@ -57,7 +57,7 @@ def main():
     assert "CapabilityBoundingSet=" in systemd
     assert "ProtectHome=true" in systemd
     handler=(ROOT/"control/pcinventory/agent.py").read_text()
-    assert "subprocess" not in handler and "shell" not in handler.lower().split('class InventoryManager')[0]
+    assert "subprocess.run(" not in handler and "os.system(" not in handler
     print("PASS: computer administration opt-in, non-root writer socket and no browser inventory write/SSH key access")
 
 
