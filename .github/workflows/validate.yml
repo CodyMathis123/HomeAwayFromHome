@@ -72,3 +72,15 @@ jobs:
           trap 'docker rm -f homeaway-grafana-ci >/dev/null 2>&1 || true' EXIT
           python3 scripts/integration-grafana.py
 
+  identity-lab:
+    # Disposable fake users only; never mount the Pi's live Authelia files,
+    # never publish a directory service on a non-loopback interface.
+    if: github.event_name == 'pull_request' && github.head_ref == 'feature/homeaway-account-management'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe LLDAP account/role mutations with synthetic identities
+        env:
+          HOMEAWAY_LLDAP_LAB: "1"
+        run: python3 scripts/integration-identity-lab.py
