@@ -88,9 +88,9 @@ def main() -> int:
     print("HomeAway production permission audit (read-only)")
     results = [
         check_file(GATEWAY, "canonical Caddyfile", readable_by_all=True),
-        check_file(ROOT / "control/api/app.py", "control API source", readable_by_all=True),
-        check_file(ROOT / "control/api/Dockerfile", "control API Dockerfile", readable_by_all=True),
-        check_file(ROOT / "control/gateway/start-dns01.sh", "DNS-01 entrypoint", readable_by_all=True),
+        check_file(ROOT / "control/api/app.py", "control API source"),
+        check_file(ROOT / "control/api/Dockerfile", "control API Dockerfile"),
+        check_file(ROOT / "control/gateway/start-dns01.sh", "DNS-01 entrypoint"),
         check_file(SECRET, "Cloudflare token", secret=True),
     ]
     if not args.skip_docker:
