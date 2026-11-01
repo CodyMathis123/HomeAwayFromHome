@@ -222,15 +222,38 @@ def main() -> None:
 
     root = Path(__file__).resolve().parents[1]
     panels = json.loads((root / "grafana/dashboards/overview.json").read_text())["panels"]
-    power_expr = next(p for p in panels if p["id"] == 201)["targets"][0]["expr"]
-    power_expr = power_expr.replace('host=~"$host"', 'host="CI"')
-    for _ in range(20):
-        series = query(power_expr)
-        if len(series) == 2:
+    # VictoriaMetrics ingestion is asynchronous. Wait for BOTH underlying
+    # datasets before validating the joined, alias-first dashboard expression,
+    # so a delayed raw/metadata import isn't mistaken for a PromQL failure.
+    expected_power_ids = {"/amdcpu/0/power/0", "/amdcpu/0/power/1"}
+    raw_power = []
+    power_metadata = []
+    for _ in range(60):
+        raw_power = query('sensordash_reading_value{host="CI",kind="Power"}')
+        power_metadata = query(
+            'sensordash_sensor_info_value{host="CI",kind="Power"} == 1')
+        if ({x["metric"].get("sensor") for x in raw_power} == expected_power_ids and
+                {x["metric"].get("sensor") for x in power_metadata} == expected_power_ids):
             break
         time.sleep(0.5)
     else:
-        raise AssertionError("Live alias/fallback power series missing: " + repr(series))
+        raise AssertionError(
+            "Power samples/metadata did not ingest: raw=" + repr(raw_power) +
+            ", metadata=" + repr(power_metadata))
+
+    power_expr = next(p for p in panels if p["id"] == 201)["targets"][0]["expr"]
+    power_expr = power_expr.replace('host=~"$host"', 'host="CI"')
+    for _ in range(40):
+        series = query(power_expr)
+        if {x["metric"].get("sensor") for x in series} == expected_power_ids:
+            break
+        time.sleep(0.5)
+    else:
+        raise AssertionError(
+            "Live alias/fallback power series missing: " + repr(series) +
+            "; raw=" + repr(query('sensordash_reading_value{host="CI",kind="Power"}')) +
+            "; metadata=" + repr(query(
+                'sensordash_sensor_info_value{host="CI",kind="Power"} == 1')))
     names = {x["metric"]["sensor"]: x["metric"]["name"] for x in series}
     assert names == {
         "/amdcpu/0/power/0": "CPU Watts",
@@ -245,6 +268,69 @@ def main() -> None:
     assert {x["metric"]["sensor"] for x in query(
         'sensordash_reading_value{host="CI",kind="Power"}'
     )} == {"/amdcpu/0/power/0", "/amdcpu/0/power/1"}
+
+    # NVMe "Warning Temperature" and "Critical Temperature" are fixed
+    # drive limits, not live physical observations. Keep the raw series for
+    # sensor reference, but ensure every selected *operational* chart drops
+    # them even if a user assigns an alias.
+    threshold_lines = [
+        f"sensordash_reading,host=CI,sensor=/hdd/0/temperature/1,kind=Temperature value=89 {stamp + 2000}",
+        f"sensordash_sensor_info,host=CI,sensor=/hdd/0/temperature/1,kind=Temperature,name=Warning_Temperature,alias=Drive_Warning,device=FireCuda,device_type=Storage value=1 {stamp + 2000}",
+        f"sensordash_reading,host=CI,sensor=/hdd/0/temperature/2,kind=Temperature value=94 {stamp + 2000}",
+        f"sensordash_sensor_info,host=CI,sensor=/hdd/0/temperature/2,kind=Temperature,name=Critical_Temperature,alias=unassigned,device=FireCuda,device_type=Storage value=1 {stamp + 2000}",
+        f"sensordash_cooling_binding,host=CI,sensor=/hdd/0/temperature/1,system=loop,system_name=Lab_Loop,component=test,component_name=Aux_Sensor,role=other,kind=Temperature value=1 {stamp + 2000}",
+    ]
+    with urllib.request.urlopen(urllib.request.Request(
+        BASE + "/api/v2/write?precision=ms",
+        data=("\n".join(threshold_lines) + "\n").encode("ascii"),
+        headers={"Content-Type": "text/plain"}, method="POST",
+    ), timeout=10) as response:
+        assert 200 <= response.status < 300
+    for _ in range(20):
+        raw_storage = query('sensordash_reading_value{host="CI",kind="Temperature",sensor=~"/hdd/.*"}')
+        if len(raw_storage) == 3:
+            break
+        time.sleep(0.5)
+    else:
+        raise AssertionError("All three raw NVMe sensors should remain stored: " + repr(raw_storage))
+    assert {float(x["value"][1]) for x in raw_storage} == {38.0, 89.0, 94.0}, raw_storage
+    for _ in range(20):
+        bound_threshold = query(
+            'sensordash_cooling_binding_value{host="CI",'
+            'sensor="/hdd/0/temperature/1",system="loop"} == 1'
+        )
+        if len(bound_threshold) == 1:
+            break
+        time.sleep(0.5)
+    else:
+        raise AssertionError("Test threshold is not assigned to cooling system")
+    root = Path(__file__).resolve().parents[1]
+    for dashboard, panel_ids in (
+        ("portal-metrics.json", (9,)),
+        ("cooling-systems.json", (2,)),
+        ("overview.json", (200, 301)),
+        ("storage.json", (5,)),
+        ("sensordash.json", (1,)),
+    ):
+        panels = json.loads((root / "grafana/dashboards" / dashboard).read_text())["panels"]
+        for panel_id in panel_ids:
+            expr = next(p["targets"][0]["expr"] for p in panels if p["id"] == panel_id)
+            expr = expr.replace('host=~"$host"', 'host="CI"').replace('host=~".+"', 'host="CI"')
+            expr = expr.replace('sensor=~"$sensor"', 'sensor=~".*"')
+            expr = expr.replace('system=~"$system"', 'system="loop"')
+            result = query(expr)
+            observed = {x["metric"].get("sensor") for x in result}
+            # The Cooling chart only includes explicitly assigned sensors;
+            # the physical NVMe Composite sensor is not assigned here.
+            expected_physical = ("cpu_temp" if dashboard == "cooling-systems.json"
+                                 else "/hdd/0/temperature/0")
+            assert expected_physical in observed, (dashboard, panel_id, observed)
+            assert "/hdd/0/temperature/1" not in observed, (dashboard, panel_id, observed)
+            assert "/hdd/0/temperature/2" not in observed, (dashboard, panel_id, observed)
+    metadata = query('sensordash_sensor_info_value{host="CI",device_type="Storage"} == 1')
+    assert {x["metric"]["sensor"] for x in metadata} == {
+        "/hdd/0/temperature/0", "/hdd/0/temperature/1", "/hdd/0/temperature/2"
+    }, "Static thresholds must stay visible as reference sensor metadata"
 
     print("PASS: VictoriaMetrics raw + derived watts, metadata, threshold events,"
           " spool footprint, storage joins and removal tombstones")

@@ -217,6 +217,57 @@ class DashboardContracts(unittest.TestCase):
         drive = next(p for p in storage["panels"] if p["id"] == 5)["targets"][0]["expr"]
         self.assertIn('name!~"(?i).*(warning|critical).*"', drive)
 
+    def test_all_physical_temperature_views_hide_fixed_nvme_thresholds(self):
+        # LHM reports these as Temperature readings even though they are
+        # fixed drive specifications (e.g. FireCuda 89C warning, 94C critical).
+        # Match original metadata BEFORE replacing the visible name with an alias.
+        reference = 'name!~"(?i).*(warning|critical).*"'
+        views = {
+            "storage.json": (2, 5),
+            "sensordash.json": (1, 111, 112),
+            "overview.json": (3, 200),
+            "portal-metrics.json": (9,),
+            "cooling-systems.json": (2, 7, 9),
+        }
+        for filename, panel_ids in views.items():
+            dashboard = json.loads((PANELS / filename).read_text(encoding="utf-8"))
+            panels = {panel["id"]: panel for panel in dashboard["panels"]}
+            for panel_id in panel_ids:
+                with self.subTest(dashboard=filename, panel=panel_id):
+                    expr = panels[panel_id]["targets"][0]["expr"]
+                    self.assertIn('kind="Temperature"', expr)
+                    self.assertIn(reference, expr)
+                    self.assertIn("sensordash_sensor_info_value", expr)
+                    # The two alias branches must BOTH apply the same filter,
+                    # or giving a fixed temperature an alias will resurrect it.
+                    if 'alias!="unassigned"' in expr:
+                        self.assertEqual(expr.count(reference), 2)
+                        self.assertLess(
+                            expr.index(reference),
+                            expr.index('"name", "$1", "alias", "(.+)"'))
+        # Mixed sensor tables / sample rankings must filter only storage
+        # fixed temperatures, preserving other dynamic warning signals.
+        for filename, panel_id in (("overview.json", 301), ("storage.json", 17)):
+            expr = next(p for p in json.loads(
+                (PANELS / filename).read_text(encoding="utf-8")
+            )["panels"] if p["id"] == panel_id)["targets"][0]["expr"]
+            with self.subTest(dashboard=filename, panel=panel_id):
+                self.assertIn("unless on(host,sensor)", expr)
+                self.assertIn('device_type="Storage"', expr)
+                self.assertIn('kind="Temperature"', expr)
+                self.assertIn('name=~"(?i).*(warning|critical).*"', expr)
+        # These remain specifications in reference inventories; the
+        # measurement exporter and metadata are never changed/deleted.
+        for filename, panel_id in (
+            ("storage.json", 10), ("sensordash.json", 10),
+            ("cooling-systems.json", 1)
+        ):
+            expr = next(p for p in json.loads(
+                (PANELS / filename).read_text(encoding="utf-8")
+            )["panels"] if p["id"] == panel_id)["targets"][0]["expr"]
+            self.assertIn("sensordash_sensor_info_value", expr)
+            self.assertNotIn('name!~"(?i).*(warning|critical).*"', expr)
+
     def test_static_drive_temperature_limits_never_count_as_live_heat(self):
         # LHM's NVMe "Warning Temperature" and "Critical Temperature"
         # are device specifications, not physical/current observations.
@@ -276,7 +327,8 @@ class DashboardContracts(unittest.TestCase):
         for metric in ("vm_data_size_bytes", "vm_free_disk_space_bytes",
                        "vm_rows_added_to_storage_total"):
             self.assertIn(metric, s)
-        self.assertIn("topk(25, count_over_time(", s)
+        self.assertIn("topk(25, (count_over_time(", s)
+        self.assertIn("unless on(host,sensor)", s)
 
         self.assertIn("sensordash_event_value", e)
         self.assertIn("count_over_time(", e)

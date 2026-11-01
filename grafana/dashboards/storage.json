@@ -1168,7 +1168,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "topk(25, count_over_time(sensordash_reading_value{host=~\"$host\"}[$__range])) * on(host,sensor) group_left(name,device) (label_replace(sensordash_sensor_info_value{host=~\"$host\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",alias=\"unassigned\"} == 1))",
+          "expr": "topk(25, (count_over_time(sensordash_reading_value{host=~\"$host\"}[$__range]) unless on(host,sensor) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Storage\",kind=\"Temperature\",name=~\"(?i).*(warning|critical).*\"} == 1))) * on(host,sensor) group_left(name,device) (label_replace(sensordash_sensor_info_value{host=~\"$host\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",alias=\"unassigned\"} == 1))",
           "instant": true,
           "format": "table"
         }
