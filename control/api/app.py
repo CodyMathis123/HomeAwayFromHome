@@ -288,6 +288,39 @@ def certificates_snapshot() -> dict:
         raise BrokerError(503, "Certificate diagnostics unavailable") from exc
 
 
+def backup_status_snapshot() -> dict:
+    """Read a fixed sanitized status file, never archive data or keys."""
+    source = Path("/backup-status/status.json")
+    try:
+        info = source.lstat()
+        if not source.is_file() or source.is_symlink() or info.st_size > 2048:
+            raise ValueError("Unsafe or oversized summary")
+        data = json.loads(source.read_text(encoding="utf-8"))
+        if (not isinstance(data, dict) or set(data) != {
+            "schemaVersion", "checkedAt", "state", "lastEncryptedBackupAt",
+            "checksumVerified", "ageHours", "detail"
+        } or data["schemaVersion"] != 1
+            or data["state"] not in ("observed", "stale", "unknown")
+            or type(data["checksumVerified"]) is not bool
+            or (data["ageHours"] is not None and
+                (type(data["ageHours"]) not in (int, float)
+                 or not 0 <= data["ageHours"] <= 1_000_000))
+            or (data["lastEncryptedBackupAt"] is not None
+                and (not isinstance(data["lastEncryptedBackupAt"], str)
+                     or len(data["lastEncryptedBackupAt"]) > 48))
+            or not isinstance(data["checkedAt"], str)
+            or len(data["checkedAt"]) > 48
+            or not isinstance(data["detail"], str)
+            or len(data["detail"]) > 200):
+            raise ValueError("Invalid backup summary")
+        return data
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        return {"schemaVersion": 1, "checkedAt": None, "state": "unknown",
+                "lastEncryptedBackupAt": None, "checksumVerified": False,
+                "ageHours": None,
+                "detail": "Backup status unavailable; inspect protected archive on Pi"}
+
+
 def capabilities(role: str) -> dict:
     return {
         "role": role,
@@ -486,6 +519,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(200, diagnostics_snapshot())
             except BrokerError as exc:
                 return self._json(exc.status, {"error": str(exc)})
+        if path == "/control/api/admin/backup-status":
+            if role != "admins":
+                return self._json(403, {"error": "Insufficient permissions"})
+            return self._json(200, backup_status_snapshot())
         if path == "/control/api/admin/certificates":
             if role != "admins":
                 return self._json(403, {"error": "Insufficient permissions"})
