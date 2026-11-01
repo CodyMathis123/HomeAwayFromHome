@@ -72,12 +72,13 @@ Do not invent or commit private encryption keys. Test decryption/restore with a 
 ## Draft encrypted full-state backup
 
 The existing `scripts/backup.sh` remains the supported Docker-data backup.
-A separate, **not yet Pi-tested** encrypted full-state implementation is under
-review in [the full-state backup guide](ENCRYPTED-FULL-BACKUP.md).
+The [encrypted full-state backup guide](ENCRYPTED-FULL-BACKUP.md) describes
+a first operator-tested encrypted backup and the still-outstanding isolated restore test.
 Its read-only preview is `sudo bash scripts/backup-full.sh --plan`.
-Do not run its outage-causing `--apply` as part of routine maintenance
-until the plan, encryption key custody, active host services and isolated
-restore procedure have been validated. The encrypted output must still be
+Its outage-causing `--apply` is an explicitly supervised operator operation,
+not a routine or scheduled task. Keep the recovery identity off-device,
+review the preflight and verify service recovery each time. A successful
+backup and decrypt/listing are not a full clean-host restore test. The encrypted output must still be
 copied off the Pi; an on-device archive is not disaster recovery.
 
 ## Current HTTPS production deployment
