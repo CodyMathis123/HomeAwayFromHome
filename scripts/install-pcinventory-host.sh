@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+# EXPLICIT operator-only installation of the separate, non-root inventory writer.
+# Not run by Docker Compose or the existing pcctl installer.
+set -euo pipefail
+root="$(cd "$(dirname "$0")/.." && pwd)"
+mode="--plan"
+if [[ $# -gt 0 ]]; then mode="$1"; fi
+if [[ "$mode" != "--plan" && "$mode" != "--apply" ]]; then
+  echo "Usage: bash scripts/install-pcinventory-host.sh --plan | sudo bash scripts/install-pcinventory-host.sh --apply" >&2
+  exit 2
+fi
+
+echo "HomeAway computer inventory management service:"
+echo " - preserves existing active PC IDs, IP/MAC and iOS Shortcut bindings"
+echo " - creates a separate unprivileged system user and Unix socket"
+echo " - changes ONLY /etc/homeaway-pcctl directory owner and hosts.json owner/group"
+echo " - makes a root-only before-install snapshot; never edits host entries"
+echo " - does NOT change pcctl-agent, Pi-hole, WireGuard, DNS or Windows"
+if [[ "$mode" == "--plan" ]]; then
+  echo "DRY RUN: no filesystem ownership or services changed"
+  exit 0
+fi
+[[ "$EUID" == 0 ]] || { echo "Use sudo for --apply" >&2; exit 1; }
+command -v systemctl >/dev/null || { echo "systemd is required" >&2; exit 1; }
+inventory=/etc/homeaway-pcctl/hosts.json
+directory=/etc/homeaway-pcctl
+[[ -d "$directory" && ! -L "$directory" ]] || { echo "Unsafe or missing inventory directory" >&2; exit 1; }
+[[ -f "$inventory" && ! -L "$inventory" ]] || { echo "Unsafe or missing active inventory" >&2; exit 1; }
+[[ "$(stat -c %h "$inventory")" == 1 ]] || { echo "Refusing hardlinked inventory" >&2; exit 1; }
+id pcctl >/dev/null || { echo "Existing pcctl Linux account required" >&2; exit 1; }
+python3 -B - "$root/control/pcctl" "$inventory" <<'PY'
+import sys
+sys.path.insert(0, sys.argv[1])
+from core import load_hosts
+print("Validated", len(load_hosts(sys.argv[2])), "existing active computers")
+PY
+
+if ! id homeaway-inventory >/dev/null 2>&1; then
+  useradd --system --user-group --no-create-home --shell /usr/sbin/nologin homeaway-inventory
+fi
+pcctl_group="$(id -gn pcctl)"
+backup=/var/backups/homeaway-pcinventory
+install -d -m 0700 -o root -g root "$backup"
+snapshot="$backup/hosts-preinstall-$(date -u +%Y%m%dT%H%M%SZ).json"
+install -m 0600 -o root -g root "$inventory" "$snapshot"
+
+install -d -m 0755 -o homeaway-inventory -g homeaway-inventory "$directory"
+chown "homeaway-inventory:$pcctl_group" "$inventory"
+chmod 0640 "$inventory"
+lock="$directory/.hosts.json.lock"
+if [[ -L "$lock" ]]; then echo "Unsafe inventory lock" >&2; exit 1; fi
+if [[ -e "$lock" && ! -f "$lock" ]]; then echo "Inventory lock must be regular" >&2; exit 1; fi
+touch "$lock"
+chown homeaway-inventory:homeaway-inventory "$lock"
+chmod 0600 "$lock"
+
+install -d -m 0755 -o root -g root /opt/homeaway-pcinventory
+for file in core.py inventory_store.py; do
+  install -m 0644 "$root/control/pcctl/$file" "/opt/homeaway-pcinventory/$file"
+done
+install -m 0644 "$root/control/pcinventory/agent.py" /opt/homeaway-pcinventory/agent.py
+install -d -m 0700 -o homeaway-inventory -g homeaway-inventory /var/lib/homeaway-pcinventory
+install -m 0644 "$root/control/pcinventory/homeaway-inventory.tmpfiles.conf" /etc/tmpfiles.d/homeaway-inventory.conf
+systemd-tmpfiles --create /etc/tmpfiles.d/homeaway-inventory.conf
+install -m 0644 "$root/control/pcinventory/homeaway-inventory.socket" /etc/systemd/system/homeaway-inventory.socket
+install -m 0644 "$root/control/pcinventory/homeaway-inventory.service" /etc/systemd/system/homeaway-inventory.service
+systemctl daemon-reload
+systemctl enable --now homeaway-inventory.socket
+
+echo "Inventory socket ready; no live host entries were changed."
+echo "Local rollback inventory snapshot: $snapshot (root-only)"
+echo "Set PCINV_GID=$(id -g homeaway-inventory) in .env only when activating compose.computers.yaml"
+echo "Management API remains feature-flagged off unless separately enabled."
