@@ -15,7 +15,7 @@ echo " - preserves existing active PC IDs, IP/MAC and iOS Shortcut bindings"
 echo " - creates a separate unprivileged system user and Unix socket"
 echo " - changes ONLY /etc/homeaway-pcctl directory owner and hosts.json owner/group"
 echo " - makes a root-only before-install snapshot; never edits host entries"
-echo " - does NOT change pcctl-agent, Pi-hole, WireGuard, DNS or Windows"
+echo " - installs a separate read-only SSH trust verifier under the existing pcctl user\n - does NOT change pcctl-agent, Pi-hole, WireGuard, DNS or Windows"
 if [[ "$mode" == "--plan" ]]; then
   echo "DRY RUN: no filesystem ownership or services changed"
   exit 0
@@ -70,7 +70,21 @@ install -m 0644 "$root/control/pcinventory/homeaway-inventory.service" /etc/syst
 systemctl daemon-reload
 systemctl enable --now homeaway-inventory.socket
 
-echo "Inventory socket ready; no live host entries were changed."
+# Verification is a separate service running under the EXISTING pcctl user.
+# It can read the Pi's private SSH key, while the inventory writer cannot.
+# Its Unix socket permits the inventory writer group only; never place
+# homeaway-inventory in the pcctl power-command group.
+install -d -m 0755 -o root -g root /opt/homeaway-pcverify
+install -m 0644 "$root/control/pcctl/core.py" /opt/homeaway-pcverify/core.py
+install -m 0644 "$root/control/pcverify/agent.py" /opt/homeaway-pcverify/agent.py
+install -m 0644 "$root/control/pcverify/homeaway-pcverify.tmpfiles.conf" /etc/tmpfiles.d/homeaway-pcverify.conf
+systemd-tmpfiles --create /etc/tmpfiles.d/homeaway-pcverify.conf
+install -m 0644 "$root/control/pcverify/homeaway-pcverify.socket" /etc/systemd/system/homeaway-pcverify.socket
+install -m 0644 "$root/control/pcverify/homeaway-pcverify.service" /etc/systemd/system/homeaway-pcverify.service
+systemctl daemon-reload
+systemctl enable --now homeaway-pcverify.socket
+
+echo "Inventory and SSH-verifier sockets ready; no live host entries were changed."
 echo "Local rollback inventory snapshot: $snapshot (root-only)"
 echo "Set PCINV_GID=$(id -g homeaway-inventory) in .env only when activating compose.computers.yaml"
 echo "Management API remains feature-flagged off unless separately enabled."
