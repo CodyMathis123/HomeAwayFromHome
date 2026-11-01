@@ -58,3 +58,17 @@ sudo docker compose -f compose.yaml -f compose.control.yaml \
 Only after passing: targeted rebuild/recreate of `metrics-diagnostics` and
 `pc-control`, then admin browser check; verify viewer/operator remain denied.
 Nothing here requires restarting Caddy, Pi-hole, WireGuard, Grafana or SensorDash.
+
+## Incremental diagnostics rendering
+
+The admin interface previously awaited **all** API requests before rendering
+any results. In particular, SSH reachability can take longer than metrics,
+certificate or backup checks, leaving many unrelated cards stuck on
+`Checking…`. Requests now render independently as they complete, and each
+fetch has a 12-second timeout. A timeout means `Unknown` with a source-specific
+message, never evidence that the underlying service failed.
+
+After deploying, navigate to Operations & Diagnostics, choose Refresh checks,
+and confirm that unrelated cards populate while computer reachability may still
+be pending. The page should finish with a check time or explicit authorization
+failure, rather than leaving unrelated cards indefinitely in `Checking`.
