@@ -22,6 +22,8 @@ sudo docker compose -f compose.yaml -f compose.control.yaml -f compose.accounts.
   --profile control --profile accounts --profile metrics config -q
 ```
 
+**Pi first-run note:** The standard Debian LLDAP container was reported unhealthy on a hardened Pi deployment (all capabilities dropped). The Compose overlay now uses the official `2026-09-22-debian-rootless` image, which runs as UID/GID 1000 and does not need root-to-user switching. After fetching the corrected branch, recreate **only** `lldap` and leave Authelia/Pi-hole/WireGuard alone. If unhealthy again, inspect `docker inspect ... --format '{{json .State.Health}}'` and review redacted LLDAP logs before changing file permissions or secrets.
+
 **2. Start LLDAP and broker only; keep real Authelia file backend running:**
 
 ```bash
