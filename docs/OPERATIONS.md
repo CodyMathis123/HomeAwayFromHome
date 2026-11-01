@@ -25,7 +25,9 @@ Grafana is LAN/VPN-only at `http://PI_LAN_IP:3000`. VictoriaMetrics never publis
 
 ## Backup and restore
 
-Run `sudo bash scripts/backup.sh --offline`. It stops **currently running stack services** briefly for consistent SQLite and WireGuard data, then restarts them in a trap even if archive creation fails. This interrupts DNS and VPN during the backup window; schedule it deliberately. Root-owned tar archives go to `/var/backups/homeawayfromhome/` mode 0600 with SHA-256 checksums.
+First run `sudo bash scripts/backup.sh --plan` to verify the Compose project and number of running containers **without any outage or archive**. Then, in a planned maintenance window, run `sudo bash scripts/backup.sh --offline`. It stops **all running containers labeled with this checkout's HomeAway Compose project**, including optional Caddy/Authelia, computer control, LLDAP and account broker services (if deployed), before archiving their data. Previously running containers are restarted in an exit trap even if the archive step fails; restart failures are reported as errors. **DNS, VPN, login and monitoring may all be temporarily unavailable.** Root-owned tar archives go to `/var/backups/homeawayfromhome/` mode 0600 with SHA-256 checksums.
+
+The backup includes `.env`, `secrets/` and `data/` (including the account directory and Authelia SQLite if present). The project selection follows Docker Compose's resolved project name. **Any HomeAway service deliberately started under another Compose project or outside Compose is outside this script's stop scope**; do not claim a consistent snapshot of those services. After a new account-backend migration, verify an off-device encrypted backup and perform a supervised isolated restore; a successful archive is not by itself a recovery test.
 
 **The archive contains WireGuard private keys, peers, Pi-hole admin password, DNS query history and .env. Encrypt it and move it off the Pi.** A backup exclusively on the Pi will not save you from an SSD failure.
 
