@@ -51,6 +51,7 @@
     document.title = titles[route];
     window.HomeAwayNavigation?.sync();
     if (route === '/architecture/') window.HomeAwayArchitecture?.init();
+    else window.HomeAwayOverview?.init();
     position(target.hash);
     next.setAttribute('tabindex', '-1');
     next.focus({preventScroll: true});
