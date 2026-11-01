@@ -97,3 +97,14 @@ main [data-view-section]:focus-visible{outline:2px solid var(--accent);outline-o
 .readiness-telemetry-list li{padding:8px 0;border-top:1px solid var(--line);font-size:12px;color:#b9d0da;overflow-wrap:anywhere}
 .readiness-badge[data-state="stale"]{background:#503d31;color:#f5d0a8}
 #readiness-metrics-checked{font-size:12px;color:var(--muted);margin:10px 0}
+
+
+/* A failed refresh retains last-observed readings but must not make them
+   appear freshly verified. This state is distinct from an observed failure. */
+.readiness-badge[data-refresh-stale="true"]{
+  outline:2px dashed #e1ad68;
+  outline-offset:2px;
+}
+.readiness-badge[data-refresh-stale="true"]::after{
+  content:" · last known";
+}
