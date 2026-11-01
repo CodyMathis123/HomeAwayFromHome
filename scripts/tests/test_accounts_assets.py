@@ -190,6 +190,28 @@ class AccountAssets(unittest.TestCase):
         self.assertIn("cached_snapshot()", observer)
         self.assertIn("up -d --no-deps --build metrics-diagnostics", deployment)
 
+    def test_certificate_readiness_is_admin_only_and_private(self):
+        markup = (API / "index.html").read_text()
+        js = (API / "readiness.js").read_text()
+        backend = (API / "app.py").read_text()
+        observer = (ROOT / "monitoring/diagnostics/certificates.py").read_text()
+        docker = (ROOT / "monitoring/diagnostics/Dockerfile").read_text()
+        overlay = (ROOT / "compose.control.yaml").read_text()
+        for name in ("browser-home", "browser-auth", "browser-metrics", "telemetry-receiver"):
+            self.assertIn('id="readiness-cert-' + name + '"', markup)
+            self.assertIn('id="readiness-cert-detail-' + name + '"', markup)
+        self.assertIn("readJson('/control/api/admin/certificates')", js)
+        self.assertIn('if path == "/control/api/admin/certificates":', backend)
+        self.assertIn('if role != "admins":', backend)
+        self.assertIn("CERT_DIAG_URL", backend)
+        self.assertIn("cryptography==50.0.2", docker)
+        self.assertIn("certificates.py", docker)
+        self.assertIn('GATEWAY_TARGET = ("gateway", 8443)', observer)
+        self.assertIn('TELEMETRY_TARGET = ("telemetry-ingest", 8443)', observer)
+        self.assertNotIn("subprocess", observer)
+        self.assertNotIn("docker.sock", observer)
+        self.assertIn("HOMEAWAY_METRICS_DOMAIN:", overlay)
+
     def test_pending_accounts_require_an_explicit_role_choice(self):
         js = (API / "accounts.js").read_text()
         css = (API / "styles.css").read_text()
