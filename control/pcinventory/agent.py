@@ -434,13 +434,17 @@ class InventoryManager:
                     raise InventoryFault(404, "Computer is not active")
                 state = _read_retired()
                 record = next((r for r in state["retired"] if r["host"]["id"] == payload["id"]), None)
-                if record is not None and record["host"] != current:
+                # Legacy pcctl inventories may omit ssh_user and ssh_port.
+                # Canonicalize only the private recovery snapshot; never
+                # rewrite a live row until the user explicitly restores it.
+                canonical = validate_hosts({"hosts": [current]})[current["id"]]
+                if record is not None and record["host"] != canonical:
                     raise InventoryFault(409, "Retirement snapshot conflicts; manual review required")
                 if record is None:
                     if len(state["retired"]) >= MAX_RETIRED:
                         raise InventoryFault(409, "Retirement registry is full")
                     _audit(actor, current["id"], op, "requested")
-                    record = {"host": copy.deepcopy(current), "archived": False,
+                    record = {"host": canonical, "archived": False,
                               "retiredAt": datetime.now(timezone.utc).isoformat(),
                               "retiredBy": actor}
                     # Commit recovery snapshot BEFORE touching the active file.
