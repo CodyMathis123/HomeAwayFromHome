@@ -26,6 +26,7 @@ STATE_DIR = Path(os.getenv("HOMEAWAY_INVENTORY_STATE", "/var/lib/homeaway-pcinve
 DRAFTS = STATE_DIR / "drafts.json"
 AUDIT = STATE_DIR / "audit.jsonl"
 SOCKET = "/run/homeaway-pcinventory/agent.sock"
+VERIFY_SOCKET = "/run/homeaway-pcverify/agent.sock"
 ID = re.compile(r"^[a-z][a-z0-9-]{0,31}$")
 ACTOR = re.compile(r"^[a-zA-Z0-9_.@-]{1,80}$")
 MAX_MESSAGE = 4096
@@ -137,6 +138,38 @@ def _audit(actor: str, target: str, operation: str, outcome: str) -> None:
         raise InventoryFault(503, "Inventory audit unavailable") from exc
 
 
+def _probe(host: dict) -> dict:
+    """Require pin-verified, authenticated Windows forced-command status.
+
+    The inventory user does not read pcctl's key or known_hosts. The separate
+    pcctl-user verifier is socket ACL gated and always runs a fixed "status".
+    """
+    payload = (json.dumps({"operation": "verify", "candidate": host},
+                          separators=(",", ":")) + "\n").encode()
+    if len(payload) > 1024:
+        raise InventoryFault(400, "Invalid verifier payload")
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as conn:
+            conn.settimeout(16)
+            conn.connect(VERIFY_SOCKET)
+            conn.sendall(payload)
+            result = conn.makefile("rb").readline(1025)
+        if not result.endswith(b"\n") or len(result) > 1024:
+            raise ValueError("Invalid verifier reply")
+        outcome = json.loads(result)
+        if not isinstance(outcome, dict) or set(outcome) != {"verified", "code"} or type(outcome["verified"]) is not bool:
+            raise ValueError("Invalid verifier schema")
+        if outcome["verified"] and outcome["code"] == "ssh_key_and_status_verified":
+            return {"verified": True, "code": outcome["code"]}
+        code = outcome["code"] if outcome["code"] in (
+            "host_key_not_pinned", "ssh_auth_or_status_failed",
+            "ssh_unavailable", "invalid_candidate"
+        ) else "verification_failed"
+        return {"verified": False, "code": code}
+    except (OSError, TimeoutError, ValueError, UnicodeError, TypeError, KeyError, json.JSONDecodeError) as exc:
+        raise InventoryFault(503, "SSH verifier unavailable") from exc
+
+
 def _collision(entry: dict, existing: list[dict]) -> bool:
     return any(
         item["id"] == entry["id"] or item["address"] == entry["address"] or
@@ -156,6 +189,21 @@ class InventoryManager:
         if self.path.is_symlink() or not self.path.is_file():
             raise InventoryFault(503, "Active computer registry unavailable")
         return read_inventory(self.path)
+
+    @staticmethod
+    def _draft_with_revision(payload: dict, state: dict) -> dict:
+        if (set(payload) not in ({"id", "revision"}, {"id", "revision", "inventoryRevision", "confirm"}) or
+                not isinstance(payload.get("id"), str) or
+                not ID.fullmatch(payload["id"]) or
+                not isinstance(payload.get("revision"), str) or
+                not re.fullmatch(r"[0-9a-f]{24}", payload["revision"])):
+            raise InventoryFault(400, "Invalid draft revision or identifier")
+        draft = next((d for d in state["drafts"] if d["id"] == payload["id"]), None)
+        if draft is None:
+            raise InventoryFault(404, "Draft not found")
+        if revision_of(draft) != payload["revision"]:
+            raise InventoryFault(409, "Draft changed; refresh before retry")
+        return draft
 
     def execute(self, actor: str, op: str, payload: dict) -> dict:
         if not isinstance(actor, str) or not ACTOR.fullmatch(actor):
@@ -208,6 +256,64 @@ class InventoryManager:
                 _audit(actor, draft["id"], op, "committed")
                 return {"discarded": draft["id"]}
 
+            if op in ("verify", "activate"):
+                if op == "verify" and set(payload) != {"id", "revision"}:
+                    raise InventoryFault(400, "Invalid verify fields")
+                if op == "activate":
+                    if set(payload) != {"id", "revision", "inventoryRevision", "confirm"}:
+                        raise InventoryFault(400, "Invalid activation fields")
+                    if (not isinstance(payload.get("inventoryRevision"), str) or
+                            not re.fullmatch(r"[0-9a-f]{24}", payload["inventoryRevision"]) or
+                            payload.get("confirm") != payload.get("id")):
+                        raise InventoryFault(400, "Type the exact computer ID to activate")
+                state = _read_drafts()
+                draft = self._draft_with_revision(payload, state)
+                active, revision = self._active()
+                if _collision(draft, active["hosts"]):
+                    raise InventoryFault(409, "Computer ID, IP or MAC is already active")
+                if len(active["hosts"]) >= 64:
+                    raise InventoryFault(409, "Active inventory is full")
+                if op == "activate" and payload["inventoryRevision"] != revision:
+                    raise InventoryFault(409, "Active inventory changed; refresh before activating")
+                # Fresh trust check for BOTH operations; a previous successful
+                # verify button or UI data is never an activation token.
+                checked = _probe(draft)
+                if op == "verify":
+                    return {"id": draft["id"], **checked}
+                if not checked["verified"]:
+                    raise InventoryFault(409, "SSH verification failed: " + checked["code"])
+
+                _audit(actor, draft["id"], op, "requested")
+
+                def promote(document: dict) -> dict:
+                    if _collision(draft, document["hosts"]):
+                        raise InventoryFault(409, "Computer ID, IP or MAC already active")
+                    document["hosts"].append(copy.deepcopy(draft))
+                    return document
+
+                try:
+                    _, final_revision = update_inventory(
+                        self.path, promote, expected_revision=payload["inventoryRevision"])
+                except InventoryConflict as exc:
+                    raise InventoryFault(409, "Inventory changed; refresh before activating") from exc
+
+                # The active file is the only command authority. If the
+                # separate draft-state cleanup fails, report the committed
+                # activation and allow explicit, safe draft discard later.
+                cleanup_pending = False
+                state["drafts"] = [d for d in state["drafts"] if d["id"] != draft["id"]]
+                try:
+                    _save_drafts(state)
+                except (OSError, InventoryFault):
+                    cleanup_pending = True
+                try:
+                    _audit(actor, draft["id"], op, "committed")
+                except InventoryFault:
+                    cleanup_pending = True
+                return {"activated": draft["id"], "revision": final_revision,
+                        "cleanupPending": cleanup_pending,
+                        "verification": checked["code"]}
+
             if op == "rename":
                 if set(payload) != {"id", "name", "revision"}:
                     raise InventoryFault(400, "Invalid rename fields")
@@ -253,7 +359,7 @@ class Handler(socketserver.StreamRequestHandler):
     manager: InventoryManager
 
     def handle(self):
-        self.request.settimeout(8)
+        self.request.settimeout(20)
         try:
             raw = self.rfile.readline(MAX_MESSAGE + 1)
             if not raw.endswith(b"\n") or len(raw) > MAX_MESSAGE:
