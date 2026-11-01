@@ -162,6 +162,36 @@ class InventoryAgentTests(unittest.TestCase):
         return self.manager.execute("homeowner", "disable", {
             "id": computer, "revision": current["revision"], "confirm": computer})
 
+    def test_disable_restore_legacy_host_with_omitted_ssh_defaults(self):
+        # The legacy power-control inventory accepts omitted SSH defaults.
+        # The private retirement archive must store a canonical recovery
+        # copy, while Disable never rewrites an active host before removal.
+        legacy = {k: v for k, v in host().items()
+                  if k not in ("ssh_user", "ssh_port")}
+        self.live.write_text(json.dumps({"hosts": [legacy]}))
+        old = self.live.read_bytes()
+        data = self.manager.execute("homeowner", "list", {})
+        self.assertNotIn("ssh_user", data["active"][0])
+        self.assertEqual(old, self.live.read_bytes())
+        self.disable()
+        retired = self.manager.execute("homeowner", "list", {})["retired"]
+        self.assertEqual(retired[0]["host"]["ssh_user"], "pcctl")
+        self.assertEqual(retired[0]["host"]["ssh_port"], 22)
+        self.assertFalse(self.manager.execute("homeowner", "list", {})["active"])
+        # A restore writes the canonical defaults only after fresh SSH
+        # verification; existing PC identifiers, IP and MAC are unchanged.
+        current = self.manager.execute("homeowner", "list", {})
+        with patch.object(agent, "_probe", return_value={
+            "verified": True, "code": "ssh_key_and_status_verified"}) as probe:
+            restored = self.manager.execute("homeowner", "restore", {
+                "id": "gaming",
+                "revision": current["retired"][0]["revision"],
+                "inventoryRevision": current["revision"], "confirm": "gaming",
+            })
+        probe.assert_called_once_with(host())
+        self.assertEqual(restored["restored"], "gaming")
+        self.assertEqual(self.manager.execute("homeowner", "list", {})["active"][0]["id"], "gaming")
+
     def test_disable_removes_only_selected_host_from_command_inventory(self):
         # A disabled host is immediately unknown to the pcctl command router.
         from core import load_hosts, perform
