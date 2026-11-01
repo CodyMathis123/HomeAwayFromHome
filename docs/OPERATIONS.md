@@ -23,6 +23,29 @@ docker compose --profile metrics up -d --build grafana telemetry-ingest
 
 Grafana is LAN/VPN-only at `http://PI_LAN_IP:3000`. VictoriaMetrics never publishes its HTTP API, and SensorDash writes through the authenticated HTTPS receiver on `https://PI_LAN_IP:8429/ingest`. The private server certificate expires after 365 days and must be rotated, alongside updated Windows collector trust if the CA changes.
 
+## Production permission and recovery audit
+
+Run the read-only production audit before releases and after restoring from
+backup. It prints file modes and path presence but never prints secret values
+or repairs permissions:
+
+```bash
+sudo python3 scripts/audit-production.py
+```
+
+It requires the canonical `control/gateway/Caddyfile.production` to be
+world-readable, checks that the Cloudflare token is **root-owned mode 0400 or
+0600**, and confirms that the running gateway actually mounts the canonical
+Caddyfile. These checks prevent the two startup failures observed during the
+HTTPS cutover: Caddy reading a mode-0600 Caddyfile, and an unprivileged Python
+container reading a mode-0600 `app.py`. The API Dockerfile also uses
+`COPY --chmod=0644` so the built image is independent of checkout modes.
+
+The audit lists host inventory and SSH-trust paths that remain outside
+`scripts/backup.sh`. A presence check is **not** a usable backup or restore
+verification. Never `chmod 644` a private key or token to repair a startup
+failure; investigate intended owner/group and container file permissions.
+
 ## Backup and restore
 
 First run `sudo bash scripts/backup.sh --plan` to verify the Compose project and number of running containers **without any outage or archive**. Then, in a planned maintenance window, run `sudo bash scripts/backup.sh --offline`. It stops **all running containers labeled with this checkout's HomeAway Compose project**, including optional Caddy/Authelia, computer control, LLDAP and account broker services (if deployed), before archiving their data. Previously running containers are restarted in an exit trap even if the archive step fails; restart failures are reported as errors. **DNS, VPN, login and monitoring may all be temporarily unavailable.** Root-owned tar archives go to `/var/backups/homeawayfromhome/` mode 0600 with SHA-256 checksums.
@@ -71,7 +94,7 @@ bash scripts/deploy-ui.sh --apply --services portal
 bash scripts/deploy-ui.sh --apply --services pc-control
 ```
 
-The preview validates the resolved four-overlay Compose configuration, checks
+The preview validates the resolved canonical five-overlay Compose configuration, checks
 the exact project name and confirms both target containers are already running.
 It does **not fetch**, alter files, start/stop or rebuild anything. It reports
 the *last fetched* origin/Production ref; that may be stale until an apply.
@@ -95,7 +118,7 @@ can briefly interrupt the selected UI page(s). The result check verifies that
 the requested containers are running, **not** that every browser workflow is
 healthy.
 
-After `--apply`, browse `https://homeaway.home.arpa:8443/`,
+After `--apply`, browse `https://home.homeawayfromhome.house:8443/`,
 `/architecture/`, and `/control/` from LAN/VPN. Confirm that authenticated
 computer controls, role-gated Users/Computers and the existing iOS Shortcut
 still work. For rollback after a bad UI release, stop and inspect the
