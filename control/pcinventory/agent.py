@@ -474,7 +474,7 @@ class InventoryManager:
                 return {"disabled": current["id"], "revision": final_revision,
                         "archived": False, "auditPending": not audited}
 
-            if op in ("archive", "restore", "retired-cleanup"):
+            if op in ("archive", "restore"):
                 allowed = {"id", "revision", "confirm"}
                 if op == "restore":
                     allowed.add("inventoryRevision")
@@ -486,18 +486,6 @@ class InventoryManager:
                 current, revision = self._active()
                 uid = record["host"]["id"]
                 in_active = next((h for h in current["hosts"] if h["id"] == uid), None)
-
-                if op == "retired-cleanup":
-                    # Only a completed restore may clear an obsolete record,
-                    # never silently erase disabled-host recovery metadata.
-                    if in_active is None or in_active != record["host"]:
-                        raise InventoryFault(409, "Retirement snapshot still required")
-                    _audit(actor, uid, op, "requested")
-                    state["retired"] = [r for r in state["retired"]
-                                        if r["host"]["id"] != uid]
-                    _save_retired(state)
-                    _audit(actor, uid, op, "committed")
-                    return {"cleaned": uid}
 
                 if in_active is not None:
                     raise InventoryFault(409, "Computer is still active")
