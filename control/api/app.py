@@ -218,24 +218,35 @@ class Handler(BaseHTTPRequestHandler):
         self._headers(status, "application/json; charset=utf-8", len(content))
         self.wfile.write(content)
 
+    @staticmethod
+    def _deny_auth(reason: str) -> None:
+        # A fixed reason code only; never log request headers, username, IP,
+        # group membership, cookies, tokens, or directory response bodies.
+        # Useful during greenfield rollout to distinguish a Caddy handoff
+        # from stale permissions or an unavailable directory.
+        print("HOMEAWAY_AUTH_REJECT " + reason, flush=True)
+        return None
+
     def _principal(self) -> tuple[str, str] | None:
         # All identity headers must be removed by Caddy before its forward_auth;
         # only verified Authelia response values enter this isolated service.
         # Do not accept a valid username alone as an authorization grant.
         actor = self.headers.get("X-HomeAway-User", "")
+        if not USER_RE.fullmatch(actor):
+            return self._deny_auth("missing_or_invalid_user_header")
         role = verified_role(self.headers.get("X-HomeAway-Groups", ""))
-        if not USER_RE.fullmatch(actor) or not role:
-            return None
+        if not role:
+            return self._deny_auth("missing_or_invalid_role_header")
         if account_admin_enabled():
             # Never allow stale Authelia groups to retain permissions after
             # a directory demotion/revocation. Require an exact fresh match;
             # fail closed if the independent broker cannot be reached.
             try:
                 identity = broker_request(actor, "resolve", {"user": actor})
-                if identity.get("role") != role:
-                    return None
             except BrokerError:
-                return None
+                return self._deny_auth("account_broker_unavailable")
+            if identity.get("role") != role:
+                return self._deny_auth("directory_role_mismatch")
         return actor, role
 
     def do_GET(self):
