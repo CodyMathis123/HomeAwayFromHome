@@ -24,6 +24,8 @@ sudo docker compose -f compose.yaml -f compose.control.yaml -f compose.accounts.
 
 **Pi first-run note:** The standard Debian LLDAP container was reported unhealthy on a hardened Pi deployment (all capabilities dropped). The Compose overlay now uses the official `2026-09-22-debian-rootless` image, which runs as UID/GID 1000 and does not need root-to-user switching. After fetching the corrected branch, recreate **only** `lldap` and leave Authelia/Pi-hole/WireGuard alone. If unhealthy again, inspect `docker inspect ... --format '{{json .State.Health}}'` and review redacted LLDAP logs before changing file permissions or secrets.
 
+**Docker networking note:** A container connected *only* to Docker `internal: true` networks has no default gateway and may silently lack the requested localhost published port. The account overlay therefore attaches **only LLDAP** to a second, otherwise unused `account-ui` bridge. LLDAP remains on `account-directory` for Authelia/broker communication; the UI is still bound to `127.0.0.1:17170` on the Pi. This dedicated bridge grants LLDAP outbound connectivity, but does not expose its UI to the LAN or connect it to DNS/VPN/metrics. After updating from an earlier PR #5 revision, recreate **only** `lldap` and verify that `docker port homeawayfromhome-lldap-1` prints the localhost binding.
+
 **2. Start LLDAP and broker only; keep real Authelia file backend running:**
 
 ```bash
