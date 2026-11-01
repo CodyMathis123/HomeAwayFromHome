@@ -27,7 +27,7 @@ KNOWN_HOSTS = Path("/home/pcctl/.ssh/known_hosts")
 
 def target_name(ip: str, port: int) -> str:
     address = ipaddress.IPv4Address(ip)
-    if address not in RFC1918:
+    if not any(address in net for net in RFC1918):
         raise ValueError("Only RFC1918 LAN/VPN IPv4 addresses are supported")
     if type(port) is not int or not 1 <= port <= 65535:
         raise ValueError("SSH port is invalid")
