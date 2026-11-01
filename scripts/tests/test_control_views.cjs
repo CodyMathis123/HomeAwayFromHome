@@ -26,7 +26,7 @@ function simulate(initialHash, firstCapabilities) {
   function element(id) {
     if (elements.has(id)) return elements.get(id);
     const e = {
-      id, hidden: id === 'accounts' || id === 'computer-admin',
+      id, hidden: id === 'accounts' || id === 'computer-admin' || id === 'setup-readiness',
       disabled: false, dataset: {}, textContent: '',
       attrs: {}, handlers: {},
       addEventListener(name, callback) { this.handlers[name] = callback; },
@@ -42,7 +42,7 @@ function simulate(initialHash, firstCapabilities) {
     return e;
   }
   const main = element('main');
-  for (const id of ['hosts','computer-admin','accounts','recent-activity']) {
+  for (const id of ['hosts','computer-admin','accounts','recent-activity','setup-readiness']) {
     const nav = element('nav-' + id);
     nav.href = '#' + id;
     links.push(nav);
@@ -54,8 +54,9 @@ function simulate(initialHash, firstCapabilities) {
   navAccounts.href = '#accounts';
   const navPower = element('nav-power');
   navPower.href = '#hosts';
-  links.splice(0, links.length, navPower, navComputers, navAccounts, element('nav-activity'));
+  links.splice(0, links.length, navPower, navComputers, navAccounts, element('nav-activity'), element('nav-readiness'));
   links[3].href = '#recent-activity';
+  links[4].href = '#setup-readiness';
   const document = {
     hidden: false,
     body: {classList: {add(value) { calls.push('body:' + value); }}},
@@ -99,9 +100,15 @@ function simulate(initialHash, firstCapabilities) {
       element('computer-admin').hidden = !identity.capabilities.manageComputers;
     }
   };
+  const HomeAwayReadiness = {
+    start(identity) {
+      element('setup-readiness').hidden = identity?.capabilities?.role !== 'admins';
+    },
+    show() { calls.push('readiness:show'); }
+  };
   vm.runInNewContext(script, {
     document, window, location, history, fetch,
-    HomeAwayAccounts, HomeAwayComputers, Set, Date
+    HomeAwayAccounts, HomeAwayComputers, HomeAwayReadiness, Set, Date
   }, {filename: 'control/api/app.js'});
 
   const settle = async () => { for (let i = 0; i < 3; i++) await new Promise(setImmediate); };
@@ -134,6 +141,10 @@ const viewers = {role: 'viewers', actions: [], manageUsers: false, manageCompute
   assert.ok(admin.calls.includes('focus:computer-admin'));
   admin.navigate('#recent-activity');
   assert.equal(admin.main.dataset.activeView, 'recent-activity');
+  admin.navigate('#setup-readiness');
+  assert.equal(admin.main.dataset.activeView, 'setup-readiness');
+  assert.equal(admin.element('setup-readiness').hidden, false);
+  assert.ok(admin.calls.includes('readiness:show'));
   admin.navigate('#hosts');
   assert.equal(admin.main.dataset.activeView, 'hosts');
 
@@ -146,6 +157,8 @@ const viewers = {role: 'viewers', actions: [], manageUsers: false, manageCompute
   assert.equal(admin.location.hash, '#hosts');
   assert.equal(admin.element('accounts').hidden, true);
   assert.equal(admin.element('computer-admin').hidden, true);
+  assert.equal(admin.element('setup-readiness').hidden, true);
+  assert.equal(admin.element('nav-readiness').hidden, true);
   assert.equal(admin.element('nav-accounts').hidden, true);
   assert.equal(admin.element('nav-computers').hidden, true);
 
@@ -165,6 +178,10 @@ const viewers = {role: 'viewers', actions: [], manageUsers: false, manageCompute
   assert.equal(viewer.main.dataset.activeView, 'hosts');
   assert.equal(viewer.location.hash, '#hosts');
   assert.equal(viewer.element('nav-activity').hidden, true);
+  viewer.navigate('#setup-readiness');
+  assert.equal(viewer.main.dataset.activeView, 'hosts');
+  assert.equal(viewer.location.hash, '#hosts');
+  assert.equal(viewer.element('nav-readiness').hidden, true);
 
   // A revoked session while on an admin panel must clear the stale fragment,
   // hide the old admin views and remove cached power-action cards.
