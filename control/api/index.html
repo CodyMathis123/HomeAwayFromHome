@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark"><title>HomeAway · Computers</title>
-<link rel="stylesheet" href="/control/styles.css"><script defer src="/control/accounts.js"></script><script defer src="/control/computers.js"></script><script defer src="/control/app.js"></script></head>
-<body><div class="app-layout">
+<link rel="stylesheet" href="/control/styles.css"><link rel="stylesheet" href="/theme.css"><script defer src="/control/accounts.js"></script><script defer src="/control/computers.js"></script><script defer src="/control/app.js"></script></head>
+<body><div class="ambient" aria-hidden="true"></div><div class="app-layout">
 <aside class="app-sidebar" aria-label="Primary navigation">
   <nav class="section-nav" aria-label="Control page sections">
     <span class="sidebar-title">HOMEAWAY</span>
@@ -18,8 +18,11 @@
   </nav>
 </aside>
 <main>
-<header><a href="/">⌂ Home<span>Away</span></a><small>AUTHENTICATED COMPUTER CONTROL · <span id="identity">Checking permissions…</span></small></header>
-<section class="hero"><p>YOUR COMPUTERS</p><h1>Power and presence.</h1>
+<header class="masthead">
+  <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">⌂</span><span>Home<span class="brand-accent">Away</span><small>COMPUTERS &amp; ACCESS</small></span></a>
+  <span class="environment"><span class="led" aria-hidden="true"></span> PRIVATE CONTROL · <span id="identity">Checking permissions…</span></span>
+</header>
+<section class="hero"><p class="eyebrow">YOUR COMPUTERS</p><h1>Power and presence.</h1>
 <div class="intro">Wake your computers or request Windows power actions. The PC must be configured for SSH and Wake-on-LAN. Status checks SSH reachability only; power requests are not confirmation that Windows completed the action.</div>
 <button id="refresh" type="button">Refresh status</button><span id="updated" role="status">Loading computers…</span>
 <p id="last-action" class="action-feedback" aria-live="polite"></p></section>
