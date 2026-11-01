@@ -99,6 +99,7 @@ port 3890, or publish LLDAP 17170 to the LAN/WAN.
 - Tested actual Viewer login: computer status available; power controls and Users administration unavailable.
 - Changed the already-authenticated test account from Viewer to Operator: Wake/Sleep appeared without signing in again; restart/shutdown and admin functions remained unavailable.
 - Revoked the test account's HomeAway access while its Operator session remained open: an existing authenticated session immediately lost access without logging out.
+- **Additional operator confirmation:** Existing Pi → Windows computer power controls and the iOS Shortcut were exercised after the account-management cutover and remain functional.
 - Latest CI on PR #5 before documentation refresh: commit `3f382baffbfdf5000ac9544d001b10f8d00eae8f`, all jobs passed, including identity lab, Authelia/TOTP and API tests.
 
 These results establish the live feature flow and RBAC revocation behavior. They **do not** establish a complete off-device restore rehearsal, real Pi/iOS power-action verification, SMTP invitations, general LDAP account disabling, or safety against concurrent independent LDAP editors. The operator's real Pi backup was made and checksum-verified locally, not restore-tested off-device.
