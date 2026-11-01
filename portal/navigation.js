@@ -48,6 +48,7 @@
     add('Manage computers', '#computer-admin', 'computer-admin', 'nav-computers', true);
     add('Users and permissions', '#accounts', 'accounts', 'nav-accounts', true);
     add('Activity', '#recent-activity', 'recent-activity', 'nav-activity', true);
+    add('Setup & diagnostics', '#setup-readiness', 'setup-readiness', 'nav-readiness', true);
   } else {
     const control = add('Computers & users', '/control/', 'control', null, true);
     // Do not expose an unvalidated/unconfigured link on a public LAN page.
@@ -71,7 +72,7 @@
     let current = 'overview';
     if (isControl) {
       const key = location.hash.slice(1);
-      current = ['hosts', 'computer-admin', 'accounts', 'recent-activity'].includes(key)
+      current = ['hosts', 'computer-admin', 'accounts', 'recent-activity', 'setup-readiness'].includes(key)
         ? key : 'hosts';
     } else if (location.pathname === '/architecture' ||
                location.pathname === '/architecture/') {
