@@ -17,9 +17,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate Python code and unit tests
         run: |
-          python3 -m compileall -q portal ingest monitoring scripts/tests
+          python3 -m compileall -q portal ingest monitoring control/accounts scripts/tests
           node --check portal/app.js
           node --check control/api/app.js
+          node --check control/api/accounts.js
           python3 -m unittest discover -s scripts/tests -v
           python3 scripts/check_doc_links.py
       - name: Validate Bash script syntax
@@ -37,6 +38,15 @@ jobs:
           docker compose config -q
           docker compose --profile metrics config -q
           HOMEAWAY_DOMAIN=homeaway.home.arpa HOMEAWAY_AUTH_DOMAIN=auth.homeaway.home.arpa HOMEAWAY_METRICS_DOMAIN=metrics.homeaway.home.arpa PCCTL_GID=999 docker compose -f compose.yaml -f compose.control.yaml --profile control --profile metrics config -q
+      - name: Validate feature-gated account directory overlay (no services started)
+        run: |
+          mkdir -p secrets/control
+          for name in lldap_admin_password lldap_jwt_secret lldap_key_seed account_broker_token; do
+            printf '%s\n' "synthetic-ci-only-secret-value-for-$name" > "secrets/control/$name"
+          done
+          HOMEAWAY_DOMAIN=homeaway.home.arpa HOMEAWAY_AUTH_DOMAIN=auth.homeaway.home.arpa HOMEAWAY_METRICS_DOMAIN=metrics.homeaway.home.arpa PCCTL_GID=999 \
+            docker compose -f compose.yaml -f compose.control.yaml -f compose.accounts.yaml --profile control --profile accounts --profile metrics config -q
+          python3 scripts/check_accounts_contracts.py
       - name: Build application and wg-easy images without starting VPN
         run: |
           docker compose build portal wg-easy
