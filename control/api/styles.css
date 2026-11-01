@@ -54,3 +54,18 @@ button{min-height:42px}
 #accounts-message[data-state="warning"]{color:#f4ce8c}
 #accounts-message[data-state="error"]{color:#ffb1a9}
 .account-buttons select:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+/* Focused, fragment-addressable management views. Without JavaScript the
+ * original complete page remains visible; no server permissions are inferred.
+ * Sections hidden by identity/role checks remain hidden in every view. */
+body.control-views-ready main[data-active-view="hosts"] > [data-view-section]:not([data-view-section="hosts"]),
+body.control-views-ready main[data-active-view="computer-admin"] > [data-view-section]:not([data-view-section="computer-admin"]),
+body.control-views-ready main[data-active-view="accounts"] > [data-view-section]:not([data-view-section="accounts"]),
+body.control-views-ready main[data-active-view="recent-activity"] > [data-view-section]:not([data-view-section="recent-activity"]){display:none!important}
+main [data-view-section]:focus{outline:none}
+main [data-view-section]:focus-visible{outline:2px solid var(--accent);outline-offset:5px}
+@media(min-width:901px){
+  main[data-active-view="computer-admin"] > #computer-admin,
+  main[data-active-view="accounts"] > #accounts,
+  main[data-active-view="recent-activity"] > #recent-activity{margin-top:48px}
+}
