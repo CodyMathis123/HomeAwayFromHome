@@ -1,0 +1,13 @@
+[Unit]
+Description=HomeAway private computer inventory administration socket
+
+[Socket]
+ListenStream=/run/homeaway-pcinventory/agent.sock
+SocketUser=homeaway-inventory
+SocketGroup=homeaway-inventory
+SocketMode=0660
+DirectoryMode=0750
+RemoveOnStop=true
+
+[Install]
+WantedBy=sockets.target
