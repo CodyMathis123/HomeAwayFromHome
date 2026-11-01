@@ -15,26 +15,38 @@ echo " - preserves existing active PC IDs, IP/MAC and iOS Shortcut bindings"
 echo " - creates a separate unprivileged system user and Unix socket"
 echo " - changes ONLY /etc/homeaway-pcctl directory owner and hosts.json owner/group"
 echo " - makes a root-only before-install snapshot; never edits host entries"
-echo " - installs a separate read-only SSH trust verifier under the existing pcctl user\n - does NOT change pcctl-agent, Pi-hole, WireGuard, DNS or Windows"
+echo " - installs a separate read-only SSH trust verifier under the existing pcctl user"
+echo " - does NOT change pcctl-agent, Pi-hole, WireGuard, DNS or Windows"
+inventory=/etc/homeaway-pcctl/hosts.json
+# This is a genuine read-only check, not a confirmation-only "dry run".
+# Fail before changing any ownership or service if the live inventory is
+# invalid or the existing host cannot satisfy the new service requirements.
+python3 -B "$root/scripts/preflight-pcinventory-host.py" --inventory "$inventory"
 if [[ "$mode" == "--plan" ]]; then
-  echo "DRY RUN: no filesystem ownership or services changed"
+  echo "DRY RUN: preflight passed; no filesystem ownership or services changed"
   exit 0
 fi
 [[ "$EUID" == 0 ]] || { echo "Use sudo for --apply" >&2; exit 1; }
 command -v systemctl >/dev/null || { echo "systemd is required" >&2; exit 1; }
-inventory=/etc/homeaway-pcctl/hosts.json
+command -v systemd-tmpfiles >/dev/null || { echo "systemd-tmpfiles is required" >&2; exit 1; }
+for source in \
+  "$root/control/pcctl/core.py" \
+  "$root/control/pcctl/inventory_store.py" \
+  "$root/control/pcinventory/agent.py" \
+  "$root/control/pcinventory/homeaway-inventory.service" \
+  "$root/control/pcinventory/homeaway-inventory.socket" \
+  "$root/control/pcinventory/homeaway-inventory.tmpfiles.conf" \
+  "$root/control/pcverify/agent.py" \
+  "$root/control/pcverify/homeaway-pcverify.service" \
+  "$root/control/pcverify/homeaway-pcverify.socket" \
+  "$root/control/pcverify/homeaway-pcverify.tmpfiles.conf"; do
+  [[ -f "$source" && ! -L "$source" ]] || { echo "Missing or unsafe installed source: $source" >&2; exit 1; }
+done
 directory=/etc/homeaway-pcctl
 [[ -d "$directory" && ! -L "$directory" ]] || { echo "Unsafe or missing inventory directory" >&2; exit 1; }
 [[ -f "$inventory" && ! -L "$inventory" ]] || { echo "Unsafe or missing active inventory" >&2; exit 1; }
 [[ "$(stat -c %h "$inventory")" == 1 ]] || { echo "Refusing hardlinked inventory" >&2; exit 1; }
 id pcctl >/dev/null || { echo "Existing pcctl Linux account required" >&2; exit 1; }
-python3 -B - "$root/control/pcctl" "$inventory" <<'PY'
-import sys
-sys.path.insert(0, sys.argv[1])
-from core import load_hosts
-print("Validated", len(load_hosts(sys.argv[2])), "existing active computers")
-PY
-
 if ! id homeaway-inventory >/dev/null 2>&1; then
   useradd --system --user-group --no-create-home --shell /usr/sbin/nologin homeaway-inventory
 fi
