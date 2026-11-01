@@ -5,6 +5,44 @@ all three Let's Encrypt **staging** DNS-01 authorizations and certificates
 succeeded on the Pi (November 1, 2026). No production-certificate issuance,
 live gateway restart or DNS/Authelia changes are performed by GitHub.
 
+## First live rollout incident and recovery guard
+
+The November 1, 2026 production DNS-01 `--apply` recreated the
+gateway, but it immediately entered a Docker restart loop
+(`Restarting (1)`); desktop `curl --resolve` to the Pi LAN IP timed
+out. The operator restored the original `.home.arpa` gateway using
+`--rollback`. The **root cause is not yet verified**, because the
+earlier `--status` command printed only successful certificate
+events and did not expose startup failures. Do not blame Cloudflare's
+missing public A records: `curl --resolve` bypasses DNS, and ACME
+DNS-01 staging had already succeeded.
+
+The recovery hardening in this change adds the following safeguards:
+
+- `--plan` requires a successful private HTTPS response from all
+  three original `.home.arpa` SNI hostnames before any production
+  rollout is considered.
+- `--probe` performs a **real Caddy config validation** in a
+  throwaway container with the three original Pi hostname variables,
+  synthetic Cloudflare token, **no network, no published ports and no
+  access to live Caddy state**. `--apply` requires the same probe
+  before changing the live gateway.
+- After a live restart, the script checks Docker restart count is
+  **zero** and all three original HTTPS endpoints continue responding
+  repeatedly. A momentary `running` state is not success.
+- If the rollout fails, the script captures startup logs to a
+  root-only `backups/phase3-https/gateway-startup-failed-*.log` file
+  **before** the failed gateway is recreated, then automatically
+  rolls back the gateway to the original image/config.
+- The failure log is privileged diagnostic information. Review it
+  locally and redact it before sharing. The rollback remains
+  available manually if automatic recovery is incomplete.
+
+This does **not** identify the first incident's root cause. The
+next gateway rollout should not be attempted until the guarded
+probe passes; if the same startup failure recurs, the saved logs
+will allow a focused correction without losing diagnostic evidence.
+
 ## Exactly what the opt-in overlay changes
 
 The existing live Caddy gateway is `caddy:2.11.7-alpine` with private
@@ -70,6 +108,7 @@ Run **as the normal Pi user**, not `sudo bash`:
 cd ~/HomeAwayFromHome
 git pull --ff-only origin Production
 bash scripts/deploy-dns01-production.sh --plan
+bash scripts/deploy-dns01-production.sh --probe
 ```
 
 The plan validates the complete resolved Compose configuration against
