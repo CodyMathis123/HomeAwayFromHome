@@ -213,7 +213,7 @@ def main() -> None:
         f"sensordash_reading,host=CI,sensor=/amdcpu/0/power/1,kind=Power value=41 {stamp + 1800}",
         f"sensordash_sensor_info,host=CI,sensor=/amdcpu/0/power/1,kind=Power,name=Core_Power,alias=unassigned,device=AMD_CPU,device_type=Cpu value=1 {stamp + 1800}",
     ]
-    payload = ("\\n".join(new_sensor_lines) + "\\n").encode("ascii")
+    payload = ("\n".join(new_sensor_lines) + "\n").encode("ascii")
     with urllib.request.urlopen(urllib.request.Request(
         BASE + "/api/v2/write?precision=ms", data=payload,
         headers={"Content-Type": "text/plain"}, method="POST",
