@@ -50,11 +50,13 @@ On a clean feature branch checkout:
 
 ```bash
 bash -n scripts/backup-full.sh
+bash -n scripts/backup-recovery.sh
+bash scripts/test-backup-recovery.sh
 sudo python3 scripts/plan-host-backup.py --plan
 sudo bash scripts/backup-full.sh --plan
 ```
 
-Neither command stops services or creates backups. The plan is read-only.
+These static checks, mocked recovery test, and the plan do not stop services or create backups. The mock test covers previously active socket/service restoration, stopped versus already-running containers, and continuing recovery after a simulated failure. It does not prove actual Pi service quiescence or archive restoration.
 
 Once `age` and `age-keygen` are installed, test the cryptographic tools
 without an outage or accessing any HomeAway secrets:
