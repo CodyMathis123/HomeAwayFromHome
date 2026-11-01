@@ -65,6 +65,11 @@ services:
     profiles: [control]
     build:
       context: ./monitoring/diagnostics
+    environment:
+      # Expected SNI names only; TLS TCP destinations are hardcoded privately.
+      HOMEAWAY_DOMAIN: ${HOMEAWAY_DOMAIN:?Set HOMEAWAY_DOMAIN in .env}
+      HOMEAWAY_AUTH_DOMAIN: ${HOMEAWAY_AUTH_DOMAIN:?Set HOMEAWAY_AUTH_DOMAIN in .env}
+      HOMEAWAY_METRICS_DOMAIN: ${HOMEAWAY_METRICS_DOMAIN:?Set HOMEAWAY_METRICS_DOMAIN in .env}
     restart: unless-stopped
     user: "65534:65534"
     read_only: true
