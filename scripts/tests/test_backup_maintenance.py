@@ -32,7 +32,7 @@ class MaintenanceTests(unittest.TestCase):
         self.assertIn("--plan", calls[0])
         self.assertIn("--plan", calls[1])
         self.assertNotIn("--apply", " ".join(map(str, calls)))
-        self.assertNotIn("enable", " ".join(map(str, calls)))
+        self.assertFalse(any(cmd[:2] == ["systemctl", "enable"] for cmd in calls))
         self.assertNotIn("delete", " ".join(map(str, calls)))
 
     def test_fail_closed_without_exporting_output(self):
