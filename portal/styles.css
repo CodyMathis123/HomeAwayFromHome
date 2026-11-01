@@ -90,3 +90,8 @@ footer{border-top:1px solid #263f50;margin-top:45px;padding-top:20px;color:#718e
   .architecture-canvas{padding:6px}
   .component-grid{grid-template-columns:1fr}
 }
+
+/* Cached read-only views share a single grid cell; inactive views remain inert. */
+.page-view-slot{min-width:0;width:100%}
+.page-view-slot > main[hidden]{display:none!important}
+.page-view-slot > main:focus{outline:none}
