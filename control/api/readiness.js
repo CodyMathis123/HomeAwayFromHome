@@ -182,9 +182,17 @@ const HomeAwayReadiness = (() => {
   }
 
   async function readJson(path) {
-    const response = await fetch(path, {cache: 'no-store', credentials: 'same-origin'});
-    if (!response.ok) throw new Error('Read-only status unavailable');
-    return response.json();
+    const controller = new AbortController();
+    // A hung internal request should never hold the diagnostics page forever.
+    const timeout = setTimeout(() => controller.abort(), 12000);
+    try {
+      const response = await fetch(path, {cache: 'no-store',
+        credentials: 'same-origin', signal: controller.signal});
+      if (!response.ok) throw new Error('Read-only status unavailable');
+      return await response.json();
+    } finally {
+      clearTimeout(timeout);
+    }
   }
   async function refresh() {
     const view = $('setup-readiness');
@@ -218,13 +226,14 @@ const HomeAwayReadiness = (() => {
 
       // Each existing API is independently optional. One failure must not
       // misclassify another component or erase independently observed results.
-      const [services, computers, metrics, certificates, backup] = await Promise.allSettled([
-        readJson('/api/status'),
-        readJson('/control/api/hosts'),
-        readJson('/control/api/admin/diagnostics'),
-        readJson('/control/api/admin/certificates'),
-        readJson('/control/api/admin/backup-status')
-      ]);
+      // Render each independent observation as soon as its own request
+      // completes. A slow SSH/computer check must not block certificates,
+      // metrics or backup status; every request has a finite timeout.
+      const queries = [
+        readJson('/api/status').then(
+          value => ({status: 'fulfilled', value}),
+          () => ({status: 'rejected'})
+        ).then(services => {
       if (services.status === 'fulfilled' && Array.isArray(services.value.checks)) {
         const checks = new Map(services.value.checks
           .filter(item => item && typeof item === 'object' &&
@@ -249,6 +258,11 @@ const HomeAwayReadiness = (() => {
           display(id, 'unknown', 'Unknown', 'Portal status unavailable; service state not established');
       }
 
+        }),
+        readJson('/control/api/hosts').then(
+          value => ({status: 'fulfilled', value}),
+          () => ({status: 'rejected'})
+        ).then(computers => {
       if (computers.status === 'fulfilled' && Array.isArray(computers.value.hosts)) {
         const entries = computers.value.hosts;
         if (!entries.every(item => item && typeof item === 'object' &&
@@ -265,17 +279,35 @@ const HomeAwayReadiness = (() => {
       } else {
         display('hosts', 'unknown', 'Unknown', 'Computer inventory or reachability check unavailable');
       }
+        }),
+        readJson('/control/api/admin/diagnostics').then(
+          value => ({status: 'fulfilled', value}),
+          () => ({status: 'rejected'})
+        ).then(metrics => {
       if (metrics.status === 'fulfilled')
         displayMetrics(metrics.value);
       else
         metricsUnknown('Metrics observer unavailable; existing source state not established');
       if (metrics.status === 'fulfilled') displayServices(metrics.value);
       else servicesUnknown('Metrics observer unavailable');
+        }),
+        readJson('/control/api/admin/certificates').then(
+          value => ({status: 'fulfilled', value}),
+          () => ({status: 'rejected'})
+        ).then(certificates => {
       if (certificates.status === 'fulfilled')
         displayCertificates(certificates.value);
       else
         certificatesUnknown('Certificate observer unavailable; issuer/expiry not verified');
+        }),
+        readJson('/control/api/admin/backup-status').then(
+          value => ({status: 'fulfilled', value}),
+          () => ({status: 'rejected'})
+        ).then(backup => {
       displayBackup(backup.status === 'fulfilled' ? backup.value : null);
+        }),
+      ];
+      await Promise.all(queries);
       updated.textContent = 'Checked ' + new Date().toLocaleTimeString() +
         ' · Individual statuses have limited scope';
     } catch (_) {
