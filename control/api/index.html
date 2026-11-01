@@ -127,7 +127,7 @@
   <h3>Backup &amp; recovery</h3>
   <p class="detail">Encrypted full-state backups are operator-run on the Pi. This browser has no access to the root-only archive directory, backup encryption keys, or systemd, so it cannot verify when a backup last completed or whether a clean-host restore is possible.</p>
   <div class="readiness-grid" aria-label="Backup verification boundaries">
-    <article class="readiness-item"><h3>Encrypted archive</h3><span class="readiness-badge" data-state="unknown">Not monitored</span><p>Use the Pi's root-only retention inventory and verify archive checksums locally. The existence of an archive does not prove it can be decrypted.</p></article>
+    <article class="readiness-item"><h3>Encrypted archive</h3><span id="readiness-backup" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-backup-detail">Backup status not yet checked. A checksum does not prove decryption or full recovery.</p><p id="readiness-backup-checked">No observation yet</p></article>
     <article class="readiness-item"><h3>Recovery verification</h3><span class="readiness-badge" data-state="unknown">Not verified here</span><p>Copy a backup off the Pi, decrypt it with your separately protected identity and test restoration on disposable storage. Never extract a recovery archive over running services.</p></article>
   </div>
   <div class="readiness-manual">
