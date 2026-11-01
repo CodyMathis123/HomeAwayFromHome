@@ -1,10 +1,8 @@
-# Phase 2 Computer Management — supervised preview (not deployed)
+# Phase 2 Computer Management — Production runbook and remaining acceptance
 
-**State, November 1, 2026:** PR #10 contains the C1 inventory transaction layer and
-the C2/C4 admin inventory lifecycle UI, verified SSH status checker and
-out-of-band key-pinning helper. It is on a **review branch**, not running on
-the Pi. No Windows pairing, activation, deactivation or archival has been
-physically tested yet.
+**State (November 1, 2026):** Phase 2 code was merged into `Production` in [PR #14](https://github.com/CodyMathis123/HomeAwayFromHome/pull/14), with green GitHub CI and 168 locally passing Python tests. The operator completed Pi inventory-writer/verifier socket smoke, confirmed the existing PC and iOS Shortcut, exercised the admin draft/SSH-denial/discard/audit workflow, and reported completing the final Production container cutover. The **real second-Windows-PC enrollment/activation/disable/archive/restore, offline recovery, and complete host-state backup/restore remain unverified**. The original [draft PR #10](https://github.com/CodyMathis123/HomeAwayFromHome/pull/10) was closed as superseded; its old “not deployed” text is historical.
+
+For an existing live Pi, **do not rerun the installer or initialization simply because the steps below are documented**. Use this as an operator checklist and rollback reference. Current work/future phase boundaries are in the [roadmap](ROADMAP.md).
 
 ## What exists
 
@@ -63,7 +61,7 @@ retry Disable after reviewing. If a Restore succeeds but archive cleanup fails,
 HomeAway flags the overlap for manual inspection instead of deleting ambiguous
 recovery data. The system does **not** revoke already executing SSH/power actions.
 
-## Future operator review (not a request to run this yet)
+## Installation/acceptance checklist (historical completed steps and deferred new-PC tests)
 
 1. Confirm an off-device copy of `/etc/homeaway-pcctl/hosts.json` and
    the existing `pcctl` keys and that the iOS Shortcut still works.
@@ -128,9 +126,7 @@ recovery data. The system does **not** revoke already executing SSH/power action
    then use the two-step **Verify SSH → Activate verified computer** UI.
    Actual Wake/Sleep must be tested separately, under supervision.
 
-**No commands in this section have been run by the assistant on your Pi.**
-Do not copy this overlay into a live deployment until the relevant review
-and operational acceptance gate is explicitly agreed.
+**Historical note:** The operator carried out the read-only Pi checks and activated the management overlay in the live environment. The assistant did not execute shell commands on the Pi. Before any new deployment or rollback, confirm the current `Production` checkout, backed-up state, exact Compose overlays and what is running; do not copy a stale review-worktree overlay into Production.
 
 ## Error cases and recovery
 
@@ -163,14 +159,14 @@ and operational acceptance gate is explicitly agreed.
   `hosts.json` from a pre-install snapshot or erase its history. Restore
   original file ownership only as a separate, reviewed operation.
 
-## Next development packages
+## Deferred new-PC acceptance and subsequent refinement
 
 - C3: polish the reviewed Windows installation handoff and make manual
   fingerprint comparison/SSH trust diagnostics easier; no auto-accept, no
   arbitrary LAN scanning or SSH keys transmitted to a browser.
 - C4: bounded, lazily loaded admin-only audit history is now available.
   Refine mobile/keyboard usability and clarify offline/SSH status before live rollout.
-- C5: read-only Pi preflight, opt-in host socket smoke and management-only
-  rollback scripts are implemented with synthetic CI validation. Next: actual
-  Pi/Windows supervised verification and break-glass recovery before merging
-  or deploying. Never infer physical power state from TCP/22 or a WOL packet.
+- C5: read-only Pi preflight and management-only rollback are implemented and the
+  independent Pi socket smoke passed. Next: a separate Windows machine and
+  supervised trust/activation/retirement/recovery checks. Never infer physical
+  power state from TCP/22 or a WOL packet.
