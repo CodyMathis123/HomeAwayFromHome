@@ -140,9 +140,46 @@ def main() -> None:
                 raise AssertionError("Directory accepted a duplicate user ID")
             print("PASS: duplicate account rejected", flush=True)
 
+            # Exercise the real HomeAway broker against this disposable
+            # directory, not just its fake-directory unit tests. CI's host
+            # loopback port is substituted into a prevalidated test instance;
+            # production refuses any non-private LLDAP URL.
+            import importlib.util
+            from pathlib import Path
+            module_path = Path(__file__).resolve().parents[1] / "control/accounts/broker.py"
+            spec = importlib.util.spec_from_file_location("homeaway_identity_ci", module_path)
+            identity = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(identity)
+            directory = object.__new__(identity.LldapDirectory)
+            directory.url = BASE_URL
+            directory.username = "admin"
+            directory.password = admin_password
+            directory._token = None
+
+            assert identity.role_of({"groups":[]}) is None
+            admin_group = graphql(token,qcreate_group,{"name":"admins"})["createGroup"]
+            assert graphql(token,qadd,{"user":"admin","group":admin_group["id"]})["addUserToGroup"]["ok"]
+            backend = identity.AccountBroker(directory)
+            assert backend.resolve("admin")["role"]=="admins"
+            created = backend.execute("admin","create",{
+                "id":"labmember","name":"Synthetic Member",
+                "email":"member@lab.invalid"})
+            assert created["user"]["role"] is None
+            assert not created["passwordReady"]
+            target = directory.user("labmember")
+            expected = identity.fingerprint(target)
+            granted = backend.execute("admin","set-role",{
+                "id":"labmember","role":"operators","revision":expected})
+            assert granted["user"]["role"]=="operators"
+            assert backend.resolve("labmember")["role"]=="operators"
+            backend.execute("admin","revoke",{
+                "id":"labmember","revision":granted["user"]["revision"]})
+            assert backend.resolve("labmember")["role"] is None
+            print("PASS: actual HomeAway broker create/grant/revoke against LLDAP",flush=True)
+
             # NOTE: A successful group removal does NOT prove access revocation
             # for an Authelia browser session with an existing 2FA cookie.
-            print("LAB-ONLY: session revocation and TOTP migration NOT VERIFIED",
+            print("LAB-ONLY: Authelia 2FA revocation is tested in separate CI; TOTP migration NOT VERIFIED",
                   flush=True)
         finally:
             subprocess.run(["docker", "rm", "-f", label],
