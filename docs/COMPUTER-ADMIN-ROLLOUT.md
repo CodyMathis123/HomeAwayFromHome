@@ -66,15 +66,23 @@ recovery data. The system does **not** revoke already executing SSH/power action
 
 1. Confirm an off-device copy of `/etc/homeaway-pcctl/hosts.json` and
    the existing `pcctl` keys and that the iOS Shortcut still works.
-2. In the Phase 2 review checkout, **preview** without changes:
+2. In the Phase 2 review checkout, **run the real read-only preflight**:
 
    ```bash
-   bash scripts/install-pcinventory-host.sh --plan
+   sudo bash scripts/install-pcinventory-host.sh --plan
    ```
 
+   It validates the canonical inventory, permission and symlink safety, and
+   existing `pcctl` SSH prerequisites. The privileged preview can inspect
+   otherwise private files **without printing their contents**. Missing
+   pairing keys produce a `PENDING` warning; an unsafe active inventory
+   fails closed. Ordinary-user `--plan` also works, but may not be able
+   to inspect the `pcctl` private SSH directory.
+
 3. Only in a supervised activation session, after reviewing the script,
-   use `sudo bash scripts/install-pcinventory-host.sh --apply`. It validates
-   the existing inventory, snapshots it to the root-only
+   use `sudo bash scripts/install-pcinventory-host.sh --apply`. It repeats
+   preflight and validates installation sources **before** changing
+   ownership, snapshots the existing inventory to the root-only
    `/var/backups/homeaway-pcinventory/` directory, adds the **separate**
    `homeaway-inventory` Linux user, and installs both new sockets: the restricted inventory writer and the
     `pcctl`-user non-destructive SSH verifier.
@@ -84,12 +92,25 @@ recovery data. The system does **not** revoke already executing SSH/power action
    original read model). The inventory is network metadata only; it must
    never include passwords, SSH keys, or tokens. The Unix socket and draft
    state remain private (0660 and 0700).
-4. Record `PCINV_GID` reported by the installer in local `.env`, then
+4. Before changing any Compose configuration, run a harmless socket
+   test on the Pi:
+
+   ```bash
+   sudo bash scripts/verify-pcinventory-host.sh
+   ```
+
+   This exercises the inventory writer with a **read-only list** and sends
+   an invalid operation to the SSH verifier, which must reject it without
+   opening a network connection. It checks socket ownership/groups and
+   leaves the existing `pcctl-agent.socket` running. It prints only the
+   number of active computers, never addresses, MACs or SSH credentials.
+
+5. Record `PCINV_GID` reported by the installer in local `.env`, then
    explicitly enable `HOMEAWAY_COMPUTER_ADMIN_ENABLED=true`. Add
    `-f compose.computers.yaml` to the already working
    `compose.yaml` + `compose.control.yaml` + `compose.accounts.yaml`
    invocation, **recreating only `pc-control`**, never Pi-hole/WireGuard.
-5. Verify admin-only inventory listing, draft creation/discard, and existing
+6. Verify admin-only inventory listing, draft creation/discard, and existing
    PC/Shortcut functionality first. **Do not activate or disable an existing
    computer in the initial smoke test**. For a truly new test PC, first use
    the reviewed local Windows installer, independently note its ED25519 host
@@ -119,12 +140,27 @@ and operational acceptance gate is explicitly agreed.
 - Every inventory transaction takes a cooperative file lock and stages an
   atomic replacement, with the last valid active file retained as
   `hosts.json.previous`. External editors **must use the same lock**.
-- On an interrupted rollout, disable the new feature flag and remove
-  `compose.computers.yaml`, recreate **only `pc-control`**, and stop the
-  new `homeaway-inventory.socket`. Preserve existing host IDs and never
-  overwrite `hosts.json` from an old snapshot without first inspecting
-  intervening changes. Restore original owner/mode only in a deliberate
-  manual rollback.
+- On an interrupted rollout, disable the new feature flag in the Pi's
+  `.env` and **omit** `compose.computers.yaml` from your Compose command.
+  Recreate **only `pc-control`** (use the original working overlays):
+
+  ```bash
+  sudo docker compose -f compose.yaml -f compose.control.yaml -f compose.accounts.yaml \
+    --profile metrics --profile control --profile accounts \
+    up -d --no-deps --force-recreate pc-control
+  bash scripts/disable-pcinventory-host.sh --plan
+  sudo env HOMEAWAY_COMPUTER_ADMIN_ENABLED=false \
+    bash scripts/disable-pcinventory-host.sh --apply
+  ```
+
+  The rollback stops **only** `homeaway-inventory` and `homeaway-pcverify`
+  services/sockets; it does not touch `pcctl-agent`, the Windows SSH
+  configuration, VPN, DNS, WOL or any SensorDash fan-control process. It
+  leaves ownership and private retirement/draft/audit data in place for
+  deliberate recovery. If an inventory mutation had already succeeded,
+  those changes are still authoritative. **Never** blindly overwrite
+  `hosts.json` from a pre-install snapshot or erase its history. Restore
+  original file ownership only as a separate, reviewed operation.
 
 ## Next development packages
 
@@ -133,6 +169,7 @@ and operational acceptance gate is explicitly agreed.
   arbitrary LAN scanning or SSH keys transmitted to a browser.
 - C4: refine mobile/keyboard usability, explain unknown/offline SSH status,
   and expose bounded administrative audit history.
-- C5: isolated end-to-end integration, actual Pi/Windows supervised validation,
-  rollback and break-glass review before merging/deployment. Never infer
-  physical power state from a TCP/22 probe or unconfirmed WOL packet.
+- C5: read-only Pi preflight, opt-in host socket smoke and management-only
+  rollback scripts are implemented with synthetic CI validation. Next: actual
+  Pi/Windows supervised verification and break-glass recovery before merging
+  or deploying. Never infer physical power state from TCP/22 or a WOL packet.
