@@ -217,7 +217,7 @@ const HomeAwayReadiness = (() => {
   }
   function displayMaintenance(data) {
     if (data?.schemaVersion !== 1 || data.mode !== 'preflight-only' ||
-        !Array.isArray(data.checks)) {
+        !data.checkedAt || !Array.isArray(data.checks)) {
       maintenanceUnknown('Maintenance status unavailable');
       return;
     }
