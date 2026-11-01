@@ -146,7 +146,9 @@ class HttpAccounts(unittest.TestCase):
     def test_duplicate_pending_create_gives_actionable_safe_error(self):
         # The form used to clear itself even after a 409 and only displayed
         # "Account operation rejected", making a failed create look successful.
-        with self.config(),patch.object(api.Path,"read_text",return_value="x"*60),\
+        with self.config(),\
+             patch.dict(os.environ,{"HOMEAWAY_ACCOUNT_BROKER_URL":"http://account-broker:8092"}),\
+             patch.object(api.Path,"read_text",return_value="x"*60),\
              patch.object(api,"urlopen",side_effect=api.HTTPError(
                  "http://account-broker:8092",409,"private upstream detail",None,None)):
             with self.assertRaises(api.BrokerError) as failure:
