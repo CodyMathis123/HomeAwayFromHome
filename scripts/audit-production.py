@@ -41,8 +41,8 @@ def check_file(path: Path, label: str, *, readable_by_all: bool = False,
     if executable and mode & 0o111 == 0:
         print(f"FAIL {label}: mode {mode:04o}; no execute bit")
         return False
-    if secret and (info.st_uid != 0 or mode & 0o077 or mode & 0o600 != 0o600):
-        print(f"FAIL {label}: must be root owned, mode 0600")
+    if secret and (info.st_uid != 0 or mode not in (0o400, 0o600)):
+        print(f"FAIL {label}: must be root owned, mode 0400 or 0600")
         return False
     print(f"PASS {label}: mode {mode:04o}")
     return True
