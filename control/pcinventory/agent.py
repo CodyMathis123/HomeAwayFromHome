@@ -229,6 +229,53 @@ def _audit(actor: str, target: str, operation: str, outcome: str) -> None:
         raise InventoryFault(503, "Inventory audit unavailable") from exc
 
 
+def _audit_history(limit: int = 50) -> dict:
+    """Read bounded, private fixed-schema events; never expose files or IPs.
+
+    The current and previous audit generations are each capped at ~1 MiB.
+    Untrusted caller paths/filters are never accepted and malformed records
+    are not presented as though they were verified audit evidence.
+    """
+    events = []
+    for path in (STATE_DIR / "audit.previous.jsonl", AUDIT):
+        try:
+            fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+        except FileNotFoundError:
+            continue
+        except OSError as exc:
+            raise InventoryFault(503, "Audit history unavailable") from exc
+        try:
+            info = os.fstat(fd)
+            if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or
+                    info.st_size > 1_010_000):
+                raise InventoryFault(503, "Audit history unsafe or oversized")
+            with os.fdopen(fd, "rb", closefd=False) as reader:
+                raw = reader.read(1_010_001)
+            if len(raw) > 1_010_000:
+                raise InventoryFault(503, "Audit history too large")
+            # We only require recent lines. Older generations may contain
+            # more events, but their contents remain bounded on disk.
+            for line in raw.splitlines()[-limit:]:
+                data = json.loads(line)
+                if (not isinstance(data, dict) or set(data) !=
+                        {"time", "actor", "target", "operation", "outcome"} or
+                        not all(isinstance(v, str) for v in data.values()) or
+                        not ACTOR.fullmatch(data["actor"]) or
+                        not ID.fullmatch(data["target"]) or
+                        data["operation"] not in {
+                            "draft-create", "draft-discard", "rename",
+                            "activate", "disable", "archive", "restore",
+                        } or data["outcome"] not in {"requested", "committed", "retry"} or
+                        not 10 < len(data["time"]) < 49):
+                    raise ValueError("Invalid audit record")
+                events.append(data)
+        except (OSError, ValueError, TypeError, UnicodeError) as exc:
+            raise InventoryFault(503, "Audit history malformed; inspect locally") from exc
+        finally:
+            os.close(fd)
+    return {"events": events[-limit:][::-1], "limit": limit}
+
+
 def _probe(host: dict) -> dict:
     """Require pin-verified, authenticated Windows forced-command status.
 
@@ -302,6 +349,10 @@ class InventoryManager:
         if not isinstance(payload, dict):
             raise InventoryFault(400, "Invalid request")
         with self.lock:
+            if op == "audit-list":
+                if payload:
+                    raise InventoryFault(400, "Audit history takes no request fields")
+                return _audit_history()
             if op == "list":
                 if payload:
                     raise InventoryFault(400, "Invalid list request")
