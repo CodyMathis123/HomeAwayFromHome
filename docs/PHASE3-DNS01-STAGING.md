@@ -33,6 +33,65 @@ in the gateway, never included in Compose environment values, CLI
 arguments, Git, Grafana or browser output. The fixed entrypoint reads
 the secret into Caddy's process environment and does not log its value.
 
+## Verified migration context — November 1, 2026
+
+The current Namecheap registrar screen for `homeawayfromhome.house`
+shows **Custom DNS** with six Dynu nameservers:
+
+- `ns1.dynu.com`, `ns2.dynu.com`, `ns3.dynu.com`
+- `ns4.dynu.com`, `ns5.dynu.com`, `ns6.dynu.com`
+
+Dynu was previously used for a changing home IP address. The operator
+reports the home now has a **static public IP** and no longer needs Dynu's
+dynamic-IP updater. The intended move is **authoritative DNS only**:
+Namecheap continues to be registrar, Cloudflare becomes DNS host, and
+the HomeAway Pi remains private on the LAN/WireGuard network.
+
+This screenshot confirms the configured nameservers but **not** the
+contents of the Dynu zone, whether a DS record is published, whether
+mail/forwarding records exist, or the values of old WireGuard peers.
+Do not infer any of those settings from the screenshot.
+
+### Dynu → Cloudflare migration gate (operator actions)
+
+1. In **Dynu DNS Control Panel**, inspect the exact
+   `homeawayfromhome.house` zone. Save/export all records; include
+   apex, wildcard, subdomain, MX, TXT (SPF/DKIM/DMARC/verification),
+   CAA, CNAME, redirects and any service-specific DNS records.
+   Retain a copy outside Git; don't post tokens or private keys.
+2. In **Cloudflare**, select **Add a domain** and enter
+   `homeawayfromhome.house` (Free DNS is sufficient for the proposed
+   DNS-01 workflow). Let the initial scan run, then compare all
+   imported records against the Dynu record inventory.
+   **Autoscanning is not a complete zone transfer.**
+3. Do not add public A/AAAA records for private `home`,
+   `auth`, or `metrics` services just to issue certificates.
+   DNS-01 uses public TXT records, while local Pi-hole/WireGuard DNS
+   will eventually resolve the private names.
+4. Before switching NS, check for DNSSEC DS records at **Namecheap**.
+   If an old Dynu DS record exists, safely disable/remove it and wait
+   for caches to expire before switching. Plan to re-enable DNSSEC
+   with Cloudflare's assigned DS data only after activation.
+5. In **Namecheap → Domain List → Manage → Domain → Nameservers**,
+   replace all six Dynu entries **only after** Cloudflare's zone
+   records match the Dynu inventory and the DNSSEC gate is cleared.
+   Select the exact two (or other number explicitly provided by
+   Cloudflare) nameservers assigned to *this* zone. Save once.
+6. Verify Cloudflare zone status **Active**, public NS delegation,
+   important old website/email record resolution, and the absence
+   of unexpected redirects. Do not delete Dynu records or shut down
+   an existing updater until the cutover and dependents are verified.
+7. Confirm that existing WireGuard peers and any outside apps do not
+   still use a Dynu-updated host name; a static IP makes the old
+   updater unnecessary, but does not automatically rewrite saved
+   WireGuard endpoint settings.
+
+**Rollback:** Record the six Dynu nameservers and all original records.
+If Cloudflare delegation fails, restoring old nameservers in Namecheap
+is an emergency DNS rollback, not an instantaneous fix: resolvers may
+continue caching records and delegation until TTL expiry. This DNS
+rollback is separate from the later Caddy/Authelia TLS rollback.
+
 ## Operator gate 0 — offline build and validation
 
 Safe to run on a separate development computer or isolated Pi worktree;
