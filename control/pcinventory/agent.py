@@ -150,6 +150,13 @@ class InventoryManager:
         self.path = Path(inventory_path)
         self.lock = threading.RLock()
 
+    def _active(self) -> tuple[dict, str]:
+        # Unlike the standalone add-pc CLI, the live management service must
+        # never silently treat a missing/unsafe active registry as empty.
+        if self.path.is_symlink() or not self.path.is_file():
+            raise InventoryFault(503, "Active computer registry unavailable")
+        return read_inventory(self.path)
+
     def execute(self, actor: str, op: str, payload: dict) -> dict:
         if not isinstance(actor, str) or not ACTOR.fullmatch(actor):
             raise InventoryFault(403, "Invalid authenticated actor")
@@ -159,7 +166,7 @@ class InventoryManager:
             if op == "list":
                 if payload:
                     raise InventoryFault(400, "Invalid list request")
-                active, revision = read_inventory(self.path)
+                active, revision = self._active()
                 drafts = _read_drafts()["drafts"]
                 return {"active": active["hosts"], "revision": revision,
                         "drafts": [{**d, "revision": revision_of(d)} for d in drafts],
@@ -173,7 +180,7 @@ class InventoryManager:
                     validate_hosts({"hosts": [payload]})
                 except (ValueError, TypeError, KeyError, AttributeError):
                     raise InventoryFault(400, "Invalid private network or host settings")
-                active, _ = read_inventory(self.path)
+                active, _ = self._active()
                 state = _read_drafts()
                 if len(state["drafts"]) >= MAX_DRAFTS:
                     raise InventoryFault(409, "Draft limit reached")
@@ -222,7 +229,7 @@ class InventoryManager:
 
                 # Read first to avoid auditing an unchanged name. The same
                 # optimistic revision must then match inside the writer lock.
-                current, revision = read_inventory(self.path)
+                current, revision = self._active()
                 if revision != payload["revision"]:
                     raise InventoryFault(409, "Inventory changed; refresh")
                 target = next((h for h in current["hosts"] if h["id"] == uid), None)
