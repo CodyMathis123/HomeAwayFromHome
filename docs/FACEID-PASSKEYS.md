@@ -1,49 +1,55 @@
 # Face ID sign-in (iPhone)
 
-Authelia 4.39 supports WebAuthn passkeys. No new authentication service is
-needed. The optional `compose.passkeys.yaml` overlay enables passkey login
-without changing the existing access control rules or disabling TOTP.
+## Working setup (November 2026)
 
-### Enable
+HomeAway authentication uses **username + password + Face ID**. Authelia
+4.39 accepts an Apple/iPhone WebAuthn security key as the second factor.
+The user has successfully exercised this flow; no passwordless sign-in is
+required. TOTP remains available as a fallback.
 
-On the Pi, with this branch checked out:
+The registered Apple credential reports **Discoverable: No**. It works as a
+second factor but fails the standalone **Sign in with a passkey** flow;
+Authelia logs `Unable to find the credential for the returned credential ID`.
+Enabling a discoverability requirement for *new* credentials did not resolve
+the user's passwordless login attempt. Do not alter stored credential IDs or
+remove the functioning security-key credential to pursue passwordless login.
+
+## Pi configuration
+
+The optional `compose.passkeys.yaml` overlay remains available. It enables
+WebAuthn/passkey login without changing the existing two-factor policy.
+The local attempt added
+`AUTHELIA_WEBAUTHN_SELECTION_CRITERIA_DISCOVERABILITY: "required"`.
+That override is not necessary for the working password + security-key
+flow and can be removed locally; the tracked overlay does not include it.
+
+To remove **only** that unsuccessful local override, run from the Pi checkout:
 
 ```bash
-cd ~/HomeAwayFromHome
-sudo docker compose \
-  -f compose.yaml -f compose.control.yaml \
-  -f compose.accounts.yaml -f compose.computers.yaml \
-  -f compose.production.yaml -f compose.passkeys.yaml \
-  --profile control --profile accounts --profile metrics config -q
-
-sudo docker compose \
-  -f compose.yaml -f compose.control.yaml \
-  -f compose.accounts.yaml -f compose.computers.yaml \
-  -f compose.production.yaml -f compose.passkeys.yaml \
-  --profile control --profile accounts --profile metrics \
-  up -d --no-deps --force-recreate authelia
+python3 - <<'PY'
+from pathlib import Path
+p = Path('compose.passkeys.yaml')
+lines = p.read_text().splitlines(keepends=True)
+key = 'AUTHELIA_WEBAUTHN_SELECTION_CRITERIA_DISCOVERABILITY:'
+out = [line for line in lines if key not in line]
+if len(out) != len(lines):
+    p.write_text(''.join(out))
+    print('Removed optional discoverability override.')
+else:
+    print('No discoverability override present.')
+PY
 ```
 
-Then open `https://auth.homeawayfromhome.house:8443` on the iPhone.
-Sign in and register a **Security Key / Passkey** in Authelia's account
-settings using the iPhone Face ID prompt. Keep the existing TOTP method.
+No container recreation is required merely to edit this file. To apply
+the change to the currently running Authelia environment, recreate **only**
+`authelia` using the normal five production Compose overlays plus
+`compose.passkeys.yaml`, after validating `docker compose config -q`.
+Do not restart Pi-hole, VPN, Caddy or the entire Compose project.
 
-Authelia may request confirmation through its configured notifier during
-registration. If its notifier writes to a local file rather than sending
-email, the confirmation will not arrive in the user's inbox. This is
-unrelated to Face ID support; inspect the notifier locally if prompted.
+## Registering an additional security key
 
-**Login policy:** For the current two-factor resources, a passkey can be a
-second factor after password authentication. Passwordless passkey login
-still requires an additional factor under Authelia's normal two-factor
-policy. We intentionally do **not** enable the unsupported experimental
-setting that treats one passkey verification as two factors.
-
-### Disable
-
-Recreate **only** Authelia using the original five production Compose
-files, leaving out `compose.passkeys.yaml`. This reverts the opt-in setting;
-it doesn't delete registered authenticators, TOTP, or directory accounts.
-
-This does not change Caddy, port mappings, Pi-hole, VPN, Grafana, or PC
-power-control behavior.
+Sign in to `https://auth.homeawayfromhome.house:8443`, open **Settings →
+Two-Factor Authentication → Security Keys**, and register with the iPhone
+Face ID prompt. Keep TOTP enrolled. For the existing two-factor access
+policy, choose **Security Key** after entering username and password;
+a discoverable passwordless passkey is not required.
