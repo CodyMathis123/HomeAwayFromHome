@@ -28,7 +28,7 @@ The map is **read-only** and describes logical system boundaries, not an auto-di
 ## UX audit plan, in small PRs
 
 1. **Portal shell and architecture map (this PR)** — responsive desktop left rail / mobile horizontal links, route `/architecture/`, service descriptions and navigation; preserve the current `/control/` boundary. Verify all static pages return correct CSP and HTTP 405 for mutation methods.
-2. **Authenticated `/control/` shell parity** — align branding/navigation between the two apps, link back to overview and architecture and retain authenticated per-role section links. Do not share authentication state with the public portal or iframe admin pages; no duplicate user inventory.
+2. **Authenticated `/control/` shell parity (this PR)** — use the same left-rail / phone navigation to link back to Overview, Architecture and metrics, and keep management links tied to fresh server-reported capabilities. Failed identity lookups hide privileged UI; failed reachability refreshes mark old host results as stale. Do not share authentication state with the public portal or iframe admin pages; no duplicate user inventory.
 3. **Interaction and status review** — loading/empty/error feedback, action-requested vs action-completed semantics, screen-reader labels, keyboard focus, Safari phone layout, touch hit targets and scroll position. Maintain readable tables; no new high-frequency sensor polling.
 4. **Phase 3 integration** — once its read-only diagnostics schema is implemented, display verified readiness/health badges without claiming DNS probe = functioning VPN, SSH port = PC power state, or blank Grafana chart = failed Windows host. Phase 4 may later add an authenticated Operations area with independently reviewed brokers.
 

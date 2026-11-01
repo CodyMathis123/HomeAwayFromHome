@@ -2,16 +2,25 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark"><title>HomeAway · Computers</title>
 <link rel="stylesheet" href="/control/styles.css"><script defer src="/control/accounts.js"></script><script defer src="/control/computers.js"></script><script defer src="/control/app.js"></script></head>
-<body><main>
+<body><div class="app-layout">
+<aside class="app-sidebar" aria-label="Primary navigation">
+  <nav class="section-nav" aria-label="Control page sections">
+    <span class="sidebar-title">HOMEAWAY</span>
+    <a href="/">Overview</a>
+    <a href="/#services">At a glance</a>
+    <a href="/architecture/">Architecture</a>
+    <a href="/#metrics-heading">Live metrics</a>
+    <span class="sidebar-section">MANAGE</span>
+    <a id="nav-power" href="#hosts">Power controls</a>
+    <a id="nav-computers" href="#computer-admin" hidden>Manage computers</a>
+    <a id="nav-accounts" href="#accounts" hidden>Users and permissions</a>
+    <a href="#recent-activity">Activity</a>
+  </nav>
+</aside>
+<main>
 <header><a href="/">⌂ Home<span>Away</span></a><small>AUTHENTICATED COMPUTER CONTROL · <span id="identity">Checking permissions…</span></small></header>
-<nav class="section-nav" aria-label="Control page sections">
-  <a href="#hosts">Power controls</a>
-  <a id="nav-computers" href="#computer-admin" hidden>Manage computers</a>
-  <a id="nav-accounts" href="#accounts" hidden>Users and permissions</a>
-  <a href="#recent-activity">Activity</a>
-</nav>
 <section class="hero"><p>YOUR COMPUTERS</p><h1>Power and presence.</h1>
-<div class="intro">Wake your computers or request Windows power actions. The PC must be configured for SSH and Wake-on-LAN. Status is an SSH reachability check, not a guarantee of system health.</div>
+<div class="intro">Wake your computers or request Windows power actions. The PC must be configured for SSH and Wake-on-LAN. Status checks SSH reachability only; power requests are not confirmation that Windows completed the action.</div>
 <button id="refresh" type="button">Refresh status</button><span id="updated" role="status">Loading computers…</span>
 <p id="last-action" class="action-feedback" aria-live="polite"></p></section>
 <section id="hosts" class="hosts" aria-label="Computer controls"></section>
@@ -59,4 +68,4 @@
 <section id="recent-activity" class="history"><div class="heading"><h2>Recent activity</h2><button id="refresh-history" type="button">Refresh log</button></div>
 <div id="events" class="events">No commands yet.</div></section>
 <footer><span>Private network · Verified sign-in required</span><span>Commands are allowlisted and audited · Your iOS Shortcut remains independent</span></footer>
-</main></body></html>
+</main></div></body></html>

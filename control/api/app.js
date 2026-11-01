@@ -4,26 +4,43 @@ const hosts = $('hosts');
 const status = $('updated');
 let pending = new Set();
 let identity = null;
+function updateCurrentSection() {
+  const local = new Set(['#hosts', '#computer-admin', '#accounts', '#recent-activity']);
+  const target = local.has(location.hash) ? location.hash : '#hosts';
+  for (const link of document.querySelectorAll('.section-nav a[href^="#"]')) {
+    if (!link.hidden && link.getAttribute('href') === target)
+      link.setAttribute('aria-current', 'location');
+    else
+      link.removeAttribute('aria-current');
+  }
+}
 function updateSectionNavigation(capabilities) {
-  // Navigation only reflects server-provided capabilities; APIs enforce roles.
+  // Convenience only: every control API still enforces roles server-side.
   $('nav-computers').hidden = !capabilities?.manageComputers;
   $('nav-accounts').hidden = !capabilities?.manageUsers;
+  updateCurrentSection();
 }
 async function loadIdentity() {
-  const response = await fetch('/control/api/me', {cache:'no-store', credentials:'same-origin'});
-  if (!response.ok) {
+  try {
+    const response = await fetch('/control/api/me', {cache:'no-store', credentials:'same-origin'});
+    if (!response.ok) throw new Error('Account authorization unavailable');
+    const nextIdentity = await response.json();
+    if (!nextIdentity?.capabilities?.role) throw new Error('Account capabilities unavailable');
+    identity = nextIdentity;
+    updateSectionNavigation(identity.capabilities);
+    $('identity').textContent = identity.user + ' · ' + identity.capabilities.role;
+    if (typeof HomeAwayAccounts !== 'undefined') HomeAwayAccounts.start(identity);
+    if (typeof HomeAwayComputers !== 'undefined') HomeAwayComputers.start(identity);
+    return identity;
+  } catch (error) {
+    // A lost connection or revoked session must not leave stale admin UI visible.
     identity = null;
     updateSectionNavigation(null);
     $('computer-admin').hidden = true;
     $('accounts').hidden = true;
-    throw new Error('Account authorization unavailable');
+    $('identity').textContent = 'Authorization unavailable';
+    throw error;
   }
-  identity = await response.json();
-  updateSectionNavigation(identity.capabilities);
-  $('identity').textContent = identity.user + ' · ' + identity.capabilities.role;
-  if (typeof HomeAwayAccounts !== 'undefined') HomeAwayAccounts.start(identity);
-  if (typeof HomeAwayComputers !== 'undefined') HomeAwayComputers.start(identity);
-  return identity;
 }
 const actions = [
   ['wake', 'Wake'],
@@ -66,10 +83,14 @@ async function refresh() {
     const response = await fetch('/control/api/hosts', {cache: 'no-store', credentials: 'same-origin'});
     if (!response.ok) throw new Error('Could not read computer status');
     const data = await response.json();
-    hosts.replaceChildren(...data.hosts.map(card));
+    if (!Array.isArray(data.hosts)) throw new Error('Unexpected computer status response');
+    hosts.replaceChildren(...(data.hosts.length
+      ? data.hosts.map(card) : [node('p', 'detail', 'No computers are currently registered.')]));
+    delete hosts.dataset.stale;
     status.textContent = 'Updated ' + new Date().toLocaleTimeString();
   } catch (error) {
-    status.textContent = error.message;
+    hosts.dataset.stale = 'true';
+    status.textContent = 'Status unavailable — ' + error.message + '. Previously shown results may be stale.';
   } finally { button.disabled = false; }
 }
 async function doAction(item, action) {
@@ -113,6 +134,8 @@ async function loadHistory() {
     $('events').replaceChildren(...(rows.length ? rows : [node('p', '', 'No commands yet.')]));
   } catch (error) { $('events').textContent = error.message; }
 }
+window.addEventListener('hashchange', updateCurrentSection);
+updateCurrentSection();
 $('refresh').addEventListener('click', refresh);
 $('refresh-history').addEventListener('click', loadHistory);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { void refresh(); void loadHistory(); } });
