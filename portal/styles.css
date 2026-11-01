@@ -95,3 +95,21 @@ footer{border-top:1px solid #263f50;margin-top:45px;padding-top:20px;color:#718e
 .page-view-slot{min-width:0;width:100%}
 .page-view-slot > main[hidden]{display:none!important}
 .page-view-slot > main:focus{outline:none}
+
+/* Phase 3 foundation: bounded, read-only evidence reused from /api/status. */
+.architecture-readiness{margin:28px 0 30px}
+.readiness-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.readiness-actions span{font-size:11px;color:var(--muted)}
+.readiness-actions button{padding:9px 14px;border-radius:9px}
+.readiness-disclaimer{max-width:900px;font-size:12px;line-height:1.7;color:var(--muted);margin:12px 0 16px}
+.readiness-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.readiness-item{border:1px solid var(--line);border-radius:12px;padding:17px;background:var(--panel);min-width:0}
+.readiness-title{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.readiness-title h3{font-size:15px;line-height:1.45;margin:0}
+.readiness-state{font-size:11px;font-weight:750;border-radius:999px;padding:5px 10px;background:#253f51;color:#b4cfda}
+.readiness-state[data-state="responding"]{background:#17443d;color:#93ebc1}
+.readiness-state[data-state="failed"]{background:#492e36;color:#ffc6bd}
+.readiness-state[data-state="optional"]{background:#283e50;color:#bdd0dc}
+.readiness-scope{font-size:11px;color:#a8bfcc;margin:12px 0 7px;line-height:1.5}
+.readiness-detail{font-size:12px;color:var(--muted);margin:0;line-height:1.65;overflow-wrap:anywhere}
+@media(max-width:800px){.readiness-grid{grid-template-columns:1fr}.readiness-item{padding:15px}}

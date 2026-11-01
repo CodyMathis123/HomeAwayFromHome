@@ -80,6 +80,31 @@
         </div>
         <p class="map-footnote">Arrows describe responsibilities and logical paths—not physical network wiring, direction of every packet, or current service health. All HomeAway web administration remains private to LAN/VPN access.</p>
       </section>
+      <section aria-labelledby="readiness-title" class="architecture-readiness" id="service-probes">
+        <div class="section-heading">
+          <div><p class="eyebrow">LIVE EVIDENCE · READ ONLY</p><h2 id="readiness-title">Service checks</h2></div>
+          <div class="readiness-actions"><span id="arch-probes-updated" role="status">Not yet checked</span><button id="arch-probes-refresh" type="button">Refresh checks</button></div>
+        </div>
+        <p class="readiness-disclaimer">These are three limited checks reused from the HomeAway overview, not a network scan or full health verification. A reachable admin listener does not confirm a WireGuard handshake, and Grafana is an optional service.</p>
+        <div class="readiness-grid">
+          <article class="readiness-item" data-probe="dns">
+            <div class="readiness-title"><h3>Pi-hole DNS</h3><span class="readiness-state" id="arch-check-dns" data-state="unknown">Unknown</span></div>
+            <p class="readiness-scope">DNS response to a test query</p>
+            <p class="readiness-detail" id="arch-detail-dns">Awaiting probe</p>
+          </article>
+          <article class="readiness-item" data-probe="wireguard">
+            <div class="readiness-title"><h3>WireGuard manager</h3><span class="readiness-state" id="arch-check-wireguard" data-state="unknown">Unknown</span></div>
+            <p class="readiness-scope">TCP admin listener only — VPN tunnel not verified</p>
+            <p class="readiness-detail" id="arch-detail-wireguard">Awaiting probe</p>
+          </article>
+          <article class="readiness-item" data-probe="monitor">
+            <div class="readiness-title"><h3>Grafana (optional)</h3><span class="readiness-state" id="arch-check-monitor" data-state="unknown">Unknown</span></div>
+            <p class="readiness-scope">TCP service listener — dashboards/data not verified</p>
+            <p class="readiness-detail" id="arch-detail-monitor">Awaiting probe</p>
+          </article>
+        </div>
+        <p class="readiness-disclaimer">No check here establishes Windows reachability, SensorDash export freshness, Authelia login success, Pi backups or end-to-end VPN/DNS behavior from an outside client. Those need separately authorized diagnostics.</p>
+      </section>
       <section aria-labelledby="components-title" class="component-section">
         <div class="section-heading"><div><p class="eyebrow">COMPONENT DIRECTORY</p><h2 id="components-title">Explore the services</h2></div><p>Links open the existing tool where available</p></div>
         <div class="component-grid">

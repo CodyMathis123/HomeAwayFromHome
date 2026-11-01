@@ -167,7 +167,7 @@ class HttpTests(unittest.TestCase):
         self.assertIn(".page-view-slot > main[hidden]", (root / "styles.css").read_text())
         self.assertIn("window.addEventListener('popstate'", router)
         self.assertIn("window.HomeAwayOverview?.show()", router)
-        self.assertIn("window.HomeAwayArchitecture?.init()", router)
+        self.assertIn("window.HomeAwayArchitecture?.show()", router)
         self.assertNotIn("'/control/'", router)
         self.assertNotIn("control/api", router)
         self.assertIn("window.HomeAwayNavigation = Object.freeze({sync})", navigation)
@@ -178,6 +178,24 @@ class HttpTests(unittest.TestCase):
         self.assertIn("script-src 'self'", headers["Content-Security-Policy"])
         self.assertIn(b"Never intercept /control/", payload)
         self.assertEqual(self.request("POST", "/router.js")[0], 405)
+
+    def test_architecture_service_checks_use_existing_readonly_status_api(self):
+        root = Path(__file__).resolve().parents[2] / "portal"
+        markup = (root / "architecture.html").read_text()
+        script = (root / "architecture.js").read_text()
+        for check in ("dns", "wireguard", "monitor"):
+            self.assertIn('id="arch-check-' + check + '"', markup)
+            self.assertIn('id="arch-detail-' + check + '"', markup)
+        self.assertIn('id="arch-probes-refresh"', markup)
+        self.assertIn('id="arch-probes-updated" role="status"', markup)
+        self.assertIn("fetch('/api/status'", script)
+        self.assertIn("cache: 'no-store'", script)
+        self.assertIn("'unknown', 'Unknown'", script)
+        self.assertIn("HomeAway status check unavailable; service state not verified", script)
+        self.assertIn("window.HomeAwayArchitecture?.show()", (root / "router.js").read_text())
+        self.assertNotIn("fetch('/control/api/", script)
+        self.assertNotIn("docker.sock", script)
+        self.assertNotIn("POST", script)
 
     def test_status_api_failure_displays_unknown_not_service_down(self):
         root = Path(__file__).resolve().parents[2] / "portal"
