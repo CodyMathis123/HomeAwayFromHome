@@ -84,3 +84,16 @@ jobs:
         env:
           HOMEAWAY_LLDAP_LAB: "1"
         run: python3 scripts/integration-identity-lab.py
+
+  authelia-ldap-session-lab:
+    # Disposable isolated identity store only. Tests two independent real
+    # password + TOTP sessions with role revocation; never mounts live data.
+    if: github.event_name == 'pull_request' && github.head_ref == 'feature/homeaway-account-management'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test Authelia LLDAP role revocation with existing TOTP sessions
+        env:
+          HOMEAWAY_LLDAP_LAB: "1"
+        run: python3 scripts/integration-authelia-lldap.py
