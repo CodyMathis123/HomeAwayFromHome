@@ -72,7 +72,8 @@ class HttpAccounts(unittest.TestCase):
             self.assertEqual(code,401)
             self.assertIn("HOMEAWAY_AUTH_REJECT missing_or_invalid_user_header",
                           [str(c.args[0]) for c in log.call_args_list])
-        with self.config(),patch("builtins.print") as log:
+        # Only legacy file-backed mode depends on Authelia's group header.
+        with self.config("false"),patch("builtins.print") as log:
             code,_=self.request("GET","/control/api/me",
                                 headers={"X-HomeAway-User":"homeowner"})
             self.assertEqual(code,401)
@@ -88,18 +89,39 @@ class HttpAccounts(unittest.TestCase):
             self.assertIn("HOMEAWAY_AUTH_REJECT account_broker_unavailable",entries)
             self.assertNotIn("synthetic token"," ".join(entries))
         with self.config(),patch.object(api,"broker_request",
-                 side_effect=self.resolved("viewers")),patch("builtins.print") as log:
+                 side_effect=self.resolved(None)),patch("builtins.print") as log:
             code,_=self.request("GET","/control/api/me",headers=self.claims())
             self.assertEqual(code,401)
-            self.assertIn("HOMEAWAY_AUTH_REJECT directory_role_mismatch",
+            self.assertIn("HOMEAWAY_AUTH_REJECT directory_access_denied",
                           [str(c.args[0]) for c in log.call_args_list])
 
-    def test_stale_authelia_role_rejected_even_for_current_session(self):
-        with self.config(),patch.object(api,"broker_request",side_effect=self.resolved("viewers")):
-            code,_=self.request("GET","/control/api/me",headers=self.claims("admins"))
-            self.assertEqual(code,401)
+    def test_current_directory_role_authoritative_without_group_header(self):
+        # The real Pi passed Authelia but Caddy did not copy Remote-Groups.
+        # When feature is enabled, use the live LLDAP role, not stale headers.
+        with self.config(),patch.object(api,"broker_request",
+             side_effect=self.resolved("admins")) as broker:
+            code,data=self.request("GET","/control/api/me",
+                headers={"X-HomeAway-User":"homeowner"})
+            self.assertEqual(code,200)
+            self.assertEqual(data["capabilities"]["role"],"admins")
+            self.assertTrue(data["capabilities"]["manageUsers"])
+            broker.assert_called_with("homeowner","resolve",{"user":"homeowner"})
+
+    def test_directory_demotion_overrides_stale_authelia_admin_claim(self):
+        with self.config(),patch.object(api,"broker_request",
+             side_effect=self.resolved("viewers")),patch.object(api,"apply_action") as rpc:
+            code,data=self.request("GET","/control/api/me",headers=self.claims("admins"))
+            self.assertEqual(code,200)
+            self.assertEqual(data["capabilities"]["role"],"viewers")
             code,_=self.request("POST","/control/api/actions",
                 {"host":"gaming","action":"wake","confirm":""},self.claims("admins"))
+            self.assertEqual(code,403)
+            rpc.assert_not_called()
+
+    def test_directory_unknown_role_denied_even_with_admin_group_header(self):
+        with self.config(),patch.object(api,"broker_request",
+             side_effect=self.resolved("superadmin")):
+            code,_=self.request("GET","/control/api/me",headers=self.claims("admins"))
             self.assertEqual(code,401)
 
     def test_broker_outage_fails_closed_without_rpc(self):
