@@ -1,4 +1,6 @@
-# Full-stack integration test: the two correct checkouts
+# Historical full-stack integration test — prior review branches
+
+> **Archived test plan (superseded November 1, 2026):** The statements below saying the early stacked branches are not yet merged or that `Production` must not be used were accurate **at the time of the original staged migration**, but are now obsolete. HomeAway's `Production` includes the core stack, account management and Phase 2 Computer Management. For **current** status, branch ownership and outstanding hardware acceptance use the [roadmap](ROADMAP.md), [README](../README.md) and [operations guide](OPERATIONS.md). Do not run branch-switch or fresh-install commands from this historical guide on the running Pi.
 
 > **State:** code and CI have passed on these feature heads, but the new embedded Grafana, Authelia, and multi-PC command paths have not been tested on the operator's actual Pi, iPhone or Windows PCs. These branches are not yet merged into `Production`. This guide coordinates existing runbooks; it does not automate deployment.
 
