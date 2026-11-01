@@ -46,6 +46,57 @@ Do not invent or commit private encryption keys. Test decryption/restore with a 
 4. Run `bash scripts/doctor.sh`, `docker compose config -q`, start core services, and test both DNS and an existing VPN peer. Check update compatibility before changing image versions.
 5. Restore router DHCP DNS last. Revoke/regenerate VPN peer keys if the archive was ever exposed.
 
+## Targeted HomeAway UI releases (no DNS/VPN restart)
+
+Use the dedicated, **operator-triggered** helper for changes to the HomeAway
+overview/architecture (`portal`) and authenticated Computers/Users interface
+(`pc-control`). This is intentionally separate from `scripts/update.sh`,
+which updates core **Pi-hole and WireGuard** and requires a planned backup.
+
+From the existing `~/HomeAwayFromHome` Production checkout, as the **normal Pi
+login user** (do not prefix the script itself with `sudo`):
+
+```bash
+bash scripts/deploy-ui.sh --plan
+bash scripts/deploy-ui.sh --apply
+
+# Smaller deployments when just one frontend changed:
+bash scripts/deploy-ui.sh --apply --services portal
+bash scripts/deploy-ui.sh --apply --services pc-control
+```
+
+The preview validates the resolved four-overlay Compose configuration, checks
+the exact project name and confirms both target containers are already running.
+It does **not fetch**, alter files, start/stop or rebuild anything. It reports
+the *last fetched* origin/Production ref; that may be stale until an apply.
+The apply step does `git fetch origin`, checks fast-forward ancestry, updates
+the clean `Production` checkout, revalidates Compose, and runs only:
+
+```bash
+sudo docker compose -f compose.yaml -f compose.control.yaml \
+  -f compose.accounts.yaml -f compose.computers.yaml \
+  --profile control --profile accounts --profile metrics \
+  up -d --no-deps --build portal pc-control
+```
+
+The script **refuses** a dirty checkout, any branch other than `Production`,
+unexpected Compose project names, invalid configuration or a target UI service
+that isn't already running. It never installs host agents, changes secrets,
+invokes a full-stack `up`, performs a database migration, pulls images for
+DNS/VPN, or automatically takes a backup. Normal image-reconciliation behavior
+can briefly interrupt the selected UI page(s). The result check verifies that
+the requested containers are running, **not** that every browser workflow is
+healthy.
+
+After `--apply`, browse `https://homeaway.home.arpa:8443/`,
+`/architecture/`, and `/control/` from LAN/VPN. Confirm that authenticated
+computer controls, role-gated Users/Computers and the existing iOS Shortcut
+still work. For rollback after a bad UI release, stop and inspect the
+specific container's logs and the previous Production commit; choose a
+supervised rollback rather than letting the helper reset Git history or touch
+unrelated containers. If there is no clean Production checkout or if
+Compose service topology changes, review and apply those changes manually.
+
 ## Updates
 
 Pin image tags in Compose. Read official release notes and security advisories, review diff, then:
