@@ -5,6 +5,7 @@ import importlib.util
 import json
 import os
 import stat
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -120,6 +121,44 @@ class PreflightTests(unittest.TestCase):
         with self.assertRaises(preflight.PreflightError):
             self.run_preflight()
         self.assertEqual(target.read_text(), "not a real pin")
+
+    def test_installer_smoke_and_rollback_shell_syntax(self):
+        scripts = (
+            "scripts/install-pcinventory-host.sh",
+            "scripts/verify-pcinventory-host.sh",
+            "scripts/disable-pcinventory-host.sh",
+        )
+        for path in scripts:
+            with self.subTest(script=path):
+                result = subprocess.run(
+                    ["bash", "-n", str(ROOT / path)],
+                    text=True, capture_output=True, timeout=5, check=False,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_disable_plan_is_non_mutating_and_never_stops_power_socket(self):
+        path = ROOT / "scripts/disable-pcinventory-host.sh"
+        result = subprocess.run(["bash", str(path), "--plan"],
+                                capture_output=True, text=True, timeout=5)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("DRY RUN: no services changed", result.stdout)
+        script = path.read_text()
+        self.assertNotIn('systemctl stop pcctl-agent', script)
+        self.assertNotIn('systemctl disable --now pcctl-agent', script)
+        self.assertIn('HOMEAWAY_COMPUTER_ADMIN_ENABLED', script)
+        self.assertIn('homeaway-inventory.socket homeaway-pcverify.socket', script)
+        self.assertNotIn("rm -rf /var/lib/homeaway-pcinventory", script)
+
+    def test_live_smoke_uses_unprivileged_read_only_and_invalid_verifier(self):
+        script = (ROOT / "scripts/verify-pcinventory-host.sh").read_text()
+        self.assertIn('runuser -u homeaway-inventory', script)
+        self.assertIn('"operation": "list"', script)
+        self.assertIn('"operation": "invalid-smoke-operation"', script)
+        self.assertNotIn('"operation": "activate"', script)
+        self.assertNotIn('"operation": "disable"', script)
+        self.assertNotIn('"operation": "wake"', script)
+        self.assertNotIn('"operation": "shutdown"', script)
+        self.assertNotIn("systemctl restart", script)
 
     def test_preflight_is_called_before_mutating_installer_steps(self):
         text = (ROOT / "scripts/install-pcinventory-host.sh").read_text()
