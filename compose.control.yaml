@@ -50,12 +50,28 @@ services:
     security_opt: [no-new-privileges:true]
     environment:
       HOMEAWAY_CONTROL_ORIGIN: "https://${HOMEAWAY_DOMAIN}:8443"
+      HOMEAWAY_DIAGNOSTICS_URL: http://metrics-diagnostics:8095/v1/summary
     volumes:
       - /etc/homeaway-pcctl:/etc/homeaway-pcctl:ro
       - /run/homeaway-pcctl:/run/homeaway-pcctl:ro
       - ./data/control/audit:/data
     networks: [pc-control]
     # Never add published ports, privileged, SSH key mounts, or Docker socket.
+
+  metrics-diagnostics:
+    # Stateless, fixed-query observer for Phase 3 admin-only readiness.
+    # Lives on BOTH private bridges; the authenticated control API never
+    # joins the broad infra bridge and raw VM metrics never reach a browser.
+    profiles: [control]
+    build:
+      context: ./monitoring/diagnostics
+    restart: unless-stopped
+    user: "65534:65534"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks: [infra, pc-control]
+    # No exposed ports, keys, Docker socket, host mounts or writable state.
 
   portal:
     environment:

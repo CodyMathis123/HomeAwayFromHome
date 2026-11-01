@@ -166,6 +166,30 @@ class AccountAssets(unittest.TestCase):
         self.assertNotIn("method: 'POST'", js)
         self.assertNotIn("docker.sock", js)
 
+    def test_phase3_metrics_observer_is_scoped_and_admin_only(self):
+        markup = (API / "index.html").read_text()
+        js = (API / "readiness.js").read_text()
+        backend = (API / "app.py").read_text()
+        observer = (ROOT / "monitoring/diagnostics/app.py").read_text()
+        overlay = (ROOT / "compose.control.yaml").read_text()
+        deployment = (ROOT / "scripts/deploy-diagnostics.sh").read_text()
+        for slug in ("pi-scrape", "pi-cpu", "pi-memory", "pi-load",
+                     "pi-thermal", "vm-free", "telemetry"):
+            self.assertIn('id="readiness-' + slug + '"', markup)
+        self.assertIn("readJson('/control/api/admin/diagnostics')", js)
+        self.assertIn("metricsUnknown('Metrics observer unavailable", js)
+        self.assertIn("readiness-telemetry-hosts", js)
+        self.assertIn('if path == "/control/api/admin/diagnostics":', backend)
+        self.assertIn('if role != "admins":', backend)
+        self.assertIn('def diagnostics_snapshot() -> dict:', backend)
+        self.assertIn('HOMEAWAY_DIAGNOSTICS_URL', overlay)
+        self.assertIn('networks: [infra, pc-control]', overlay)
+        self.assertIn('profiles: [control]', overlay)
+        self.assertIn('No credentials, host state, Docker socket', observer)
+        self.assertIn("No client may send a MetricsQL expression", observer)
+        self.assertIn("cached_snapshot()", observer)
+        self.assertIn("up -d --no-deps --build metrics-diagnostics", deployment)
+
     def test_pending_accounts_require_an_explicit_role_choice(self):
         js = (API / "accounts.js").read_text()
         css = (API / "styles.css").read_text()

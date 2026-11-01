@@ -87,8 +87,24 @@
     <article class="readiness-item"><h3>Grafana listener (optional)</h3><span id="readiness-monitor" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-monitor">Not checked in this session</p></article>
     <article class="readiness-item"><h3>Registered computer reachability</h3><span id="readiness-hosts" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-hosts">Not checked in this session</p></article>
   </div>
+  <h3 id="readiness-metrics-heading">Pi and SensorDash telemetry observations</h3>
+  <p class="detail">Derived from existing VictoriaMetrics history via an isolated, fixed-query observer. These numbers are observations, not commands or proof of computer power state. No fan-curve settings are read or changed.</p>
+  <p id="readiness-metrics-checked" role="status">Metric checks not yet requested</p>
+  <div class="readiness-grid" aria-labelledby="readiness-metrics-heading">
+    <article class="readiness-item"><h3>Pi exporter scrape</h3><span id="readiness-pi-scrape" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-pi-scrape">Not checked</p></article>
+    <article class="readiness-item"><h3>Pi CPU utilization (5-minute rate)</h3><span id="readiness-pi-cpu" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-pi-cpu">Not checked</p></article>
+    <article class="readiness-item"><h3>Pi memory usage</h3><span id="readiness-pi-memory" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-pi-memory">Not checked</p></article>
+    <article class="readiness-item"><h3>Pi load average (1 minute)</h3><span id="readiness-pi-load" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-pi-load">Not checked</p></article>
+    <article class="readiness-item"><h3>Highest exported thermal zone</h3><span id="readiness-pi-thermal" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-pi-thermal">Not checked</p></article>
+    <article class="readiness-item"><h3>VictoriaMetrics data filesystem free</h3><span id="readiness-vm-free" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-vm-free">Not checked; this is not Pi root filesystem capacity</p></article>
+  </div>
+  <div class="readiness-item readiness-telemetry">
+    <div class="heading"><h3>SensorDash export freshness</h3><span id="readiness-telemetry" class="readiness-badge" data-state="unknown">Unknown</span></div>
+    <p id="readiness-detail-telemetry">No samples checked. An idle or sleeping PC can legitimately stop exporting; this cannot establish whether it is powered on.</p>
+    <ul id="readiness-telemetry-hosts" aria-label="Per-host last observed export" class="readiness-telemetry-list"></ul>
+  </div>
   <h3>Checks that still require the Pi</h3>
-  <p class="detail">Telemetry freshness, Pi exporter health, HTTPS certificate expiration and renewal, external WireGuard/DNS connectivity, and backup recoverability cannot be confirmed from the existing web APIs. They are not automatically passing.</p>
+  <p class="detail">HTTPS certificate expiration and renewal, external WireGuard/DNS connectivity, and backup recoverability are not verified by these checks. Pi metrics and export freshness now use the dedicated read-only metrics observer when deployed.</p>
   <div class="readiness-manual">
     <p><strong>Pi host metrics</strong> <code>sudo bash scripts/verify-pi-metrics.sh</code></p>
     <p><strong>Windows telemetry</strong> <code>sudo bash scripts/verify-telemetry.sh</code></p>

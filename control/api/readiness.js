@@ -19,6 +19,70 @@ const HomeAwayReadiness = (() => {
   function unknown(message = 'Not checked in this session') {
     for (const id of ids) display(id, 'unknown', 'Unknown', message);
   }
+  const metricIds = ['pi.scrape', 'pi.cpu', 'pi.memory', 'pi.load', 'pi.thermal', 'vm.free'];
+  const metricSlug = id => id.replace('.', '-');
+  function metricsUnknown(message) {
+    for (const id of metricIds)
+      display(metricSlug(id), 'unknown', 'Unknown', message);
+    display('telemetry', 'unknown', 'Unknown', message);
+    $('readiness-telemetry-hosts')?.replaceChildren();
+    $('readiness-metrics-checked').textContent = message;
+  }
+  function metricText(item) {
+    if (item.state === 'unknown' || typeof item.value !== 'number') return 'Unknown';
+    if (item.id === 'pi.scrape')
+      return item.state === 'attention' ? 'Scrape failed' : 'Responding';
+    if (item.unit === 'percent') return item.value.toFixed(1) + '%';
+    if (item.unit === 'celsius') return item.value.toFixed(1) + ' °C';
+    if (item.unit === 'load') return item.value.toFixed(2);
+    if (item.unit === 'bytes') return (item.value / 1073741824).toFixed(1) + ' GiB free';
+    return 'Unknown';
+  }
+  function displayMetrics(data) {
+    if (data?.schemaVersion !== 1 || !Array.isArray(data.checks) ||
+        !data.telemetry || !Array.isArray(data.telemetry.hosts)) {
+      metricsUnknown('Invalid or unavailable metrics evidence');
+      return;
+    }
+    const items = new Map(data.checks
+      .filter(item => item && metricIds.includes(item.id))
+      .map(item => [item.id, item]));
+    for (const id of metricIds) {
+      const item = items.get(id);
+      if (!item || !['observed', 'unknown', 'attention'].includes(item.state)) {
+        display(metricSlug(id), 'unknown', 'Unknown', 'Metric result not available');
+        continue;
+      }
+      display(metricSlug(id), item.state, metricText(item), item.detail ||
+        'Observation from existing VictoriaMetrics series');
+    }
+    const telemetry = data.telemetry;
+    const hosts = $('readiness-telemetry-hosts');
+    hosts.replaceChildren();
+    if (telemetry.state !== 'observed' || telemetry.hosts.length === 0) {
+      display('telemetry', 'unknown', 'Unknown',
+        'No SensorDash raw samples observed in the preceding 24 hours. Cause unknown.');
+    } else {
+      const stale = telemetry.hosts.filter(item => item.state === 'stale').length;
+      display('telemetry', stale ? 'stale' : 'observed',
+        stale ? stale + ' host(s) without recent exports' : 'Recent samples',
+        'Last raw sensor exports; gaps can indicate sleep, offline Windows, or an exporter issue.');
+      for (const item of telemetry.hosts.slice(0, 16)) {
+        if (typeof item.host !== 'string' || !Number.isFinite(item.ageSeconds)) continue;
+        const li = document.createElement('li');
+        const minutes = item.ageSeconds < 60
+          ? item.ageSeconds + ' seconds ago'
+          : Math.round(item.ageSeconds / 60) + ' minutes ago';
+        li.textContent = item.host + ' · last received ' + minutes;
+        hosts.append(li);
+      }
+    }
+    const checked = Date.parse(data.checkedAt);
+    $('readiness-metrics-checked').textContent = Number.isFinite(checked)
+      ? 'VictoriaMetrics observations checked ' + new Date(checked).toLocaleTimeString()
+      : 'Metrics checked (timestamp unavailable)';
+  }
+
   async function readJson(path) {
     const response = await fetch(path, {cache: 'no-store', credentials: 'same-origin'});
     if (!response.ok) throw new Error('Read-only status unavailable');
@@ -34,6 +98,7 @@ const HomeAwayReadiness = (() => {
     button.disabled = true;
     checked = true;
     unknown('Checking source…');
+    metricsUnknown('Checking existing VictoriaMetrics series…');
     updated.textContent = 'Checking authorized status…';
     try {
       // /control/api/me must be freshly verified before querying status.
@@ -52,9 +117,10 @@ const HomeAwayReadiness = (() => {
 
       // Each existing API is independently optional. One failure must not
       // misclassify another component or erase independently observed results.
-      const [services, computers] = await Promise.allSettled([
+      const [services, computers, metrics] = await Promise.allSettled([
         readJson('/api/status'),
-        readJson('/control/api/hosts')
+        readJson('/control/api/hosts'),
+        readJson('/control/api/admin/diagnostics')
       ]);
       if (services.status === 'fulfilled' && Array.isArray(services.value.checks)) {
         const checks = new Map(services.value.checks
@@ -96,12 +162,17 @@ const HomeAwayReadiness = (() => {
       } else {
         display('hosts', 'unknown', 'Unknown', 'Computer inventory or reachability check unavailable');
       }
+      if (metrics.status === 'fulfilled')
+        displayMetrics(metrics.value);
+      else
+        metricsUnknown('Metrics observer unavailable; existing source state not established');
       updated.textContent = 'Checked ' + new Date().toLocaleTimeString() +
         ' · Individual statuses have limited scope';
     } catch (_) {
       // Session loss or stale admin role. Clear any prior observations and
       // hide this view; never leave sensitive control details on screen.
       unknown('Administrator authorization could not be verified');
+      metricsUnknown('Administrator authorization could not be verified');
       updated.textContent = 'Authorization unavailable; reopen HomeAway Control and sign in';
       allowed = false;
       view.hidden = true;
@@ -124,6 +195,7 @@ const HomeAwayReadiness = (() => {
     if (!allowed) {
       checked = false;
       unknown('Not checked in this session');
+      metricsUnknown('Not checked in this session');
     }
     if (allowed && location.hash === '#setup-readiness' && !checked)
       void refresh();

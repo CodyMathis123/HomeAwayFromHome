@@ -34,6 +34,21 @@ def check(config: dict, private_ip: str):
         assert len(service["networks"]) == 1
         assert "pc-control" in service["networks"]
         assert not any("/var/run/docker.sock" in str(v) for v in service.get("volumes", []))
+    # The diagnostics observer is the sole new bridge between metrics and
+    # authenticated control. No browser route or host port reaches it directly.
+    observer = services["metrics-diagnostics"]
+    assert not observer.get("ports")
+    assert observer.get("user") == "65534:65534"
+    assert observer.get("read_only") is True
+    assert observer.get("cap_drop") == ["ALL"]
+    assert "no-new-privileges:true" in observer.get("security_opt", [])
+    assert set(observer["networks"]) == {"infra", "pc-control"}
+    assert not observer.get("privileged", False)
+    assert not observer.get("volumes"), "Observer cannot read Pi host volumes"
+    assert not observer.get("secrets"), "Observer cannot access credentials"
+    assert services["pc-control"]["environment"]["HOMEAWAY_DIAGNOSTICS_URL"] == (
+        "http://metrics-diagnostics:8095/v1/summary"
+    )
     controller = services["pc-control"]
     assert controller["read_only"] is True
     assert controller.get("group_add"), "Socket group is required"
