@@ -29,8 +29,8 @@ async function refresh() {
     byId('updated').textContent = 'Status refresh failed · ' + error.message;
     for (const id of ['dns', 'wireguard', 'monitor']) {
       byId('state-' + id).textContent = 'Unknown';
-      byId('state-' + id).dataset.status = 'down';
-      byId('detail-' + id).textContent = 'Cannot reach status API';
+      byId('state-' + id).dataset.status = 'unknown';
+      byId('detail-' + id).textContent = 'Portal status check unavailable; service state not verified';
     }
     byId('core-count').textContent = '—';
     byId('dns-state').textContent = 'Unknown';
