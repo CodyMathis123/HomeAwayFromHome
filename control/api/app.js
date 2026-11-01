@@ -17,6 +17,7 @@ function updateCurrentSection(focus = false) {
   const capabilities = identity?.capabilities;
   if (target === 'computer-admin' && !capabilities?.manageComputers) target = 'hosts';
   if (target === 'accounts' && !capabilities?.manageUsers) target = 'hosts';
+  if (target === 'recent-activity' && !capabilities?.history) target = 'hosts';
   currentView = target;
   main.dataset.activeView = target;
   document.body.classList.add('control-views-ready');
@@ -43,6 +44,7 @@ function updateSectionNavigation(capabilities) {
   // Convenience only: every control API still enforces roles server-side.
   $('nav-computers').hidden = !capabilities?.manageComputers;
   $('nav-accounts').hidden = !capabilities?.manageUsers;
+  $('nav-activity').hidden = !capabilities?.history;
   updateCurrentSection();
 }
 async function loadIdentity() {
