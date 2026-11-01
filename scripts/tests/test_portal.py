@@ -111,7 +111,7 @@ class HttpTests(unittest.TestCase):
         self.assertIn('id="app-navigation"', overview)
         self.assertIn('id="app-navigation"', architecture)
         self.assertIn('id="services"', overview)
-        self.assertIn('href="/architecture/"', (root / "navigation.js").read_text())
+        self.assertIn("['Architecture', '/architecture/', 'architecture']", (root / "navigation.js").read_text())
         self.assertIn("fetch('/api/control-config'", (root / "navigation.js").read_text())
         self.assertIn("control.hidden = true", (root / "navigation.js").read_text())
         self.assertNotIn("docker.sock", (root / "architecture.js").read_text())
