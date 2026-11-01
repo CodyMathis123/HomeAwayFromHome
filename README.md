@@ -98,6 +98,8 @@ bash scripts/inspect-vpn.sh        # wg show: peers and handshakes
 bash scripts/smoke.sh              # LAN DNS and portal tests
 sudo bash scripts/backup.sh --offline  # consistent backup; temporarily stops DNS/VPN
 bash scripts/update.sh --apply     # manual reviewed update; core services only
+bash scripts/deploy-ui.sh --plan  # safe preflight for HomeAway UI releases
+bash scripts/deploy-ui.sh --apply # fast-forward Production; deploy ONLY portal + pc-control
 ```
 
 The Compose backup contains **private keys and passwords**, is chmod 0600, and must be copied to encrypted storage away from the Pi. **It does not include host-side PC inventory, host-side pairing keys, or the separate inventory-service state**; see [backup coverage and recovery gaps](docs/OPERATIONS.md). No unattended image updates are configured; pin images in `compose.yaml` and review upstream security releases regularly. See [operations](docs/OPERATIONS.md).
