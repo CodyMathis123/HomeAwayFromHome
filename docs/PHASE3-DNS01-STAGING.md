@@ -103,19 +103,21 @@ but the staging entrypoint exited immediately with:
 /usr/local/bin/start-dns01: exec: line 19: /usr/bin/caddy: Operation not permitted
 ```
 
-The official Caddy runtime associates `/usr/bin/caddy` with a
-`cap_net_bind_service` file capability. A container configured with
-`cap_drop: [ALL]` and `no-new-privileges:true` cannot execute that
-file-capability binary in the affected runtime, despite staging using
-only unprivileged port 8443.
+Caddy's `xcaddy build` step **explicitly adds** a
+`cap_net_bind_service` file capability to its output. In the first
+fix attempt, copying the new build to a different executable path did
+not solve the issue: CI reproduced the same `Operation not permitted`
+error under dropped capabilities. This confirmed the file capability
+survived the image build.
 
-The fix copies the custom Caddy executable to **a new path**
-`/usr/local/bin/homeaway-caddy`, which doesn't inherit the official
-binary's file capability. The staging entrypoint executes that path.
+The corrected image **explicitly strips the file capability** with
+`setcap -r` on `/usr/local/bin/homeaway-caddy` and verifies `getcap`
+reports none. Only the build-time libcap package is installed, then
+removed. The staging entrypoint executes that capability-free binary.
 Do **not** weaken `no-new-privileges`, add `NET_BIND_SERVICE`,
-or make any change to the live HomeAway gateway. CI now smoke-tests
-the actual entrypoint under the same Linux restrictions, with a
-synthetic token and networking disabled.
+or make any change to the live HomeAway gateway. CI smoke-tests the
+real entrypoint under the same restrictions, using a synthetic
+token with networking disabled.
 
 After a version containing this fix is merged into Production and
 fast-forwarded on the Pi, rerun `--apply`; Docker will replace only
