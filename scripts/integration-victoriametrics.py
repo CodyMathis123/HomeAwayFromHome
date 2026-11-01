@@ -5,6 +5,7 @@ Run after starting VictoriaMetrics locally at localhost:18428. Never touches
 the user's Pi, credentials, WireGuard network or production DNS.
 """
 import json
+from pathlib import Path
 import time
 import urllib.error
 import urllib.parse
@@ -203,6 +204,48 @@ def main() -> None:
     )
     assert len(observed_rate) == 1, observed_rate
     assert float(observed_rate[0]["value"][1]) == 0.4, observed_rate
+    # Real PromQL against isolated VictoriaMetrics: user aliases should
+    # override display names, while untouched sensors keep their raw names.
+    # Stored series and original metadata must remain completely unchanged.
+    new_sensor_lines = [
+        f"sensordash_reading,host=CI,sensor=/amdcpu/0/power/0,kind=Power value=82 {stamp + 1800}",
+        f"sensordash_sensor_info,host=CI,sensor=/amdcpu/0/power/0,kind=Power,name=Package,alias=CPU_Watts,device=AMD_CPU,device_type=Cpu value=1 {stamp + 1800}",
+        f"sensordash_reading,host=CI,sensor=/amdcpu/0/power/1,kind=Power value=41 {stamp + 1800}",
+        f"sensordash_sensor_info,host=CI,sensor=/amdcpu/0/power/1,kind=Power,name=Core_Power,alias=unassigned,device=AMD_CPU,device_type=Cpu value=1 {stamp + 1800}",
+    ]
+    payload = ("\\n".join(new_sensor_lines) + "\\n").encode("ascii")
+    with urllib.request.urlopen(urllib.request.Request(
+        BASE + "/api/v2/write?precision=ms", data=payload,
+        headers={"Content-Type": "text/plain"}, method="POST",
+    ), timeout=10) as response:
+        assert 200 <= response.status < 300
+
+    root = Path(__file__).resolve().parents[1]
+    panels = json.loads((root / "grafana/dashboards/overview.json").read_text())["panels"]
+    power_expr = next(p for p in panels if p["id"] == 201)["targets"][0]["expr"]
+    power_expr = power_expr.replace('host=~"$host"', 'host="CI"')
+    for _ in range(20):
+        series = query(power_expr)
+        if len(series) == 2:
+            break
+        time.sleep(0.5)
+    else:
+        raise AssertionError("Live alias/fallback power series missing: " + repr(series))
+    names = {x["metric"]["sensor"]: x["metric"]["name"] for x in series}
+    assert names == {
+        "/amdcpu/0/power/0": "CPU Watts",
+        "/amdcpu/0/power/1": "Core Power",
+    }, names
+    assert {x["metric"]["sensor"]: x["metric"]["alias"] for x in query(
+        'sensordash_sensor_info_value{host="CI",kind="Power"} == 1'
+    )} == {
+        "/amdcpu/0/power/0": "CPU_Watts",
+        "/amdcpu/0/power/1": "unassigned",
+    }, "Display aliases must not modify archived sensor catalog values"
+    assert {x["metric"]["sensor"] for x in query(
+        'sensordash_reading_value{host="CI",kind="Power"}'
+    )} == {"/amdcpu/0/power/0", "/amdcpu/0/power/1"}
+
     print("PASS: VictoriaMetrics raw + derived watts, metadata, threshold events,"
           " spool footprint, storage joins and removal tombstones")
 
