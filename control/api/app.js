@@ -109,6 +109,10 @@ async function loadIdentity() {
     $('computer-admin').hidden = true;
     $('accounts').hidden = true;
     $('setup-readiness').hidden = true;
+    // Clear cached privileged directories and any draft activation markers,
+    // not just their visible panels, when sign-in verification fails.
+    if (typeof HomeAwayAccounts !== 'undefined') HomeAwayAccounts.start(null);
+    if (typeof HomeAwayComputers !== 'undefined') HomeAwayComputers.start(null);
     if (typeof HomeAwayReadiness !== 'undefined') HomeAwayReadiness.start(null);
     // Never leave previously rendered power action buttons on screen when
     // authorization cannot be refreshed (the API still enforces all actions).
