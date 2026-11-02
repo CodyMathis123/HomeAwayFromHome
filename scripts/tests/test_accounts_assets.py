@@ -35,6 +35,27 @@ class AccountAssets(unittest.TestCase):
         self.assertIn("COPY --chmod=0644 broker.py bootstrap.py /app/",docker)
         self.assertIn("USER 65534:65534",docker)
 
+    def test_directory_freshness_and_access_reset_contracts(self):
+        html = (API / "index.html").read_text()
+        accounts = (API / "accounts.js").read_text()
+        computers = (API / "computers.js").read_text()
+        control = (API / "app.js").read_text()
+        css = (API / "styles.css").read_text()
+        for name in ("accounts-updated", "computer-admin-updated"):
+            self.assertIn('id="' + name + '"', html)
+        for script in (accounts, computers):
+            self.assertIn("refreshPending", script)
+            self.assertIn("accessEpoch", script)
+            self.assertIn("authorization unavailable", script.lower())
+            self.assertIn("dataset.stale='true'", script)
+            self.assertIn("Updated ' + new Date().toLocaleTimeString()", script)
+        self.assertIn("HomeAwayAccounts.start(null)", control)
+        self.assertIn("HomeAwayComputers.start(null)", control)
+        self.assertIn("if (currentView !== 'hosts') return;", control)
+        self.assertIn("if (currentView === 'hosts') void refresh();", control)
+        self.assertIn(".admin-directory-updated[data-stale=\"true\"]", css)
+        self.assertIn(".account-list[data-stale=\"true\"]", css)
+
     def test_admin_directories_keep_rare_flows_and_filters_readable(self):
         html = (API / "index.html").read_text()
         users = (API / "accounts.js").read_text()
