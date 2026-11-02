@@ -67,7 +67,9 @@ check_config private
 check_config direct
 
 ingest_running(){
-  cid="$(sudo docker ps -q --filter 'name=^/homeawayfromhome-telemetry-ingest-1
+  cid="$(sudo docker ps -q --filter 'name=^/homeawayfromhome-telemetry-ingest-1$' --filter status=running)"
+  [[ -n "$cid" ]] || { echo "Telemetry receiver container is not running." >&2; return 1; }
+}
 route_ok(){
   local code grafana
   code="$(curl --silent --show-error --max-time 10 \
@@ -128,73 +130,6 @@ if ! "${base[@]}" up -d --no-deps --no-build --force-recreate telemetry-ingest; 
   fail "Private-only recreation failed; original LAN port has been restored."
 fi
 if ! ingest_running || ! no_published_ports || ! route_ok; then
-  echo "WARN: post-cutover verification failed; automatically restoring original LAN mapping." >&2
-  "${rollback[@]}" up -d --no-deps --no-build --force-recreate telemetry-ingest ||
-    fail "Automatic rollback failed; run --rollback after reviewing logs."
-  fail "Cutover did not pass checks; original port mapping was restored."
-fi
-echo "PASS: direct 8429 mapping retired; canonical HTTPS ingestion and Grafana healthy."
-echo "VERIFY: SensorDash Settings -> Pi telemetry export should show a fresh last delivery."
- --filter status=running)"
-  [[ -n "$cid" ]] || { echo "Telemetry receiver container is not running." >&2; return 1; }
-}
-route_ok(){
-  local code grafana
-  code="$(curl --silent --show-error --max-time 10 \
-    --resolve "metrics.homeawayfromhome.house:443:$ip" \
-    --output /dev/null --write-out '%{http_code}' \
-    -X POST -H 'Content-Type: text/plain' --data-binary 'invalid metric' \
-    https://metrics.homeawayfromhome.house/ingest)" || return 1
-  if [[ "$code" != 401 ]]; then
-    echo "Canonical private ingress must return 401 without bearer; received $code" >&2
-    return 1
-  fi
-  grafana="$(curl --silent --show-error --max-time 10 \
-    --resolve "metrics.homeawayfromhome.house:443:$ip" \
-    --output /dev/null --write-out '%{http_code}' \
-    https://metrics.homeawayfromhome.house/login)" || return 1
-  [[ "$grafana" == 200 || "$grafana" == 302 ]] ||
-    { echo "Grafana /login returned $grafana" >&2; return 1; }
-  return 0
-}
-no_published_ports(){
-  local published
-  published="$(sudo docker port "$cid" 2>/dev/null)" || return 1
-  [[ -z "$published" ]] || { echo "Receiver still has a published port: $published" >&2; return 1; }
-}
-
-ingest_running
-if [[ "$mode" == "--status" ]]; then
-  no_published_ports || fail "Receiver still exposes a host port."
-  route_ok || fail "Canonical HTTPS ingestion failed after port retirement."
-  echo "PASS: receiver remains running with no Docker host ports; canonical private HTTPS is healthy."
-  exit 0
-fi
-if [[ "$mode" == "--rollback" ]]; then
-  echo "ROLLBACK: restoring original LAN-only 8429 mapping on telemetry-ingest."
-  "${rollback[@]}" up -d --no-deps --no-build --force-recreate telemetry-ingest ||
-    fail "Rollback recreation failed; inspect only telemetry-ingest."
-  ingest_running
-  sudo docker port "$cid" | grep -Fq "$ip:8429" ||
-    fail "Original :8429 binding not restored."
-  echo "PASS: direct LAN receiver restored. Keep Windows exporter on the URL that works."
-  exit 0
-fi
-
-route_ok || fail "Canonical HTTPS route is unhealthy; keep existing port 8429."
-echo "PLAN: retire host port $ip:8429; preserve private TLS and bearer authentication."
-echo "PLAN: recreate only telemetry-ingest; Caddy, Grafana, VictoriaMetrics, Pi-hole and VPN stay running."
-echo "PLAN: a short ingest reconnect is expected; Windows telemetry spool handles retries."
-echo "PLAN: rollback restores $ip:8429 from the separate overlay."
-if [[ "$mode" == "--plan" ]]; then
-  echo "PLAN ONLY: nothing changed."
-  exit 0
-fi
-echo "Recreating only the existing telemetry-ingest container with no published port."
-"${base[@]}" up -d --no-deps --no-build --force-recreate telemetry-ingest ||
-  fail "Private-only receiver recreation failed. Run --rollback if necessary."
-ingest_running
-if ! no_published_ports || ! route_ok; then
   echo "WARN: post-cutover verification failed; automatically restoring original LAN mapping." >&2
   "${rollback[@]}" up -d --no-deps --no-build --force-recreate telemetry-ingest ||
     fail "Automatic rollback failed; run --rollback after reviewing logs."
