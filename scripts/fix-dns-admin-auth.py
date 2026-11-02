@@ -40,8 +40,6 @@ def updated(text: str) -> tuple[bool, str]:
         raise ValueError("Access-control rules are missing or ambiguous")
     if len(re.findall(r"(?m)^  default_policy:[ \t]*deny[ \t]*$", block)) != 1:
         raise ValueError("Unexpected default access policy")
-    if re.search(r"(?m)^\s*-\s*['\"]?\^?/dns", block):
-        raise ValueError("DNS rule already exists with unsupported structure; review manually")
     if RULE.strip() in block:
         return False, text
     # Never add another rule if this resource is already mentioned in a different form.
@@ -102,6 +100,7 @@ def main():
                 raise ValueError("Candidate validation failed")
             # A separate protected backup is kept for manual recovery.
             write_private(BACKUP, current, meta)
+            os.chmod(BACKUP, 0o600)
             os.replace(CANDIDATE, ACTIVE)
             if not cmd("docker", "restart", CONTAINER):
                 shutil.copy2(BACKUP, ACTIVE)
