@@ -1,5 +1,6 @@
 """Private portless telemetry reverse-proxy and safe rollout contracts."""
 import pathlib
+import re
 import unittest
 
 ROOT=pathlib.Path(__file__).resolve().parents[2]
@@ -45,12 +46,30 @@ class CanonicalIngestRouteTests(unittest.TestCase):
                        'validate --config /etc/caddy/Caddyfile',
                        'up -d --no-deps --no-build --force-recreate gateway',
                        'metrics.homeawayfromhome.house/ingest',
-                       '[[ "$code" == 401 ]]','curl --silent'):
+                       '[[ "$code" != 401 ]]','curl --silent'):
             self.assertIn(clause,script)
         self.assertNotIn('up -d --build',script)
         self.assertNotIn('stop telemetry-ingest',script)
         self.assertNotIn('docker compose down',script)
         self.assertNotIn('tls_insecure_skip_verify',script)
+
+
+    def test_offline_token_is_valid_shape_and_plan_checks_config(self):
+        script=(ROOT/'scripts/deploy-telemetry-route.sh').read_text()
+        token=re.search(r'^offline_cf_token="([^"]+)"$',script,re.MULTILINE)
+        self.assertIsNotNone(token,"Offline dummy token must be fixed, never secret-derived")
+        self.assertRegex(token.group(1),r'^[A-Za-z0-9_-]{35,50}$')
+        self.assertNotIn('offline-validation-only',script)
+        self.assertIn('CF_API_TOKEN="$offline_cf_token"',script)
+        self.assertIn('--network none',script)
+        self.assertNotIn('cloudflare_dns01_token',script,
+                         "Real DNS-01 token must never be read for offline validation")
+        plan_index=script.index('validate_offline\nif [[ "$mode" == "--plan" ]]')
+        apply_index=script.index('prepare-gateway-permissions.py --apply')
+        self.assertLess(plan_index,apply_index,
+                        "Plan must validate before any permission or deployment mutation")
+        self.assertIn('PASS: Caddy configuration validated offline',script)
+        self.assertIn('request appears to reach Grafana',script)
 
 if __name__=="__main__":
     unittest.main()
