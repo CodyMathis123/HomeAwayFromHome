@@ -66,3 +66,50 @@ Stage 2 should then, as a separate, explicitly validated change:
    the legacy `:8443` binding.
 
 Don't change router port forwarding or expose :443 to the WAN.
+
+## Stage 2: switch canonical links and Authelia login redirects to portless HTTPS
+
+After verifying all three hostnames work on private port 443, stage 2 keeps
+both ports but updates the generated links, Grafana root URL, account-recovery
+URL (if enabled), and the strict primary/alternate PC-control origins.
+
+The existing live Authelia config is under root-protected
+`data/control/authelia/configuration.yml`. The operator-only script updates
+only exactly recognized `session.cookies[].authelia_url` and
+`default_redirection_url` values, validates a candidate inside the running
+Authelia container, keeps a protected original backup, and refuses unfamiliar
+layouts. It does not print, rotate or replace SMTP, LDAP, TOTP or cookie secrets.
+
+```bash
+cd ~/HomeAwayFromHome
+git fetch origin
+git switch Production
+git merge --ff-only origin/Production
+bash scripts/deploy-https443-final.sh --plan
+bash scripts/deploy-https443-final.sh --apply
+```
+
+The apply operation reconciles only `pc-control`, `portal`, `grafana`
+and optional recovery `lldap`, then restarts `authelia`. Expect a brief
+authentication interruption. Caddy, DNS, Pi-hole, WireGuard and SensorDash
+are untouched. Both port 443 and legacy :8443 continue to work.
+
+**Test in a fresh browser window**, including password + TOTP login at
+`https://home.homeawayfromhome.house/control/`, the user directory,
+harmless Wake/status control, Grafana navigation, and invite/password-reset
+links if configured. Check the old `:8443` pages still open.
+
+If any login or control flow fails, use the deliberate rollback:
+
+```bash
+cd ~/HomeAwayFromHome
+bash scripts/deploy-https443-final.sh --rollback
+```
+
+Rollback uses the root-only preserved Authelia configuration and a
+non-secret Compose override with the previous URL values; it does not
+turn off 443 or change certificates. Do not use normal `deploy-ui.sh`
+while rollback is active, because Production uses the portless defaults.
+
+Retiring port 8443 is a **separate** optional cleanup after LAN and WireGuard
+validation. Do not forward port 443 through the router.

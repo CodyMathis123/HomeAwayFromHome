@@ -7,7 +7,7 @@ services:
       - path: ./secrets/control/lldap-smtp.env
         format: raw
     environment:
-      LLDAP_HTTP_URL: "https://home.homeawayfromhome.house:8443/directory"
+      LLDAP_HTTP_URL: "https://home.homeawayfromhome.house/directory"
       LLDAP_SMTP_OPTIONS__ENABLE_PASSWORD_RESET: "true"
 
   gateway:

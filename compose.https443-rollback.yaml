@@ -1,0 +1,18 @@
+# Operator-only rollback override for the HTTPS portless canonical URL cutover.
+# Append LAST after all active production, recovery and SMTP overlays.
+# Does not close port 443, change Caddy TLS or touch credentials.
+services:
+  pc-control:
+    environment:
+      HOMEAWAY_CONTROL_ORIGIN: "https://home.homeawayfromhome.house:8443"
+      HOMEAWAY_CONTROL_ALT_ORIGIN: "https://home.homeawayfromhome.house"
+  portal:
+    environment:
+      HOMEAWAY_CONTROL_URL: "https://home.homeawayfromhome.house:8443/control/"
+      HOMEAWAY_METRICS_ORIGIN: "https://metrics.homeawayfromhome.house:8443"
+  grafana:
+    environment:
+      GF_SERVER_ROOT_URL: "https://metrics.homeawayfromhome.house:8443"
+  lldap:
+    environment:
+      LLDAP_HTTP_URL: "https://home.homeawayfromhome.house:8443/directory"
