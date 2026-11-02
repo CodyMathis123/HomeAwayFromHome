@@ -35,6 +35,29 @@ class AccountAssets(unittest.TestCase):
         self.assertIn("COPY --chmod=0644 broker.py bootstrap.py /app/",docker)
         self.assertIn("USER 65534:65534",docker)
 
+    def test_admin_directories_keep_rare_flows_and_filters_readable(self):
+        html = (API / "index.html").read_text()
+        users = (API / "accounts.js").read_text()
+        computers = (API / "computers.js").read_text()
+        css = (API / "styles.css").read_text()
+        start = html.index('id="accounts-create-panel"')
+        end = html.index('</details>', start)
+        self.assertIn('id="accounts-add"', html[start:end])
+        self.assertIn('id="accounts-clear"', html)
+        self.assertIn('id="computer-admin-clear"', html)
+        for key in ("active", "drafts", "retired"):
+            self.assertIn('id="computer-admin-' + key + '-group"', html)
+            self.assertIn('id="computer-admin-' + key + '-count"', html)
+        self.assertIn("computer-admin-active-group').hidden", computers)
+        self.assertIn("computer-admin-drafts-group').hidden", computers)
+        self.assertIn("computer-admin-retired-group').hidden", computers)
+        self.assertIn("computer-admin-clear').addEventListener('click'", computers)
+        self.assertIn("accounts-clear').addEventListener('click'", users)
+        self.assertIn("accounts-create-panel').open = false", users)
+        self.assertIn("if (refreshed)", users)
+        self.assertIn(".admin-directory-group[hidden]{display:none}", css)
+        self.assertIn("@media(max-width:700px)", css)
+
     def test_invite_checkbox_remains_compact(self):
         html=(API/"index.html").read_text()
         css=(API/"styles.css").read_text()

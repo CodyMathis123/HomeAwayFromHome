@@ -38,8 +38,11 @@
 <section id="computer-admin" class="accounts history" data-view-section="computer-admin" tabindex="-1" hidden aria-label="Computer administration">
   <div class="heading"><h2>Computer management</h2><button id="computer-admin-refresh" type="button">Refresh inventory</button></div>
   <p class="detail">Existing machines remain active. New entries start as drafts and cannot be controlled until their Windows setup and SSH trust are verified in a later enrollment step.</p>
-  <div class="admin-toolbar"><label>Find computer <input id="computer-admin-search" type="search" placeholder="Name, ID, IP or MAC" autocomplete="off"></label><label>State <select id="computer-admin-filter"><option value="all">All computers</option><option value="active">Active</option><option value="draft">Drafts</option><option value="disabled">Disabled</option><option value="archived">Archived</option></select></label><span id="computer-admin-count" role="status"></span></div>
-  <div id="computer-admin-active" class="account-list"></div>
+  <div class="admin-toolbar"><label>Find computer <input id="computer-admin-search" type="search" placeholder="Name, ID, IP or MAC" autocomplete="off"></label><label>State <select id="computer-admin-filter"><option value="all">All computers</option><option value="active">Active</option><option value="draft">Drafts</option><option value="disabled">Disabled</option><option value="archived">Archived</option></select></label><button id="computer-admin-clear" class="admin-filter-reset" type="button">Clear filters</button><span id="computer-admin-count" role="status"></span></div>
+  <div id="computer-admin-active-group" class="admin-directory-group">
+    <h3>Active computers <span id="computer-admin-active-count" class="admin-group-count"></span></h3>
+    <div id="computer-admin-active" class="account-list"></div>
+  </div>
   <details class="admin-enrollment"><summary>Prepare a new computer · guided draft setup</summary><p class="detail">Step 1: save its network identity as an inactive draft. Step 2: follow the Windows pairing checklist on the draft card. Step 3: verify pinned SSH trust before activation. Existing computer IDs and power controls are unaffected.</p>
   <form id="computer-admin-create" class="computer-create">
     <label>Stable ID <input name="id" required maxlength="32" pattern="[a-z][a-z0-9-]{0,31}" placeholder="living-room"></label>
@@ -51,12 +54,12 @@
     <label>SSH port <input name="ssh_port" type="number" required min="1" max="65535" value="22"></label>
     <button type="submit">Save draft (no activation)</button>
   </form></details>
-  <h3>Unconfigured drafts</h3>
+  <div id="computer-admin-drafts-group" class="admin-directory-group"><h3>Unconfigured drafts <span id="computer-admin-drafts-count" class="admin-group-count"></span></h3>
   <p id="computer-admin-message" role="status" aria-live="polite"></p>
-  <div id="computer-admin-drafts" class="account-list"></div>
-  <h3>Disabled and archived computers</h3>
+  <div id="computer-admin-drafts" class="account-list"></div></div>
+  <div id="computer-admin-retired-group" class="admin-directory-group"><h3>Disabled and archived computers <span id="computer-admin-retired-count" class="admin-group-count"></span></h3>
   <p class="detail">Disabled computers are removed from the active power-control inventory. Their last verified configuration is retained privately. Restoring one requires a fresh authenticated SSH identity check.</p>
-  <div id="computer-admin-retired" class="account-list"></div>
+  <div id="computer-admin-retired" class="account-list"></div></div>
   <details id="computer-admin-audit" class="computer-setup">
     <summary>Recent computer management activity (admins only)</summary>
     <p class="detail">Up to 50 recent verified audit events; no IP addresses, MAC addresses, or SSH credentials.</p>
@@ -67,15 +70,20 @@
 <section id="accounts" class="accounts history" data-view-section="accounts" tabindex="-1" hidden aria-label="Account administration">
   <div class="heading"><h2>Users and permissions</h2><button id="accounts-refresh" type="button">Refresh users</button></div>
   <p class="detail">These are HomeAway permissions. Revoking access does not disable an LDAP password or access to unrelated applications.</p>
-  <form id="accounts-add" class="account-create">
+  
+  <details id="accounts-create-panel" class="admin-enrollment">
+    <summary>Create a user · no access until a role is assigned</summary>
+    <p class="detail">Create a pending directory account, then assign permissions explicitly. The setup email is optional; it does not grant HomeAway access.</p>
+    <form id="accounts-add" class="account-create">
     <label>Username <input name="username" required maxlength="30" pattern="[a-z][a-z0-9_-]{1,30}" title="Use a lowercase username (2 to 31 characters)"></label>
     <label>Display name <input name="displayname" required maxlength="80"></label>
     <label>Email <input name="email" type="email" required maxlength="200"></label>
     <label class="invite-option"><input name="sendinvite" type="checkbox" checked> Email password-setup invitation (via Resend)</label>
     <button type="submit">Create pending user</button>
   </form>
-  <p class="detail">New users have no HomeAway access until an administrator assigns a role. Invitations use LLDAP password-reset email; users set their own passwords. Only invite a trusted address, and tell recipients they must be on your LAN or VPN to open the link. For existing pending users, select Send setup invitation below.</p>
-  <div class="admin-toolbar"><label>Find user <input id="accounts-search" type="search" placeholder="Name, username or email" autocomplete="off"></label><label>Access <select id="accounts-filter"><option value="all">All users</option><option value="admins">Administrators</option><option value="operators">Operators</option><option value="viewers">Viewers</option><option value="pending">No HomeAway access</option></select></label><span id="accounts-count" role="status"></span></div><p id="accounts-message" role="status" aria-live="polite"></p>
+    <p class="detail">Invitations use LLDAP password-reset email. The recipient must be on LAN or VPN to open the link. Existing pending users can use Send setup invitation on their card.</p>
+  </details>
+  <div class="admin-toolbar"><label>Find user <input id="accounts-search" type="search" placeholder="Name, username or email" autocomplete="off"></label><label>Access <select id="accounts-filter"><option value="all">All users</option><option value="admins">Administrators</option><option value="operators">Operators</option><option value="viewers">Viewers</option><option value="pending">No HomeAway access</option></select></label><button id="accounts-clear" class="admin-filter-reset" type="button">Clear filters</button><span id="accounts-count" role="status"></span></div><p id="accounts-message" role="status" aria-live="polite"></p>
   <div id="accounts-users" class="account-list"></div>
 </section>
 <section id="recent-activity" class="history" data-view-section="recent-activity" tabindex="-1"><div class="heading"><h2>Recent activity</h2><button id="refresh-history" type="button">Refresh log</button></div>
