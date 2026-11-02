@@ -8,9 +8,9 @@
     "read-only",
     "overview"
   ],
-  "description": "Daily, weekly and monthly telemetry summaries. Choose Last 24 hours, Last 7 days or Last 30 days in the Grafana time picker. Values reflect only recorded samples; offline intervals are not imputed. Hardware identity uses SensorDash metadata, not sensor ID patterns. Estimated accessory watts are not metered energy. GPU device families include GpuAmd, GpuNvidia and GpuIntel. Fan RPM statistics use role-bound radiator and pump sensors separately.",
+  "description": "Daily, weekly and monthly telemetry summaries. Choose Last 24 hours, Last 7 days or Last 30 days in the Grafana time picker. Values reflect only recorded samples; offline intervals are not imputed. Hardware identity uses SensorDash metadata, not sensor ID patterns. Estimated accessory watts are not metered energy. GPU device families include GpuAmd, GpuNvidia and GpuIntel. Fan RPM statistics use role-bound radiator and pump sensors separately. Period-over-period comparisons use an equal duration and yield no value when either period is absent; rolling 24h peaks are not calendar-day aggregates. Sensor-stream presence is an observation indicator, not a percentage of PC uptime.",
   "schemaVersion": 40,
-  "version": 1,
+  "version": 2,
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
@@ -1403,6 +1403,599 @@
           "custom": {
             "drawStyle": "line",
             "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
+    },
+    {
+      "id": 104,
+      "type": "text",
+      "title": "",
+      "transparent": true,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "targets": [],
+      "gridPos": {
+        "x": 0,
+        "y": 67,
+        "w": 24,
+        "h": 3
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### COMPARE EQUAL-LENGTH PERIODS · OBSERVED SAMPLES\nThe **selected range** is compared with the immediately preceding range of equal duration (24 hours versus the previous 24 hours; 7 days versus the previous 7 days; 30 days versus the previous 30 days). Differences are current minus previous. A blank result means one period has insufficient observations. These are *observed sensor statistics*, not room-temperature-adjusted benchmarks."
+      }
+    },
+    {
+      "id": 30,
+      "title": "CPU peak temperature · change",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Difference between the current selected period and the preceding equally long period. Requires observations in both periods; no zero-filling. Values combine available sensors in the device family, not necessarily a single package probe.",
+      "gridPos": {
+        "x": 0,
+        "y": 70,
+        "w": 6,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "(max((max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device_type=\"Cpu\",name!~\"(?i).*(warning|critical).*\"} == 1)))) - (max((max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range] offset $__range) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device_type=\"Cpu\",name!~\"(?i).*(warning|critical).*\"} == 1))))",
+          "range": true,
+          "legendFormat": "CPU peak temperature · change"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "noValue": "No comparable data",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#62d5ce"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area"
+      }
+    },
+    {
+      "id": 31,
+      "title": "GPU peak temperature · change",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Difference between the current selected period and the preceding equally long period. Requires observations in both periods; no zero-filling. Values combine available sensors in the device family, not necessarily a single package probe.",
+      "gridPos": {
+        "x": 6,
+        "y": 70,
+        "w": 6,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "(max((max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name!~\"(?i).*(warning|critical).*\"} == 1)))) - (max((max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range] offset $__range) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name!~\"(?i).*(warning|critical).*\"} == 1))))",
+          "range": true,
+          "legendFormat": "GPU peak temperature · change"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "noValue": "No comparable data",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#62d5ce"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area"
+      }
+    },
+    {
+      "id": 32,
+      "title": "CPU average power · change",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Difference between the current selected period and the preceding equally long period. Requires observations in both periods; no zero-filling. Values combine available sensors in the device family, not necessarily a single package probe.",
+      "gridPos": {
+        "x": 12,
+        "y": 70,
+        "w": 6,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "(avg((avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Power\"}[$__range]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Power\",device_type=\"Cpu\",name!~\"(?i).*(warning|critical).*\"} == 1)))) - (avg((avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Power\"}[$__range] offset $__range) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Power\",device_type=\"Cpu\",name!~\"(?i).*(warning|critical).*\"} == 1))))",
+          "range": true,
+          "legendFormat": "CPU average power · change"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "noValue": "No comparable data",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#62d5ce"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area"
+      }
+    },
+    {
+      "id": 33,
+      "title": "GPU average power · change",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Difference between the current selected period and the preceding equally long period. Requires observations in both periods; no zero-filling. Values combine available sensors in the device family, not necessarily a single package probe.",
+      "gridPos": {
+        "x": 18,
+        "y": 70,
+        "w": 6,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "(avg((avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Power\"}[$__range]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Power\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name!~\"(?i).*(warning|critical).*\"} == 1)))) - (avg((avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Power\"}[$__range] offset $__range) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Power\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name!~\"(?i).*(warning|critical).*\"} == 1))))",
+          "range": true,
+          "legendFormat": "GPU average power · change"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "noValue": "No comparable data",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#62d5ce"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area"
+      }
+    },
+    {
+      "id": 105,
+      "type": "text",
+      "title": "",
+      "transparent": true,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "targets": [],
+      "gridPos": {
+        "x": 0,
+        "y": 75,
+        "w": 24,
+        "h": 3
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### DAILY TREND · ROLLING 24-HOUR PEAKS\nEach point is the highest recorded CPU or GPU temperature during the preceding 24 hours, not an average and not a peak for a fixed calendar day. Gaps are preserved; incomplete windows can miss true peaks."
+      }
+    },
+    {
+      "id": 34,
+      "title": "CPU · rolling 24h temperature peak",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Rolling maximum of observed physical temperature readings in the preceding 24 hours. Offline gaps are not reconstructed.",
+      "gridPos": {
+        "x": 0,
+        "y": 78,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "max(max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[24h]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device_type=\"Cpu\",name!~\"(?i).*(warning|critical).*\"} == 1))",
+          "range": true,
+          "legendFormat": "{{host}} · {{device_type}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
+    },
+    {
+      "id": 35,
+      "title": "GPU · rolling 24h temperature peak",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Rolling maximum of observed physical temperature readings in the preceding 24 hours. Offline gaps are not reconstructed.",
+      "gridPos": {
+        "x": 12,
+        "y": 78,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "max(max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[24h]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name!~\"(?i).*(warning|critical).*\"} == 1))",
+          "range": true,
+          "legendFormat": "{{host}} · {{device_type}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
+    },
+    {
+      "id": 106,
+      "type": "text",
+      "title": "",
+      "transparent": true,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "targets": [],
+      "gridPos": {
+        "x": 0,
+        "y": 88,
+        "w": 24,
+        "h": 3
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### DATA PRESENCE · OBSERVED, NOT UPTIME\nThese graphs show how many CPU/GPU temperature sensor streams had **at least one sample in the preceding hour**. Zero or absent readings can mean the computer was asleep, offline, or telemetry was interrupted; no uptime percentage is inferred. Local Windows buffer size is disk footprint, while VictoriaMetrics history uses shared compressed storage."
+      }
+    },
+    {
+      "id": 36,
+      "title": "Temperature sensors reporting within 1 hour",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Per-computer count of CPU temperature sensor streams with observations in the prior hour. GPU is a separate series, never an average.",
+      "gridPos": {
+        "x": 0,
+        "y": 91,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "count by(host)(count_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[1h]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device_type=\"Cpu\",name!~\"(?i).*(warning|critical).*\"} == 1))",
+          "range": true,
+          "legendFormat": "{{host}} · CPU sensor streams"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "count by(host)(count_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[1h]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name!~\"(?i).*(warning|critical).*\"} == 1))",
+          "range": true,
+          "legendFormat": "{{host}} · GPU sensor streams"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
+    },
+    {
+      "id": 37,
+      "title": "Windows local telemetry buffer · disk footprint",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Current SQLite main database, WAL and SHM file bytes sampled through time. Not the size of individual sensors in VictoriaMetrics.",
+      "gridPos": {
+        "x": 12,
+        "y": 91,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "sum by(host)(sensordash_spool_value{host=~\"$host\"})",
+          "range": true,
+          "legendFormat": "{{host}} · SQLite buffer"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
             "lineWidth": 2,
             "fillOpacity": 12,
             "showPoints": "never",
