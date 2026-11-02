@@ -346,7 +346,7 @@ class DashboardContracts(unittest.TestCase):
         for id, family in ((1, "Cpu"), (2, "Gpu"), (5, "Cpu"),
                            (6, "Gpu"), (7, "Cpu"), (8, "Gpu")):
             query = panels[id]["targets"][0]["expr"]
-            self.assertIn('device_type="' + family + '"', query, id)
+            self.assertIn(('device_type=~"Gpu(Amd|Nvidia|Intel)?"' if family == "Gpu" else 'device_type="Cpu"'), query, id)
             self.assertIn("sensordash_sensor_info_value", query, id)
             self.assertIn("on(host,sensor)", query, id)
             self.assertNotIn("sensor=~", query, id)
@@ -443,6 +443,29 @@ class DashboardContracts(unittest.TestCase):
                 self.assertNotIn("fan_control", target["expr"])
                 self.assertNotIn("remote_action", target["expr"])
 
+    def test_gpu_families_and_cooling_role_summary(self):
+        for filename in ("overview.json", "reporting-summary.json"):
+            d = json.loads((PANELS / filename).read_text(encoding="utf-8"))
+            for panel in d["panels"]:
+                for target in panel.get("targets", []):
+                    expr = target["expr"]
+                    self.assertNotIn('device_type="Gpu"', expr, (filename, panel["id"]))
+            gpu = [p for p in d["panels"] if p["title"].startswith("GPU")]
+            self.assertTrue(gpu)
+            self.assertTrue(any('device_type=~"Gpu(Amd|Nvidia|Intel)?"' in t["expr"]
+                                for p in gpu for t in p["targets"]))
+        d = json.loads((PANELS / "reporting-summary.json").read_text(encoding="utf-8"))
+        panels = {p["id"]: p for p in d["panels"]}
+        for id, role in ((9, "fan-group"), (10, "pump"), (26, "fan-group"), (27, "pump")):
+            query = panels[id]["targets"][0]["expr"]
+            self.assertIn('role="' + role + '"', query)
+            self.assertIn("sensordash_cooling_binding_value", query)
+            self.assertIn("on(host,sensor)", query)
+            self.assertEqual(panels[id]["fieldConfig"]["defaults"]["unit"], "rotrpm")
+        self.assertNotIn("avg(avg_over_time(", panels[10]["targets"][0]["expr"])
+        self.assertFalse(any(p["fieldConfig"]["defaults"]["custom"]["spanNulls"]
+                             for p in d["panels"] if p["type"] == "timeseries"))
+
     def test_reporting_summary_uses_metadata_and_preserves_gaps(self):
         d = json.loads((PANELS / "reporting-summary.json").read_text(encoding="utf-8"))
         self.assertEqual(d["uid"], "homeaway-sensordash-summary")
@@ -450,7 +473,7 @@ class DashboardContracts(unittest.TestCase):
         self.assertEqual(d["time"]["from"], "now-7d")
         queries = "\\n".join(t["expr"] for p in d["panels"] for t in p["targets"])
         self.assertIn('device_type="Cpu"', queries)
-        self.assertIn('device_type="Gpu"', queries)
+        self.assertIn('device_type=~"Gpu(Amd|Nvidia|Intel)?"', queries)
         self.assertIn("count_over_time(", queries)
         self.assertIn("sensordash_spool_value", queries)
         self.assertNotIn("or vector(0)", queries)

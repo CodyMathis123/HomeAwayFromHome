@@ -8,7 +8,7 @@
     "read-only",
     "overview"
   ],
-  "description": "Daily, weekly and monthly telemetry summaries. Choose Last 24 hours, Last 7 days or Last 30 days in the Grafana time picker. Values reflect only recorded samples; offline intervals are not imputed. Hardware identity uses SensorDash metadata, not sensor ID patterns. Estimated accessory watts are not metered energy.",
+  "description": "Daily, weekly and monthly telemetry summaries. Choose Last 24 hours, Last 7 days or Last 30 days in the Grafana time picker. Values reflect only recorded samples; offline intervals are not imputed. Hardware identity uses SensorDash metadata, not sensor ID patterns. Estimated accessory watts are not metered energy. GPU device families include GpuAmd, GpuNvidia and GpuIntel. Fan RPM statistics use role-bound radiator and pump sensors separately.",
   "schemaVersion": 40,
   "version": 1,
   "editable": false,
@@ -172,7 +172,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max(max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range]) * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device_type=\"Gpu\",name!~\"(?i).*(warning|critical).*\"} == 1))",
+          "expr": "max(max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range]) * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name!~\"(?i).*(warning|critical).*\"} == 1))",
           "range": true,
           "legendFormat": "GPU · peak temperature"
         }
@@ -294,7 +294,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "avg(avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range]) * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device_type=\"Gpu\",name!~\"(?i).*(warning|critical).*\"} == 1))",
+          "expr": "avg(avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range]) * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name!~\"(?i).*(warning|critical).*\"} == 1))",
           "range": true,
           "legendFormat": "GPU · average temperature"
         }
@@ -416,7 +416,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max(max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Power\"}[$__range]) * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",kind=\"Power\",device_type=\"Gpu\",name!~\"(?i).*(warning|critical).*\"} == 1))",
+          "expr": "max(max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Power\"}[$__range]) * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",kind=\"Power\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name!~\"(?i).*(warning|critical).*\"} == 1))",
           "range": true,
           "legendFormat": "GPU · peak reported watts"
         }
@@ -538,7 +538,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "avg(avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Power\"}[$__range]) * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",kind=\"Power\",device_type=\"Gpu\",name!~\"(?i).*(warning|critical).*\"} == 1))",
+          "expr": "avg(avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Power\"}[$__range]) * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",kind=\"Power\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name!~\"(?i).*(warning|critical).*\"} == 1))",
           "range": true,
           "legendFormat": "GPU · average reported watts"
         }
@@ -595,18 +595,18 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "### COOLING · ACTUAL FEEDBACK\nFan tachometers are RPM feedback; PWM is a requested/reported duty, not a guarantee of physical fan behavior. The DDC pump remains tach-only."
+        "content": "### COOLING · SEPARATE HARDWARE ROLES\nRadiator fan-group and fixed-speed DDC pump readings are shown separately using the cooling bindings configured in SensorDash. NVMe fan readings are **not** mixed in. Tachometer RPM is actual feedback; PWM duty is not proof of physical speed."
       }
     },
     {
       "id": 9,
-      "title": "Fan tachometers · peak RPM",
+      "title": "Radiator fan group · peak RPM",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Peak of all reported fan/tachometer sensors, including the pump. Not necessarily radiator-specific.",
+      "description": "Peak observed radiator fan tachometer reading from SensorDash cooling bindings; NVMe and other unrelated fans are excluded. Does not infer the speed of individual fans on the shared hub.",
       "gridPos": {
         "x": 0,
         "y": 16,
@@ -620,9 +620,9 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max(max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Fan\"}[$__range]))",
+          "expr": "max(max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Fan\"}[$__range]) * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",kind=\"Fan\",role=\"fan-group\"} == 1))",
           "range": true,
-          "legendFormat": "Fan tachometers · peak RPM"
+          "legendFormat": "Radiator fan group · peak RPM"
         }
       ],
       "fieldConfig": {
@@ -661,13 +661,13 @@
     },
     {
       "id": 10,
-      "title": "Fan tachometers · average RPM",
+      "title": "DDC pump · peak tach RPM",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Peak of all reported fan/tachometer sensors, including the pump. Not necessarily radiator-specific.",
+      "description": "Peak recorded pump tachometer reading for pump-bound cooling components. The DDC remains fixed-speed/tach-only; this is not a controllable PWM output.",
       "gridPos": {
         "x": 6,
         "y": 16,
@@ -681,9 +681,9 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "avg(avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Fan\"}[$__range]))",
+          "expr": "max(max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Fan\"}[$__range]) * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",kind=\"Fan\",role=\"pump\"} == 1))",
           "range": true,
-          "legendFormat": "Fan tachometers · average RPM"
+          "legendFormat": "DDC pump · peak tach RPM"
         }
       ],
       "fieldConfig": {
@@ -940,7 +940,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Matched using the current exported device_type metadata; historical readings are only shown where compatible metadata exists.",
+      "description": "GPU readings joined using exporter metadata for GpuAmd, GpuNvidia, GpuIntel and Gpu. Alias and sensor names are display labels; missing observations remain gaps.",
       "gridPos": {
         "x": 12,
         "y": 24,
@@ -954,7 +954,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(name,alias,device) (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device_type=\"Gpu\",name!~\"(?i).*(warning|critical).*\"} == 1)",
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(name,alias,device) (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name!~\"(?i).*(warning|critical).*\"} == 1)",
           "range": true,
           "legendFormat": "{{device}} · {{alias}} · {{name}}"
         }
@@ -1078,7 +1078,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Matched using the current exported device_type metadata; historical readings are only shown where compatible metadata exists.",
+      "description": "GPU readings joined using exporter metadata for GpuAmd, GpuNvidia, GpuIntel and Gpu. Alias and sensor names are display labels; missing observations remain gaps.",
       "gridPos": {
         "x": 12,
         "y": 34,
@@ -1092,7 +1092,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Power\"} * on(host,sensor) group_left(name,alias,device) (sensordash_sensor_info_value{host=~\"$host\",kind=\"Power\",device_type=\"Gpu\",name!~\"(?i).*(warning|critical).*\"} == 1)",
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Power\"} * on(host,sensor) group_left(name,alias,device) (sensordash_sensor_info_value{host=~\"$host\",kind=\"Power\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name!~\"(?i).*(warning|critical).*\"} == 1)",
           "range": true,
           "legendFormat": "{{device}} · {{alias}} · {{name}}"
         }
@@ -1259,6 +1259,144 @@
       "fieldConfig": {
         "defaults": {
           "unit": "short",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "title": "Radiator fan-group RPM history",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Individual recorded tachometer series assigned to this cooling role. No unrelated NVMe fan averages; gaps are preserved.",
+      "gridPos": {
+        "x": 0,
+        "y": 57,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Fan\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",kind=\"Fan\",role=\"fan-group\"} == 1)",
+          "range": true,
+          "legendFormat": "{{component}} · {{sensor}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "rotrpm",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "title": "DDC pump tach history",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Individual recorded tachometer series assigned to this cooling role. No unrelated NVMe fan averages; gaps are preserved.",
+      "gridPos": {
+        "x": 12,
+        "y": 57,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Fan\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",kind=\"Fan\",role=\"pump\"} == 1)",
+          "range": true,
+          "legendFormat": "{{component}} · {{sensor}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "rotrpm",
           "color": {
             "mode": "palette-classic-by-name"
           },

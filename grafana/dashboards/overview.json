@@ -172,7 +172,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Gpu\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\"} == 1))",
+          "expr": "max(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\"} == 1))",
           "range": true,
           "legendFormat": "GPU · warmest reported"
         }
@@ -437,7 +437,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max(max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range]) * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Gpu\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\"} == 1))",
+          "expr": "max(max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range]) * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\"} == 1))",
           "instant": true,
           "legendFormat": "GPU · temperature peak"
         }
@@ -559,7 +559,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max(sensordash_reading_value{host=~\"$host\",kind=\"Power\"} * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Gpu\",kind=\"Power\",name!~\"(?i).*(warning|critical).*\"} == 1))",
+          "expr": "max(sensordash_reading_value{host=~\"$host\",kind=\"Power\"} * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",kind=\"Power\",name!~\"(?i).*(warning|critical).*\"} == 1))",
           "range": true,
           "legendFormat": "GPU · reported power"
         }
