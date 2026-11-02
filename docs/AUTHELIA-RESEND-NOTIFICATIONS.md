@@ -76,19 +76,28 @@ credentials or re-enroll factors. The additional non-internal network is
 dedicated to Authelia SMTP outbound access, and carries no published host
 ports; the existing account-directory and pc-control bridges remain.
 
-5. Send a single direct SMTP notification to **your own test mailbox**,
-using the same overlay, or try a controlled second-factor notification:
+5. Verify the deployed **Authelia 4.39.28** notifier without making changes:
 
 ```bash
-sudo docker compose "${files[@]}" "${profiles[@]}" \
-  run --rm --no-deps --entrypoint authelia authelia \
-  debug notification --config /config/configuration.yml \
-  --recipient "YOUR_OWN_TEST_EMAIL"
+sudo docker compose "${files[@]}" "${profiles[@]}" ps authelia
+sudo docker logs --since 10m homeawayfromhome-authelia-1 2>&1 | \
+  grep -Ei 'smtp|notifier|notification|error|warn' | tail -40
 ```
 
-The debug command sends a **real email**. Do not use a stranger's inbox
-or emit notification contents/links in logs. Confirm arrival and test
-the normal login flow before considering the migration accepted.
+A healthy container and an SMTP startup check without errors provide
+evidence of connectivity and SMTP authentication, **not proof of actual
+delivery**. Confirm you can still authenticate with the existing password
+and existing second factor.
+
+**Important version note:** Authelia 4.39.28 does **not** have an
+`authelia debug notification` command or `--recipient` option. Do not use
+the command documented for newer Authelia releases. To verify real delivery,
+request an **actual user-initiated** verification notification through
+Authelia's existing enrollment UI, when appropriate. An OTP device
+registration request is one possible trigger for an account without an
+enrolled OTP device. Do **not** delete or replace any existing TOTP/passkeys
+just to test email. Use a trusted test account, and do not share email links
+or verification tokens.
 
 ## Immediate rollback
 
