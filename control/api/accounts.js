@@ -4,6 +4,9 @@
 const HomeAwayAccounts = (() => {
   let initialized = false;
   let mutationPending = false;
+  let refreshPending = false;
+  let authorized = false;
+  let accessEpoch = 0;
   let cachedUsers = [];
   function renderDirectory() {
     const query = ($('accounts-search')?.value || '').trim().toLocaleLowerCase();
@@ -35,7 +38,11 @@ const HomeAwayAccounts = (() => {
        body:JSON.stringify(data)};
     const response = await fetch('/control/api/admin/users' + path,request);
     const result = await response.json();
-    if (!response.ok) throw Error(result.error || 'Account request failed');
+    if (!response.ok) {
+      const failure=Error(result.error || 'Account request failed');
+      failure.status=response.status;
+      throw failure;
+    }
     return result;
   }
   async function mutate(path, data, successMessage) {
@@ -145,26 +152,58 @@ const HomeAwayAccounts = (() => {
     return card;
   }
   async function refresh() {
+    if (!authorized || refreshPending) return false;
+    refreshPending=true;
+    const epoch=accessEpoch;
     const btn=$('accounts-refresh');
+    const updated=$('accounts-updated');
     btn.disabled=true;
+    updated.textContent='Refreshing users…';
     try {
       const result=await api('');
+      if (!authorized || accessEpoch !== epoch) return false;
+      if (!Array.isArray(result.users)) throw Error('Invalid user directory response');
       cachedUsers = result.users;
       renderDirectory();
+      delete updated.dataset.stale;
+      delete $('accounts-users').dataset.stale;
+      updated.textContent='Updated ' + new Date().toLocaleTimeString();
       return true;
     } catch (err) {
-      message('Account list unavailable: ' + err.message, 'error');
+      if (!authorized || accessEpoch !== epoch) return false;
+      if (err.status === 401 || err.status === 403) {
+        start(null);
+        message('User directory authorization expired. Reopen Control and sign in.', 'error');
+      } else {
+        updated.dataset.stale='true';
+        $('accounts-users').dataset.stale='true';
+        updated.textContent=cachedUsers.length ?
+          'Refresh failed · showing previous user list (permissions may have changed)' :
+          'User directory unavailable';
+        message('Account list unavailable: ' + err.message, 'error');
+      }
       return false;
-    } finally { btn.disabled=false; }
+    } finally { btn.disabled=false; refreshPending=false; }
   }
   function start(identity) {
     const section=$('accounts');
     if (!section || !identity?.capabilities?.manageUsers) {
+      if (authorized) accessEpoch++;
+      authorized=false;
+      cachedUsers=[];
       if (section) section.hidden=true;
+      $('accounts-users')?.replaceChildren();
+      $('accounts-count').textContent='';
+      $('accounts-updated').textContent='User directory authorization unavailable';
       return;
     }
+    const regained=!authorized;
+    authorized=true;
     section.hidden=false;
-    if (initialized) return;
+    if (initialized) {
+      if (regained) void refresh();
+      return;
+    }
     initialized=true;
     $('accounts-refresh').addEventListener('click',refresh);
     $('accounts-search').addEventListener('input',renderDirectory);
