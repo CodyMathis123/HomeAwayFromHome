@@ -37,8 +37,13 @@ class PrivateWebGatewayTests(unittest.TestCase):
         s=(ROOT/"compose.yaml").read_text()
         piece=s.split("  pihole:\n",1)[1].split("\n  wg-easy:",1)[0]
         self.assertIn('FTLCONF_webserver_paths_prefix: "/dns"',piece)
-        for port in (":53:53/tcp",":53:53/udp",":8080:80/tcp"):
+        for port in (":53:53/tcp",":53:53/udp"):
             self.assertIn(port,piece)
+        # Phase A retains its fallback; Phase B moves it to a separate
+        # explicitly opt-in Compose rollback overlay.
+        if ":8080:80/tcp" not in piece:
+            self.assertIn(":8080:80/tcp",
+                (ROOT/"compose.web-lan-rollback.yaml").read_text())
         self.assertIn("WEBPASSWORD_FILE: pihole_password",piece)
         self.assertIn("pihole_password",piece)
         rollback=(ROOT/"compose.dns-prefix-rollback.yaml").read_text()
