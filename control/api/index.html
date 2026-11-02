@@ -60,7 +60,7 @@
   <div class="heading"><h2>Users and permissions</h2><button id="accounts-refresh" type="button">Refresh users</button></div>
   <p class="detail">These are HomeAway permissions. Revoking access does not disable an LDAP password or access to unrelated applications.</p>
   <form id="accounts-add" class="account-create">
-    <label>Username <input name="username" required maxlength="30" pattern="[a-z][a-z0-9_-]{1,30}"></label>
+    <label>Username <input name="username" required maxlength="30" pattern="[a-z][a-z0-9_-]{1,30}" title="Use a lowercase username (2 to 31 characters)"></label>
     <label>Display name <input name="displayname" required maxlength="80"></label>
     <label>Email <input name="email" type="email" required maxlength="200"></label>
     <label class="invite-option"><input name="sendinvite" type="checkbox" checked> Email password-setup invitation (via Resend)</label>
