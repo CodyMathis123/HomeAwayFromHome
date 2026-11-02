@@ -17,6 +17,7 @@ import threading
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import quote
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -123,6 +124,22 @@ class LldapDirectory:
         if result.get("createUser",{}).get("id")!=username:
             raise BrokerFailure(503,"Directory user creation did not commit")
 
+    def send_invitation(self, username: str) -> None:
+        # LLDAP owns the reset token and sends its email via the configured
+        # SMTP relay. HomeAway never sees or stores passwords/reset tokens.
+        # The browser cannot choose a destination: the directory sends to
+        # the verified account email on the existing record.
+        if not USER_RE.fullmatch(username):
+            raise BrokerFailure(400, "Invalid account identifier")
+        url = self.url + "/auth/reset/step1/" + quote(username, safe="")
+        try:
+            with urlopen(Request(url, data=b"", method="POST"), timeout=12) as reply:
+                if reply.status != 200:
+                    raise BrokerFailure(503, "Account invitation not confirmed")
+                reply.read(512)
+        except (HTTPError, URLError, OSError) as exc:
+            raise BrokerFailure(503, "Could not send account invitation") from exc
+
     def membership(self,username: str,group_id: int,enabled: bool) -> None:
         q=self.ADD if enabled else self.REMOVE
         key="addUserToGroup" if enabled else "removeUserFromGroup"
@@ -189,6 +206,29 @@ class AccountBroker:
                     raise BrokerFailure(503,"Unexpected directory account state")
                 self.audit(actor,uid,"create-pending","committed")
                 return {"user":view(created),"passwordReady":False}
+
+            if operation=="invite":
+                if set(payload)!={"id","revision"}:
+                    raise BrokerFailure(400,"Invalid invitation request")
+                uid,revision=payload["id"],payload["revision"]
+                if not isinstance(uid,str) or not USER_RE.fullmatch(uid) or \
+                   not isinstance(revision,str) or len(revision)!=24:
+                    raise BrokerFailure(400,"Invalid account revision")
+                if uid=="admin" or uid==actor:
+                    raise BrokerFailure(403,"Cannot invite protected or active administrator")
+                target=next((u for u in users if u["id"]==uid),None)
+                if target is None:
+                    raise BrokerFailure(404,"Account does not exist")
+                if fingerprint(target)!=revision:
+                    raise BrokerFailure(409,"Account changed; refresh before retry")
+                # Do not initiate a password reset for already authorized
+                # users through the *invitation* action.
+                if role_of(target) is not None:
+                    raise BrokerFailure(409,"Invitations are for pending users only")
+                self.audit(actor,uid,"send-invitation","requested")
+                self.directory.send_invitation(uid)
+                self.audit(actor,uid,"send-invitation","accepted")
+                return {"requested":True,"email":target["email"]}
 
             if operation not in ("set-role","revoke"):
                 raise BrokerFailure(404,"Unknown operation")
