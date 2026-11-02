@@ -18,6 +18,23 @@ const HomeAwayReadiness = (() => {
     badge.textContent = title;
     description.textContent = detail;
   }
+  function updateOverviewSummary() {
+    const summary = $('readiness-overview-summary');
+    if (!summary) return;
+    const counts = {observed:0, attention:0, optional:0, unknown:0, stale:0};
+    for (const id of ids) {
+      const badge = $('readiness-' + id);
+      if (!badge) { counts.unknown++; continue; }
+      if (badge.dataset.refreshStale === 'true') { counts.stale++; continue; }
+      const state = badge.dataset.state;
+      counts[state in counts && state !== 'stale' ? state : 'unknown']++;
+    }
+    summary.textContent = counts.observed + ' observed · ' +
+      counts.attention + ' need attention · ' + counts.unknown + ' unknown · ' +
+      counts.optional + ' optional' +
+      (counts.stale ? ' · ' + counts.stale + ' older results' : '') +
+      '. These are limited checks, not an end-to-end health verdict.';
+  }
   function markStale(ids) {
     // Never erase the last reading when a refresh fails. Its state remains
     // the last observation, visually marked as potentially outdated.
@@ -386,6 +403,7 @@ const HomeAwayReadiness = (() => {
         }),
       ];
       await Promise.all(queries);
+      updateOverviewSummary();
       updated.textContent = (failedSections
         ? failedSections + ' source(s) unavailable'
         : 'Updated') + ' · ' + new Date().toLocaleTimeString();
@@ -398,6 +416,7 @@ const HomeAwayReadiness = (() => {
       certificatesUnknown('Administrator authorization could not be verified');
       displayBackup(null);
       maintenanceUnknown('Administrator authorization could not be verified');
+      updateOverviewSummary();
       updated.textContent = 'Authorization unavailable; reopen HomeAway Control and sign in';
       allowed = false;
       view.hidden = true;
@@ -426,6 +445,7 @@ const HomeAwayReadiness = (() => {
       certificatesUnknown('Not checked in this session');
       displayBackup(null);
       maintenanceUnknown('Not checked in this session');
+      updateOverviewSummary();
     }
     if (allowed && location.hash === '#setup-readiness' && !checked)
       void refresh();
