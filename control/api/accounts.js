@@ -8,6 +8,8 @@ const HomeAwayAccounts = (() => {
   let authorized = false;
   let accessEpoch = 0;
   let cachedUsers = [];
+  // Only the currently opened directory needs an initial API read.
+  const isActive = () => document.querySelector?.('main')?.dataset.activeView === 'accounts';
   function renderDirectory() {
     const query = ($('accounts-search')?.value || '').trim().toLocaleLowerCase();
     const role = $('accounts-filter')?.value || 'all';
@@ -201,7 +203,7 @@ const HomeAwayAccounts = (() => {
     authorized=true;
     section.hidden=false;
     if (initialized) {
-      if (regained) void refresh();
+      if (regained && isActive()) void refresh();
       return;
     }
     initialized=true;
@@ -269,7 +271,7 @@ const HomeAwayAccounts = (() => {
         createButton.disabled=false;
       }
     });
-    void refresh();
+    if (isActive()) void refresh();
   }
   return {start,refresh};
 })();
