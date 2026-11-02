@@ -35,6 +35,15 @@ class AccountAssets(unittest.TestCase):
         self.assertIn("COPY --chmod=0644 broker.py bootstrap.py /app/",docker)
         self.assertIn("USER 65534:65534",docker)
 
+    def test_invite_checkbox_remains_compact(self):
+        html=(API/"index.html").read_text()
+        css=(API/"styles.css").read_text()
+        self.assertIn('class="invite-option"',html)
+        self.assertIn('name="sendinvite" type="checkbox"',html)
+        self.assertIn('.account-create input:not([type="checkbox"])',css)
+        self.assertIn('.invite-option input[type="checkbox"]',css)
+        self.assertIn('width:16px;height:16px',css)
+
     def test_feature_gated_users_markup_and_script_present(self):
         html = (API / "index.html").read_text()
         js = (API / "app.js").read_text()
