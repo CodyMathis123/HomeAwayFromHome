@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark"><title>HomeAway · Computers</title>
-<link rel="stylesheet" href="/control/styles.css"><link rel="stylesheet" href="/theme.css"><script defer src="/navigation.js"></script><script defer src="/control/accounts.js"></script><script defer src="/control/computers.js"></script><script defer src="/control/readiness.js"></script><script defer src="/control/app.js"></script></head>
+<link rel="stylesheet" href="/control/styles.css"><link rel="stylesheet" href="/theme.css"><script defer src="/navigation.js"></script><script defer src="/control/admin-dialog.js"></script><script defer src="/control/accounts.js"></script><script defer src="/control/computers.js"></script><script defer src="/control/readiness.js"></script><script defer src="/control/app.js"></script></head>
 <body><div class="ambient" aria-hidden="true"></div><div class="app-layout">
 <aside id="app-navigation" class="app-sidebar" aria-label="Primary navigation">
   <nav class="section-nav" aria-label="Control page sections">
@@ -32,7 +32,7 @@
   <div class="heading"><h2>Computer management</h2><button id="computer-admin-refresh" type="button">Refresh inventory</button></div>
   <p class="detail">Existing machines remain active. New entries start as drafts and cannot be controlled until their Windows setup and SSH trust are verified in a later enrollment step.</p>
   <div id="computer-admin-active" class="account-list"></div>
-  <h3>Prepare a new computer</h3>
+  <details class="admin-enrollment"><summary>Prepare a new computer · guided draft setup</summary><p class="detail">Step 1: save its network identity as an inactive draft. Step 2: follow the Windows pairing checklist on the draft card. Step 3: verify pinned SSH trust before activation. Existing computer IDs and power controls are unaffected.</p>
   <form id="computer-admin-create" class="computer-create">
     <label>Stable ID <input name="id" required maxlength="32" pattern="[a-z][a-z0-9-]{0,31}" placeholder="living-room"></label>
     <label>Display name <input name="name" required maxlength="80" placeholder="Living Room PC"></label>
@@ -42,7 +42,7 @@
     <label>SSH username <input name="ssh_user" required value="pcctl" maxlength="31"></label>
     <label>SSH port <input name="ssh_port" type="number" required min="1" max="65535" value="22"></label>
     <button type="submit">Save draft (no activation)</button>
-  </form>
+  </form></details>
   <h3>Unconfigured drafts</h3>
   <div class="admin-toolbar"><label>Find computer <input id="computer-admin-search" type="search" placeholder="Name, ID, IP or MAC" autocomplete="off"></label><label>State <select id="computer-admin-filter"><option value="all">All computers</option><option value="active">Active</option><option value="draft">Drafts</option><option value="disabled">Disabled</option><option value="archived">Archived</option></select></label><span id="computer-admin-count" role="status"></span></div><p id="computer-admin-message" role="status" aria-live="polite"></p>
   <div id="computer-admin-drafts" class="account-list"></div>
@@ -157,4 +157,4 @@
   <p class="detail">Run these commands locally in the Production repository. They do not verify all remote-client, certificate-renewal or restore scenarios. No HomeAway button runs shell commands or performs installation.</p>
 </section>
 <footer><span>Private network · Verified sign-in required</span><span>Commands are allowlisted and audited · Your iOS Shortcut remains independent</span></footer>
-</main></div></body></html>
+</main></div><dialog id="admin-action-dialog" aria-labelledby="admin-action-title"><form method="dialog"><h2 id="admin-action-title">Confirm action</h2><p id="admin-action-message"></p><label id="admin-action-input-label" hidden>Enter confirmation <input id="admin-action-input" autocomplete="off"></label><div class="admin-dialog-actions"><button id="admin-action-cancel" type="button">Cancel</button><button id="admin-action-submit" type="submit">Continue</button></div></form></dialog></body></html>
