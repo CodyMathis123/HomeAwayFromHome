@@ -41,7 +41,7 @@ class BranchCleanupContracts(unittest.TestCase):
         code = (ROOT / "scripts/cleanup-merged-pr-branches.py").read_text()
         self.assertIn("sys.stdin.isatty()",code)
         self.assertIn("--force-with-lease=refs/heads/",code)
-        self.assertIn("remote.get(name) != sha", code)
+        self.assertIn("remote_now.get(name) != sha", code)
         self.assertIn('parser.add_argument("--apply"',code)
         self.assertNotIn("force=True", code)
 
