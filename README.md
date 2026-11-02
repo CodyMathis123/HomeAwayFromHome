@@ -29,7 +29,7 @@ Legacy feature branches such as `feature/pi4-home-infrastructure`, `feature/home
 
 **WAN exposure:** Forward only WireGuard UDP 51820. Keep HTTP :8080, :8088, :3000, :8429 and HTTPS :8443 on the LAN/VPN only. wg-easy admin TCP :51821 remains bound to loopback and accessible through SSH forwarding. The controller has no published port, SSH private-key mounts, Docker socket, or direct fan-control endpoint.
 
-For the simplified architecture and intended trust boundaries, read [security](docs/SECURITY.md) and [decisions](docs/DECISIONS.md). Historical implementation milestones are archived in [Project history](docs/PROJECT-HISTORY.md).
+For the [current housekeeping audit and next priorities](docs/PRODUCTION-HOUSEKEEPING-2026-11-02.md), see the November 2 production reconciliation. For the simplified architecture and intended trust boundaries, read [security](docs/SECURITY.md) and [decisions](docs/DECISIONS.md). Historical implementation milestones are archived in [Project history](docs/PROJECT-HISTORY.md).
 
 ## Quick start (new Pi or after imaging)
 

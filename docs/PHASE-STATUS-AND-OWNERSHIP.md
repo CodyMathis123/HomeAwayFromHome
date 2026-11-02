@@ -1,6 +1,6 @@
 # Phase status and avoiding overlapping implementations
 
-As of November 1, 2026, the historical roadmap's Phase 3/4 planning branches
+As of November 2, 2026, the historical roadmap's Phase 3/4 planning branches
 are **design references**, not deployable implementation branches. Current
 Production already has HTTPS with Cloudflare DNS-01 under the private
 `homeawayfromhome.house` names; Authelia/LLDAP and restricted PC inventory;
@@ -24,8 +24,10 @@ full-state backup and a sanitized checksum status view.
 
 ## Remaining acceptance gates
 
-1. Phase 1: invitations/password and factor recovery (issue #9), account
-   administration usability/permissions acceptance.
+1. Phase 1: LLDAP invitations, user creation/deletion, and Authelia
+   security-notification emails are live-verified via Resend. Remaining
+   acceptance: independent password-reset redemption and second-user
+   factor re-enrollment/error handling ([issue #9](https://github.com/CodyMathis123/HomeAwayFromHome/issues/9)).
 2. Phase 2: real second PC enrollment, host-key pinning, verified commands,
    disable/archive/restore and offline test without risking the only PC.
 3. Phase 3: finish safe read-only diagnostics and updated setup guidance;
@@ -102,3 +104,5 @@ request failure and verify the original value remains but acquires
 `last known`; restore connectivity and verify a successful refresh clears
 that marker. This is not durable server-side caching; reloading the entire
 browser page starts from initial unknowns until observations return.
+
+For the consolidated permission/network/gateway-overlay audit and ranked follow-ups, see [November 2 production housekeeping](PRODUCTION-HOUSEKEEPING-2026-11-02.md).
