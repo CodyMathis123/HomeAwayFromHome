@@ -4,6 +4,17 @@
 const HomeAwayAccounts = (() => {
   let initialized = false;
   let mutationPending = false;
+  let cachedUsers = [];
+  function renderDirectory() {
+    const query = ($('accounts-search')?.value || '').trim().toLocaleLowerCase();
+    const role = $('accounts-filter')?.value || 'all';
+    const visible = cachedUsers.filter(user =>
+      (role === 'all' || (role === 'pending' ? !user.role : user.role === role)) &&
+      [user.name,user.id,user.email].some(part => String(part || '').toLocaleLowerCase().includes(query)));
+    $('accounts-users').replaceChildren(...visible.map(renderUser));
+    if (!visible.length) $('accounts-users').textContent = cachedUsers.length ? 'No users match these filters.' : 'No accounts found.';
+    $('accounts-count').textContent = visible.length + ' of ' + cachedUsers.length + ' users';
+  }
   const $ = id => document.getElementById(id);
   const make = (tag, className, text) => {
     const element = document.createElement(tag);
@@ -138,8 +149,8 @@ const HomeAwayAccounts = (() => {
     btn.disabled=true;
     try {
       const result=await api('');
-      $('accounts-users').replaceChildren(...result.users.map(renderUser));
-      if (!result.users.length) $('accounts-users').textContent='No accounts found.';
+      cachedUsers = result.users;
+      renderDirectory();
       return true;
     } catch (err) {
       message('Account list unavailable: ' + err.message, 'error');
@@ -156,6 +167,8 @@ const HomeAwayAccounts = (() => {
     if (initialized) return;
     initialized=true;
     $('accounts-refresh').addEventListener('click',refresh);
+    $('accounts-search').addEventListener('input',renderDirectory);
+    $('accounts-filter').addEventListener('change',renderDirectory);
     // Canonical directory usernames are lowercase. Normalize as the user types
     // so native pattern validation doesn't block mixed-case names silently.
     const usernameInput=$('accounts-add').elements.namedItem('username');

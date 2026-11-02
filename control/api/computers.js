@@ -12,6 +12,26 @@ const HomeAwayComputers = (() => {
   let started = false;
   let busy = false;
   let auditBusy = false;
+  let cachedInventory = null;
+  function renderInventory() {
+    if (!cachedInventory) return;
+    const data = cachedInventory;
+    const query = ($('computer-admin-search')?.value || '').trim().toLocaleLowerCase();
+    const state = $('computer-admin-filter')?.value || 'all';
+    const match = item => [item.name,item.id,item.address,item.mac].some(part =>
+      String(part || '').toLocaleLowerCase().includes(query));
+    const active = (data.active || []).filter(item => (state === 'all' || state === 'active') && match(item));
+    const drafts = (data.drafts || []).filter(item => (state === 'all' || state === 'draft') && match(item));
+    const retired = (data.retired || []).filter(record => (state === 'all' || (record.archived ? state === 'archived' : state === 'disabled')) && match(record.host));
+    $('computer-admin-active').replaceChildren(...active.map(item => activeCard(item,data.revision)));
+    if (!active.length) $('computer-admin-active').textContent='No matching active computers.';
+    $('computer-admin-drafts').replaceChildren(...drafts.map(item => draftCard(item,data.revision)));
+    if (!drafts.length) $('computer-admin-drafts').textContent='No matching drafts.';
+    $('computer-admin-retired').replaceChildren(...retired.map(item => retiredCard(item,data.revision)));
+    if (!retired.length) $('computer-admin-retired').textContent='No matching disabled or archived computers.';
+    const total = (data.active || []).length + (data.drafts || []).length + (data.retired || []).length;
+    $('computer-admin-count').textContent = (active.length + drafts.length + retired.length) + ' of ' + total + ' computers';
+  }
   // Browser state is UX only. The host writer verifies SSH again on activate.
   const recentlyVerified = new Set();
   const message = value => { $('computer-admin-message').textContent = value; };
@@ -249,15 +269,8 @@ const HomeAwayComputers = (() => {
     button.disabled = true;
     try {
       const data=await api('');
-      const active=data.active || [];
-      const drafts=data.drafts || [];
-      const retired=data.retired || [];
-      $('computer-admin-active').replaceChildren(...active.map(item=>activeCard(item,data.revision)));
-      if (!active.length) $('computer-admin-active').textContent='No active computers.';
-      $('computer-admin-drafts').replaceChildren(...drafts.map(d=>draftCard(d,data.revision)));
-      if (!drafts.length) $('computer-admin-drafts').textContent='No unconfigured drafts.';
-      $('computer-admin-retired').replaceChildren(...retired.map(r=>retiredCard(r,data.revision)));
-      if (!retired.length) $('computer-admin-retired').textContent='No disabled or archived computers.';
+      cachedInventory=data;
+      renderInventory();
       if ($('computer-admin-audit')?.open) void refreshAudit();
       return true;
     } catch (err) {
@@ -292,6 +305,8 @@ const HomeAwayComputers = (() => {
     if (started) return;
     started=true;
     $('computer-admin-refresh').addEventListener('click',()=>{ void refresh(); });
+    $('computer-admin-search').addEventListener('input',renderInventory);
+    $('computer-admin-filter').addEventListener('change',renderInventory);
     $('computer-admin-audit')?.addEventListener('toggle',event=>{
       if (event.currentTarget.open) void refreshAudit();
     });
