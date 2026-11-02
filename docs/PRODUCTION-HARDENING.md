@@ -11,7 +11,7 @@ which host-side computer management resources are present.
 
 | Resource | Ownership and permission requirement |
 | --- | --- |
-| `control/gateway/Caddyfile.production` | Readable by non-root Caddy, normally mode 0644 |
+| Active Caddyfile: `control/gateway/Caddyfile.production` **or** `Caddyfile.account-recovery` | Mounted non-secret config readable by non-root Caddy, normally mode 0644 |
 | `control/api/app.py` | Readable in checkout; Dockerfile uses `COPY --chmod=0644` so installed runtime doesn't depend on checkout modes |
 | `secrets/control/cloudflare_dns01_token` | Root-owned, mode 0400 or 0600, never made world-readable |
 | Authelia, pcctl credentials, Windows pairing key | Keep restricted to intended service identity, never fix via broad chmod |
@@ -26,12 +26,12 @@ Cloudflare credentials:
 
 ```bash
 python3 scripts/prepare-gateway-permissions.py --plan
-python3 scripts/prepare-gateway-permissions.py --apply
+python3 scripts/prepare-gateway-permissions.py --apply --config account-recovery  # live recovery-overlay Pi
 sudo python3 scripts/audit-production.py
 ```
 
 Run the preparation script as the checkout owner, without sudo. It only sets
-`control/gateway/Caddyfile.production` mode 0644 after rejecting symlinks
+the explicitly selected `production` or `account-recovery` Caddyfile mode 0644 after rejecting symlinks
 and hardlinks. On future `scripts/deploy-ui.sh --apply` runs, the same narrow
 normalization is automatic after Git sync, before any UI container rebuild.
 `--plan` and the audit remain read-only. A dedicated gateway cutover must
