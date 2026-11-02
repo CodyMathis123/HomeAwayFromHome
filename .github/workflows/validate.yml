@@ -63,6 +63,18 @@ jobs:
           mkdir -p secrets/telemetry
           docker compose config -q
           docker compose --profile metrics config -q
+          # Confirm the separately opt-in rollback restores exactly the
+          # historic private LAN port without changing other services.
+          docker compose -f compose.yaml -f compose.telemetry-direct-rollback.yaml --profile metrics config --format json | python3 -c '
+          import json,ipaddress,sys
+          cfg=json.load(sys.stdin)
+          p=cfg["services"]["telemetry-ingest"]["ports"]
+          assert len(p)==1
+          assert p[0]["published"]=="8429" and p[0]["target"]==8443
+          assert p[0]["protocol"]=="tcp"
+          assert ipaddress.ip_address(p[0]["host_ip"]).is_private
+          assert not cfg["services"]["victoria-metrics"].get("ports")
+          '
           HOMEAWAY_DOMAIN=homeaway.home.arpa HOMEAWAY_AUTH_DOMAIN=auth.homeaway.home.arpa HOMEAWAY_METRICS_DOMAIN=metrics.homeaway.home.arpa PCCTL_GID=999 docker compose -f compose.yaml -f compose.control.yaml --profile control --profile metrics config -q
       - name: Validate feature-gated account directory overlay (no services started)
         run: |

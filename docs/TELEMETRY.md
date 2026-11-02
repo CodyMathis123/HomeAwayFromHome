@@ -1,6 +1,6 @@
 # SensorDash -> HomeAway telemetry proof of concept
 
-## Canonical private HTTPS ingestion (optional staged migration)
+## Canonical private HTTPS ingestion (three-stage migration)
 
 New URL: **https://metrics.homeawayfromhome.house/ingest**
 
@@ -59,7 +59,51 @@ The original https://PI_LAN_IP:8429/ingest address and private CA trust mode
 are kept for rollback. To revert the Windows exporter, put back the old URL
 and uncheck Windows trust; no hardware service restart is required.
 
-Do not close port 8429 until a later separately approved decommission step.
+### Phase 3 — retire the old LAN port after successful delivery
+
+After SensorDash confirms fresh delivery through the canonical HTTPS URL,
+use the explicit private-only cutover:
+
+~~~bash
+cd ~/HomeAwayFromHome
+git fetch origin
+git switch Production
+git merge --ff-only origin/Production
+bash scripts/deploy-telemetry-private.sh --plan
+~~~
+
+Review the live-gateway checks. When the plan succeeds, run:
+
+~~~bash
+bash scripts/deploy-telemetry-private.sh --apply &&
+bash scripts/deploy-telemetry-private.sh --status
+~~~
+
+This recreates **only telemetry-ingest** without a published host port.
+Caddy still reaches the receiver through the Docker `infra` bridge, and the
+bearer-token, private upstream TLS, and strict metric schema remain intact.
+Grafana, VPN, Pi-hole and the Windows fan-control service are not restarted.
+The client may retry for a moment while the receiver is recreated.
+
+The script checks that anonymous canonical HTTPS ingestion is rejected (401),
+that Grafana still responds, and that the running receiver has zero published
+Docker ports. If post-cutover checks fail, it attempts to restore port 8429
+automatically. To **manually restore** the original LAN-only port mapping:
+
+~~~bash
+bash scripts/deploy-telemetry-private.sh --rollback
+~~~
+
+Rollback only recreates telemetry-ingest with the additional
+`compose.telemetry-direct-rollback.yaml` overlay; it does not disable the
+canonical gateway. The old IP URL will work again if Windows must temporarily
+be switched back to private-CA trust.
+
+Confirm fresh SensorDash last-delivery timestamps and Grafana samples after
+cutover. The old receiver endpoint is no longer directly reachable by LAN
+clients while the private-only Compose configuration is deployed.
+
+
 
 
 ## Milestone 4 — SensorDash local-control / Grafana monitoring split

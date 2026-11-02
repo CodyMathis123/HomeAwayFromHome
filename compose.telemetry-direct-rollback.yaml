@@ -1,0 +1,6 @@
+# Explicit rollback ONLY: restores original LAN-only 8429 socket for telemetry.
+# Append LAST when operating telemetry-ingest, not during normal production.
+services:
+  telemetry-ingest:
+    ports:
+      - "${PI_LAN_IP:?Set PI_LAN_IP}:8429:8443/tcp"

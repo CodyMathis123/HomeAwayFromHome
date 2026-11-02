@@ -140,8 +140,9 @@ services:
       - no-new-privileges:true
     environment:
       VICTORIAMETRICS_HOST: victoria-metrics
-    ports:
-      - "${PI_LAN_IP:?Set PI_LAN_IP}:8429:8443/tcp"
+    # Private Docker bridge only. Ingestion is reachable exclusively through
+    # the canonical TLS Caddy route at metrics.homeawayfromhome.house/ingest.
+    # Do not publish port 8429 after the Windows migration is verified.
     volumes:
       - ./secrets/telemetry:/run/tls:ro
     networks:
