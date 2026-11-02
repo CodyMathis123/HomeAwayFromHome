@@ -15,7 +15,7 @@ class PrivateWebGatewayTests(unittest.TestCase):
                 s=(ROOT/"control/gateway"/f"Caddyfile.{flavor}").read_text()
                 home=s.split("home.homeawayfromhome.house:8443 {",1)[1].split(
                     "metrics.homeawayfromhome.house:8443 {",1)[0]
-                dns=home.split("handle_path /dns/* {",1)[1].split(
+                dns=home.split("handle /dns/* {",1)[1].split(
                     "\n  handle {\n    reverse_proxy portal:8080",1)[0]
                 self.assertIn("@dnsRoot path /dns",home)
                 self.assertIn("redir @dnsRoot /dns/admin/ 308",home)
@@ -23,11 +23,15 @@ class PrivateWebGatewayTests(unittest.TestCase):
                 self.assertIn("forward_auth authelia:9091",dns)
                 self.assertIn("uri /api/authz/forward-auth",dns)
                 self.assertIn("reverse_proxy pihole:80",dns)
+                self.assertIn("uri strip_prefix /dns",dns)
+                self.assertLess(dns.index("forward_auth"),dns.index("uri strip_prefix /dns"))
+                self.assertLess(dns.index("uri strip_prefix /dns"),dns.index("reverse_proxy pihole"))
+                self.assertNotIn("handle_path /dns/*",home)
                 self.assertLess(dns.index("forward_auth"),dns.index("reverse_proxy pihole"))
                 self.assertIn("request_header -Remote-User",dns)
                 self.assertIn("request_header -X-HomeAway-Groups",dns)
                 self.assertNotIn("tls_insecure_skip_verify",dns)
-                self.assertLess(home.index("handle_path /dns/*"),
+                self.assertLess(home.index("handle /dns/*"),
                                 home.index("reverse_proxy portal:8080"))
                 self.assertIn("forward_auth authelia:9091",home.split("handle @control",1)[1])
                 self.assertIn("handle /ingest",s)
@@ -92,6 +96,17 @@ class PrivateWebGatewayTests(unittest.TestCase):
         self.assertNotIn("force-recreate wg-easy",script)
         self.assertNotIn("sudo docker system prune",script)
         self.assertNotIn("tls_insecure_skip_verify",script)
+        self.assertIn('[[ "$dns" == 302 ]]',script)
+        self.assertIn("https://auth.homeawayfromhome.house/",script)
+        self.assertNotIn('"$dns" == 403',script)
+
+    def test_dns_admin_auth_migration_scoped_and_protected(self):
+        script=(ROOT/"scripts/fix-dns-admin-auth.py").read_text()
+        for token in ("group:admins", "two_factor", "/dns(?:/.*)?$",
+                      "configuration.before-dns-admin.yml",
+                      "config", "validate", "--plan", "--apply"):
+            self.assertIn(token,script)
+        self.assertNotIn("default_policy: bypass",script)
 
 if __name__=="__main__":
     unittest.main()
