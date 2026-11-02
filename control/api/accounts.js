@@ -216,7 +216,12 @@ const HomeAwayAccounts = (() => {
         form.reset();
         // Keep the directory in view after a successful creation; admins may
         // assign a role next without scrolling past the form.
-        if (refreshed) $('accounts-create-panel').open = false;
+        if (refreshed) {
+          $('accounts-search').value = '';
+          $('accounts-filter').value = 'all';
+          renderDirectory();
+          $('accounts-create-panel').open = false;
+        }
       } catch(err) {
         message('Create failed: ' + err.message +
                 '. Check the user list before retrying.','error');
