@@ -84,7 +84,7 @@ def broker_request(actor: str, operation: str, payload: dict) -> dict:
         # Distinguish expected admin-side validation conflicts without leaking
         # directory internals or echoing user-controlled fields.
         if exc.code == 409:
-            if operation in ("create","create-invite"):
+            if operation in ("create", "create-invite"):
                 msg = "Username or email is already in use"
             elif operation == "delete":
                 msg = "Account changed or still has a HomeAway role; refresh and revoke before deleting"
