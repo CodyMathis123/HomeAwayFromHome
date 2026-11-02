@@ -100,6 +100,19 @@ const HomeAwayAccounts = (() => {
                    '? This does not disable their LDAP password or other applications.')) return;
       await mutate('/revoke',{id:user.id,revision:user.revision});
     });
+    if (!user.role) {
+      const invite = make('button','','Send setup invitation');
+      invite.type='button';
+      invite.addEventListener('click', async () => {
+        if (!confirm('Email a password-setup link to ' + user.email +
+                     '? Confirm the address belongs to the intended person.')) return;
+        const ok=await mutate('/invite',{id:user.id,revision:user.revision},
+          'Password-setup email requested for ' + user.email +
+          '. Delivery is not independently confirmed; ask the recipient to check their inbox.');
+        if (!ok) message('Invitation not confirmed. Check the user list before retrying.','warning');
+      });
+      control.append(invite);
+    }
     control.append(select,save,revoke);
     card.append(control);
     return card;
@@ -133,12 +146,39 @@ const HomeAwayAccounts = (() => {
       const user=form.elements.namedItem('username').value.trim();
       const name=form.elements.namedItem('displayname').value.trim();
       const email=form.elements.namedItem('email').value.trim();
-      if (!confirm('Create pending account ' + user +
-                   '? No password or access will be provisioned yet.')) return;
-      const created = await mutate('/create',{id:user,name,email},
-        'Created pending user "' + user + '". Look for that username in the list below. ' +
-        'No password or HomeAway access has been granted; set a password in LLDAP and assign a role here.');
-      if (created) form.reset();
+      const invite=form.elements.namedItem('sendinvite').checked;
+      if (!confirm('Create pending account ' + user + (invite ?
+                   ' and request a setup email for ' + email :
+                   ' without an invitation') +
+                   '? No HomeAway role will be granted.')) return;
+      if (mutationPending) return;
+      mutationPending = true;
+      const createButton=form.querySelector('button[type="submit"]');
+      createButton.disabled=true;
+      try {
+        const result=await api(invite ? '/create-invite' : '/create',
+                               {id:user,name,email});
+        const refreshed=await refresh();
+        if (result.invitationError) {
+          message(result.invitationError + ' Account ' + user +
+                  ' exists without a HomeAway role. Retry via Send setup invitation.','warning');
+        } else if (result.invitationRequested) {
+          message('Created pending account ' + user +
+                  ' and requested its password-setup email. No HomeAway role was granted. ' +
+                  'Ask the recipient to check their inbox.','success');
+        } else {
+          message('Created pending account ' + user +
+                  '. Use Send setup invitation to email the password link.','success');
+        }
+        if (!refreshed) message('Account created but list refresh failed. Refresh before retrying.', 'warning');
+        form.reset();
+      } catch(err) {
+        message('Create failed: ' + err.message +
+                '. Check the user list before retrying.','error');
+      } finally {
+        mutationPending=false;
+        createButton.disabled=false;
+      }
     });
     void refresh();
   }
