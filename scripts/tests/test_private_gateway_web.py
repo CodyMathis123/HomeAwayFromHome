@@ -104,40 +104,19 @@ class PrivateWebGatewayTests(unittest.TestCase):
     def test_dns_auth_migration_render_is_idempotent_and_limited(self):
         migration=runpy.run_path(str(ROOT/"scripts/fix-dns-admin-auth.py"))
         render=migration["updated"]
-        initial=("access_control:\\n"
-                 "  default_policy: deny\\n"
-                 "  rules:\\n"
-                 "    - domain: homeaway.home.arpa\\n"
-                 "      resources:\\n"
-                 "        - '^/control(?:/.*)?
-        script=(ROOT/"scripts/fix-dns-admin-auth.py").read_text()
-        for token in ("group:admins", "two_factor", "/dns(?:/.*)?$",
-                      "configuration.before-dns-admin.yml",
-                      "config", "validate", "--plan", "--apply"):
-            self.assertIn(token,script)
-        self.assertNotIn("default_policy: bypass",script)
-
-if __name__=="__main__":
-    unittest.main()
-\\n"
-                 "      policy: two_factor\\n"
-                 "session:\\n"
-                 "  secret: dummy\\n")
+        initial=("access_control:\n"
+                 "  default_policy: deny\n"
+                 "  rules:\n"
+                 "    - domain: homeaway.home.arpa\n"
+                 "      resources:\n"
+                 "        - '^/control(?:/.*)?$'\n"
+                 "      policy: two_factor\n"
+                 "session:\n"
+                 "  secret: dummy\n")
         changed,updated=render(initial)
         self.assertTrue(changed)
         self.assertIn("group:admins",updated)
-        self.assertIn("'^/dns(?:/.*)?
-        script=(ROOT/"scripts/fix-dns-admin-auth.py").read_text()
-        for token in ("group:admins", "two_factor", "/dns(?:/.*)?$",
-                      "configuration.before-dns-admin.yml",
-                      "config", "validate", "--plan", "--apply"):
-            self.assertIn(token,script)
-        self.assertNotIn("default_policy: bypass",script)
-
-if __name__=="__main__":
-    unittest.main()
-",updated)
-        self.assertIn("policy: two_factor",updated)
+        self.assertIn("'^/dns(?:/.*)?$'",updated)
         self.assertEqual(updated.replace(migration["RULE"],""),initial)
         changed_again,same=render(updated)
         self.assertFalse(changed_again)
@@ -145,19 +124,9 @@ if __name__=="__main__":
         with self.assertRaises(ValueError):
             render(initial.replace("default_policy: deny","default_policy: bypass"))
         with self.assertRaises(ValueError):
-            render(initial.replace("session:", "    - domain: home.homeawayfromhome.house\\n"
-                                   "      resources:\\n"
-                                   "        - '^/dns/.*
-        script=(ROOT/"scripts/fix-dns-admin-auth.py").read_text()
-        for token in ("group:admins", "two_factor", "/dns(?:/.*)?$",
-                      "configuration.before-dns-admin.yml",
-                      "config", "validate", "--plan", "--apply"):
-            self.assertIn(token,script)
-        self.assertNotIn("default_policy: bypass",script)
-
-if __name__=="__main__":
-    unittest.main()
-\\n"
+            render(initial.replace("session:", "    - domain: home.homeawayfromhome.house\n"
+                                   "      resources:\n"
+                                   "        - '^/dns/.*$'\n"
                                    "session:"))
 
     def test_dns_admin_auth_migration_scoped_and_protected(self):
