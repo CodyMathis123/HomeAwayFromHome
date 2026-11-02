@@ -113,7 +113,23 @@ const HomeAwayAccounts = (() => {
       });
       control.append(invite);
     }
-    control.append(select,save,revoke);
+    const remove=make('button','danger','Delete user');
+    remove.type='button';
+    remove.disabled=!!user.role;
+    remove.title=user.role ? 'Revoke HomeAway access before deleting this account' :
+                           'Permanently remove this directory account';
+    remove.addEventListener('click', async () => {
+      if (user.role) return;
+      const answer=prompt('Permanently delete ' + user.id +
+        ' and their directory credentials? Type the exact username to confirm.');
+      if (answer!==user.id) {
+        if (answer!==null) message('Deletion cancelled: username did not match.','warning');
+        return;
+      }
+      await mutate('/delete',{id:user.id,revision:user.revision,confirm:answer},
+                   'Directory account ' + user.id + ' deleted. Existing sessions may require revocation.');
+    });
+    control.append(select,save,revoke,remove);
     card.append(control);
     return card;
   }

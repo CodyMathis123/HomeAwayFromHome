@@ -45,6 +45,11 @@ class Directory:
         self.people[id]={"id":id,"displayName":display,"email":email,"groups":[]}
         self.writes.append(("create",id))
 
+    def delete(self,id):
+        if self.fail:raise broker.BrokerFailure(503,"Offline")
+        self.people.pop(id,None)
+        self.writes.append(("delete",id))
+
     def send_invitation(self,id):
         if self.fail:raise broker.BrokerFailure(503,"Offline")
         self.writes.append(("invite",id))
@@ -130,6 +135,34 @@ class BrokerTests(unittest.TestCase):
         self.assertIn("invitationError",r)
         self.assertIsNotNone(self.directory.user("newmember"))
         self.assertIsNone(self.api.resolve("newmember")["role"])
+
+    def test_delete_requires_no_role_and_exact_confirmation(self):
+        pending=self.directory.user("pending")
+        revision=broker.fingerprint(pending)
+        with self.assertRaises(broker.BrokerFailure):
+            self.invoke("homeowner","delete",id="pending",revision=revision,confirm="wrong")
+        with self.assertRaises(broker.BrokerFailure):
+            self.invoke("viewer","delete",id="pending",revision=revision,confirm="pending")
+        with self.assertRaises(broker.BrokerFailure) as cm:
+            self.invoke("homeowner","delete",id="viewer",
+                revision=broker.fingerprint(self.directory.user("viewer")),confirm="viewer")
+        self.assertEqual(cm.exception.status,409)
+        result=self.invoke("homeowner","delete",id="pending",
+                           revision=revision,confirm="pending")
+        self.assertTrue(result["deleted"])
+        self.assertIsNone(self.directory.user("pending"))
+        self.assertEqual(self.directory.writes,[("delete","pending")])
+
+    def test_delete_protects_admin_and_self(self):
+        for uid in ("homeowner","admin"):
+            with self.assertRaises(broker.BrokerFailure):
+                self.invoke("homeowner","delete",id=uid,revision="0"*24,confirm=uid)
+        self.assertEqual(self.directory.writes,[])
+
+    def test_create_normalizes_username(self):
+        result=self.invoke("homeowner","create",id="MixedCase",name="Mixed",email="mixed@home.invalid")
+        self.assertEqual(result["user"]["id"],"mixedcase")
+        self.assertEqual(self.directory.writes,[("create","mixedcase")])
 
     def test_role_demote_revoke_and_revision(self):
         target=self.directory.user("operator")

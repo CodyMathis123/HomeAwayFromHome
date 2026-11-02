@@ -84,13 +84,29 @@ def broker_request(actor: str, operation: str, payload: dict) -> dict:
         # Distinguish expected admin-side validation conflicts without leaking
         # directory internals or echoing user-controlled fields.
         if exc.code == 409:
-            msg = ("Username or email is already in use" if operation in ("create", "create-invite")
-                   else "Account record changed; refresh users and try again")
+            if operation in ("create", "create-invite"):
+                msg = "Username or email is already in use"
+            elif operation == "delete":
+                msg = "Account changed or still has a HomeAway role; refresh and revoke before deleting"
+            elif operation == "invite":
+                msg = "Invitations require a pending account without a HomeAway role"
+            else:
+                msg = "Account changed; refresh users and try again"
             raise BrokerError(409, msg) from exc
-        if exc.code == 400 and operation == "create":
-            raise BrokerError(400, "Invalid username, display name, or email") from exc
-        if exc.code in (400, 403, 404, 413):
-            raise BrokerError(exc.code, "Account operation rejected") from exc
+        if exc.code == 400:
+            if operation in ("create","create-invite"):
+                msg = "Invalid username, display name or email"
+            elif operation == "delete":
+                msg = "Type the exact lowercase username to confirm deletion"
+            else:
+                msg = "Invalid account operation details; refresh and try again"
+            raise BrokerError(400, msg) from exc
+        if exc.code == 403:
+            raise BrokerError(403, "Protected account or administrator permission required") from exc
+        if exc.code == 404:
+            raise BrokerError(404, "Account no longer exists; refresh users") from exc
+        if exc.code == 413:
+            raise BrokerError(413, "Account request is too large") from exc
         raise BrokerError(503, "Account broker unavailable") from exc
     except (OSError, URLError, ValueError, json.JSONDecodeError, TimeoutError) as exc:
         raise BrokerError(503, "Account broker unavailable") from exc
@@ -636,6 +652,7 @@ class Handler(BaseHTTPRequestHandler):
             "/control/api/admin/users/create",
             "/control/api/admin/users/create-invite",
             "/control/api/admin/users/invite",
+            "/control/api/admin/users/delete",
             "/control/api/admin/users/set-role",
             "/control/api/admin/users/revoke")
         is_computer = request_path in (

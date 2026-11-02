@@ -54,6 +54,7 @@ class LldapDirectory:
     CREATE = "mutation($user:CreateUserInput!){createUser(user:$user){id}}"
     ADD = "mutation($id:String!,$gid:Int!){addUserToGroup(userId:$id,groupId:$gid){ok}}"
     REMOVE = "mutation($id:String!,$gid:Int!){removeUserFromGroup(userId:$id,groupId:$gid){ok}}"
+    DELETE = "mutation($id:String!){deleteUser(userId:$id){ok}}"
 
     def __init__(self, url: str, username: str, password: str):
         # The broker is expected on a private Docker-only network, never
@@ -124,6 +125,10 @@ class LldapDirectory:
         if result.get("createUser",{}).get("id")!=username:
             raise BrokerFailure(503,"Directory user creation did not commit")
 
+    def delete(self,username: str) -> None:
+        if self._gql(self.DELETE,{"id":username}).get("deleteUser",{}).get("ok") is not True:
+            raise BrokerFailure(503,"Directory account deletion was not confirmed")
+
     def send_invitation(self, username: str) -> None:
         # LLDAP owns the reset token and sends its email via the configured
         # SMTP relay. HomeAway never sees or stores passwords/reset tokens.
@@ -190,6 +195,7 @@ class AccountBroker:
                 if set(payload)!={"id","name","email"}:
                     raise BrokerFailure(400,"Invalid account fields")
                 uid,name,email=payload["id"],payload["name"],payload["email"]
+                if isinstance(uid,str): uid=uid.lower()
                 if not all(isinstance(v,str) for v in (uid,name,email)) \
                    or not USER_RE.fullmatch(uid) or not 1<=len(name)<=80 \
                    or not EMAIL_RE.fullmatch(email):
@@ -220,6 +226,30 @@ class AccountBroker:
                         self.audit(actor,uid,"send-invitation","accepted")
                         response["invitationRequested"]=True
                 return response
+
+            if operation=="delete":
+                if set(payload)!={"id","revision","confirm"}:
+                    raise BrokerFailure(400,"Expected user, revision and deletion confirmation")
+                uid,revision,confirm=payload["id"],payload["revision"],payload["confirm"]
+                if not isinstance(uid,str) or not USER_RE.fullmatch(uid) or \
+                   not isinstance(revision,str) or len(revision)!=24 or \
+                   not isinstance(confirm,str) or confirm!=uid:
+                    raise BrokerFailure(400,"Type the exact username to confirm deletion")
+                if uid==actor or uid=="admin":
+                    raise BrokerFailure(403,"Cannot delete your own or bootstrap administrator account")
+                target=next((u for u in users if u["id"]==uid),None)
+                if target is None:
+                    raise BrokerFailure(404,"User does not exist")
+                if fingerprint(target)!=revision:
+                    raise BrokerFailure(409,"Account changed; refresh before deletion")
+                if role_of(target):
+                    raise BrokerFailure(409,"Revoke HomeAway access before deleting this account")
+                self.audit(actor,uid,"delete-user","requested")
+                self.directory.delete(uid)
+                if self.directory.user(uid) is not None:
+                    raise BrokerFailure(503,"Directory did not confirm account removal")
+                self.audit(actor,uid,"delete-user","committed")
+                return {"deleted":True,"id":uid}
 
             if operation=="invite":
                 if set(payload)!={"id","revision"}:

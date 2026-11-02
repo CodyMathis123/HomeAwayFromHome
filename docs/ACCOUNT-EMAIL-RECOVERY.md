@@ -152,6 +152,25 @@ was already set; `Send setup invitation` requests a password reset, even for
 a pending account that may already have a password. Never use it to reset
 another person's password without appropriate consent.
 
+## Removing a test account
+
+The HomeAway **Users and permissions** page has a **Delete user** action for
+pending or revoked directory users. To delete an account that currently has
+a HomeAway role, first **Revoke HomeAway access**, refresh the listing, and
+then click Delete user. The deletion action requires typing the exact
+lowercase username and uses the current account revision.
+
+Deletion is permanent and removes the LLDAP account. It intentionally refuses
+to delete the active administrator or bootstrap `admin`, and it does not
+attempt to revoke existing Authelia browser sessions. Those sessions cannot
+regain HomeAway permissions because every request checks current directory
+roles.
+
+The LLDAP bootstrap `admin` is a separate directory administrator; its
+password is kept locally in `secrets/control/lldap_admin_password`. Do not
+copy that password into GitHub, logs, or chat. Ordinary HomeAway account
+administration does not need a bootstrap directory login.
+
 ## Known acceptance limits
 
 - Provider sending, HTML/path prefix handling, and real reset-token redemption
