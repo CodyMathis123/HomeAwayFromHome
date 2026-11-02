@@ -173,3 +173,34 @@ main [data-view-section]:focus-visible{outline:2px solid var(--accent);outline-o
   .admin-filter-reset{width:100%;align-self:stretch}
   .admin-directory-group{margin-top:16px}
 }
+
+/* A short everyday health view with advanced read-only evidence on demand. */
+.readiness-overview-heading{font-size:17px;margin:22px 0 6px}
+.readiness-overview-summary{
+  border-left:3px solid var(--accent);background:#102d38;padding:11px 14px;
+  border-radius:7px;color:#d3e9ec;font-size:13px;line-height:1.6;
+  margin:16px 0 18px
+}
+.readiness-detail-section{
+  margin:16px 0;border:1px solid var(--line);border-radius:12px;
+  background:#0d2332;min-width:0
+}
+.readiness-detail-section > summary{
+  display:list-item;cursor:pointer;list-style:disclosure-closed;
+  padding:17px 20px;font-size:15px;font-weight:700;line-height:1.5
+}
+.readiness-detail-section[open] > summary{
+  list-style:disclosure-open;border-bottom:1px solid var(--line)
+}
+.readiness-summary-note{
+  display:block;font-size:12px;font-weight:400;color:var(--muted);margin-top:3px
+}
+.readiness-detail-body{padding:4px 18px 20px}
+.readiness-detail-body > h3{margin:22px 0 8px;font-size:15px}
+.readiness-detail-body > .readiness-grid{margin:14px 0 22px}
+.readiness-detail-body .readiness-manual code{user-select:text}
+@media(max-width:700px){
+  .readiness-detail-section > summary{padding:14px}
+  .readiness-detail-body{padding:4px 12px 14px}
+  .readiness-overview-summary{padding:10px 12px}
+}

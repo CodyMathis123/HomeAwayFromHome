@@ -182,6 +182,29 @@ class AccountAssets(unittest.TestCase):
         self.assertIn("reverse_proxy pc-control:8081", gateway)
         self.assertNotIn("router.js", html)
 
+    def test_operations_groups_are_read_only_and_retain_all_evidence(self):
+        html = (API / "index.html").read_text()
+        css = (API / "styles.css").read_text()
+        js = (API / "readiness.js").read_text()
+        section = html.split('id="setup-readiness"', 1)[1].split("</section>", 1)[0]
+        self.assertIn('id="readiness-overview-summary"', section)
+        self.assertIn('class="readiness-overview-heading"', section)
+        self.assertIn('aria-label="Bounded setup readiness checks"', section)
+        for name in ("metrics", "certificates", "backups"):
+            self.assertIn('id="readiness-detail-' + name + '"', section)
+        self.assertLess(section.index('id="readiness-detail-metrics"'),
+                        section.index('id="readiness-detail-certificates"'))
+        self.assertLess(section.index('id="readiness-detail-certificates"'),
+                        section.index('id="readiness-detail-backups"'))
+        for evidence in ("readiness-telemetry", "readiness-cert-browser-home",
+                         "readiness-backup", "readiness-maintenance-timer"):
+            self.assertIn('id="' + evidence + '"', section)
+        self.assertIn("function updateOverviewSummary()", js)
+        self.assertIn("updateOverviewSummary();", js)
+        self.assertIn("not an end-to-end health verdict", js)
+        self.assertIn(".readiness-detail-section", css)
+        self.assertNotIn("onclick=", section)
+
     def test_setup_readiness_uses_existing_readonly_apis_and_admin_gating(self):
         markup = (API / "index.html").read_text()
         js = (API / "readiness.js").read_text()
