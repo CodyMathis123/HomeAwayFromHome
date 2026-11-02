@@ -67,5 +67,24 @@ metrics.homeawayfromhome.house:8443 {
     propagation_delay 15s
     propagation_timeout 5m
   }
-  reverse_proxy grafana:3000
+  # Only this exact path reaches the write-only telemetry receiver.
+  # Its bearer-token and payload validation remain authoritative.
+  # Caddy validates the receiver's existing IP-SAN certificate against the
+  # private telemetry CA; it does not bypass TLS verification.
+  handle /ingest {
+    request_body {
+      max_size 256KB
+    }
+    reverse_proxy https://telemetry-ingest:8443 {
+      header_up -Cookie
+      transport http {
+        tls_trust_pool file /run/telemetry-ca.crt
+        tls_server_name {$PI_LAN_IP}
+      }
+    }
+  }
+
+  handle {
+    reverse_proxy grafana:3000
+  }
 }

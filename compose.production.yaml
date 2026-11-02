@@ -10,8 +10,15 @@ services:
     entrypoint: ["/usr/local/bin/start-dns01"]
     secrets:
       - cloudflare_dns01_token
+    environment:
+      # The legacy receiver certificate has an IP SAN, not a DNS SAN.
+      # Caddy verifies its HTTPS upstream against this exact private IP.
+      PI_LAN_IP: ${PI_LAN_IP:?Set PI_LAN_IP in .env}
     volumes:
       - ./control/gateway/Caddyfile.production:/etc/caddy/Caddyfile:ro
+      # This is a PUBLIC CA certificate only; never mount the CA private key,
+      # receiver server key, or telemetry bearer into the gateway.
+      - ./secrets/telemetry/ca.crt:/run/telemetry-ca.crt:ro
 
   pc-control:
     volumes:

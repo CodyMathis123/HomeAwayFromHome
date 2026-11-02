@@ -1,5 +1,67 @@
 # SensorDash -> HomeAway telemetry proof of concept
 
+## Canonical private HTTPS ingestion (optional staged migration)
+
+New URL: **https://metrics.homeawayfromhome.house/ingest**
+
+This reuses the existing LAN/WireGuard-only HTTPS metrics hostname and Let's
+Encrypt certificate. No additional DNS record, Cloudflare token, router port,
+or WAN exposure is needed. Caddy routes only the exact /ingest path to the
+existing token-protected, TLS-enabled telemetry receiver; Grafana retains all
+other paths. Caddy validates the receiver's IP-SAN certificate using the
+existing *public* telemetry CA certificate; no key or token is mounted there.
+
+### Phase 1 — Pi gateway first
+
+Update the Pi checkout to Production, leaving the existing SensorDash exporter
+URL untouched, then run:
+
+~~~bash
+cd ~/HomeAwayFromHome
+git fetch origin
+git switch Production
+git merge --ff-only origin/Production
+bash scripts/deploy-telemetry-route.sh --plan
+~~~
+
+Review the predicted gateway flavor and prerequisites. If correct:
+
+~~~bash
+bash scripts/deploy-telemetry-route.sh --apply
+bash scripts/deploy-telemetry-route.sh --status
+~~~
+
+The apply action validates Caddy offline and recreates **only the gateway**.
+It checks that an anonymous POST to the new URL gets 401 and that Grafana
+still responds; it does not change the Windows collector, fan curves, Pi-hole,
+VPN, accounts or DNS. Only the public telemetry CA file is made world-readable
+so the gateway can verify upstream TLS. The directory, server key, bearer
+token and offline CA private key stay protected.
+
+If the phase fails, do not update SensorDash: the old private URL remains live.
+
+### Phase 2 — Windows exporter trust selection
+
+Install a SensorDash version supporting **Use Windows certificate trust**.
+In Settings -> Pi telemetry export, enter:
+
+~~~text
+https://metrics.homeawayfromhome.house/ingest
+~~~
+
+Enable **Use Windows certificate trust** and Save. Leave optional bearer-token
+and CA replacement fields empty to keep the existing private credential files.
+Windows then verifies the public Let's Encrypt certificate with its standard
+system trust chain. Confirm the exporter last successful delivery and fresh
+samples in Grafana.
+
+The original https://PI_LAN_IP:8429/ingest address and private CA trust mode
+are kept for rollback. To revert the Windows exporter, put back the old URL
+and uncheck Windows trust; no hardware service restart is required.
+
+Do not close port 8429 until a later separately approved decommission step.
+
+
 ## Milestone 4 — SensorDash local-control / Grafana monitoring split
 
 The current Windows UI owns Cooling Systems, Fan Control, Tray Readouts, Sensor Explorer, Events and Settings. Legacy local Overview, custom Dashboards, Virtual Sensors and Storage pages are retired. SensorDash's SQLite archive remains necessary as a bounded retry spool, but Grafana on the Pi owns historical visualization, SSD/NVMe dashboards, local buffer-size trends and threshold event timelines.
