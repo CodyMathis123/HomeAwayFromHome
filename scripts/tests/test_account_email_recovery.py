@@ -26,7 +26,7 @@ class AccountEmailRecoveryContracts(unittest.TestCase):
         recovery=(ROOT/"control/gateway/Caddyfile.account-recovery").read_text()
         self.assertNotIn("reverse_proxy lldap:17170",default)
         self.assertIn("home.homeawayfromhome.house:8443",recovery)
-        self.assertIn("handle_path /directory/*",recovery)
+        self.assertIn("handle /directory/*",recovery)
         self.assertIn("reverse_proxy lldap:17170",recovery)
         self.assertIn("forward_auth authelia:9091",recovery)
         self.assertIn("reverse_proxy pc-control:8081",recovery)
