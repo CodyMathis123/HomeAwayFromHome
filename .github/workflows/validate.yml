@@ -108,6 +108,25 @@ jobs:
             -f compose.account-recovery.yaml -f compose.authelia-smtp.yaml \
             --profile control --profile accounts --profile metrics \
             config --format json | python3 scripts/check_active_overlay_contracts.py
+          # Verify optional rollback restores exactly the four retired web listeners.
+          HOMEAWAY_DOMAIN=home.homeawayfromhome.house \
+          HOMEAWAY_AUTH_DOMAIN=auth.homeawayfromhome.house \
+          HOMEAWAY_METRICS_DOMAIN=metrics.homeawayfromhome.house \
+          PCCTL_GID=999 PCINV_GID=998 \
+            docker compose -f compose.yaml -f compose.control.yaml \
+            -f compose.accounts.yaml -f compose.computers.yaml \
+            -f compose.production.yaml -f compose.web-lan-rollback.yaml \
+            --profile control --profile accounts --profile metrics \
+            config --format json | python3 -c '
+          import json,sys
+          c=json.load(sys.stdin)["services"]
+          pi=c["pihole"]["ports"]
+          assert len(pi)==3 and any(str(p["published"])=="8080" for p in pi)
+          assert sorted(str(p["published"]) for p in c["gateway"]["ports"])==["443","8443"]
+          assert str(c["portal"]["ports"][0]["published"])=="8088"
+          assert str(c["grafana"]["ports"][0]["published"])=="3000"
+          assert not c["telemetry-ingest"].get("ports")
+          '
       - name: Build application and wg-easy images without starting VPN
         run: |
           docker compose build portal wg-easy

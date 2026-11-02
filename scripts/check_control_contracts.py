@@ -14,14 +14,13 @@ def check(config: dict, private_ip: str):
     services = config["services"]
     assert {"gateway", "authelia", "pc-control", "portal"} <= set(services)
     gateway = services["gateway"]
-    # Both bindings target the same established TLS listener, and nothing
-    # may bind to a wildcard/public interface or another container port.
+    # One private host port forwards to the established internal TLS listener.
+    # Legacy :8443 must no longer be LAN-facing.
     ports = gateway.get("ports", [])
     actual = {(str(p["published"]), int(p["target"]), p["protocol"], p["host_ip"])
               for p in ports}
-    expected = {("8443", 8443, "tcp", private_ip),
-                ("443", 8443, "tcp", private_ip)}
-    assert len(ports) == 2 and actual == expected
+    expected = {("443", 8443, "tcp", private_ip)}
+    assert len(ports) == 1 and actual == expected
     assert ipaddress.ip_address(private_ip).is_private
     # Official Caddy's file capability needs to be in its bounding set for exec.
     # Keep only NET_BIND_SERVICE; do not relax other gateway isolation.

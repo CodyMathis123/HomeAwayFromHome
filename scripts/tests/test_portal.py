@@ -115,6 +115,10 @@ class HttpTests(unittest.TestCase):
         self.assertIn("fetch('/api/control-config'", (root / "navigation.js").read_text())
         self.assertIn("control.hidden = true", (root / "navigation.js").read_text())
         self.assertNotIn("docker.sock", (root / "architecture.js").read_text())
+        self.assertIn("'/dns/admin/'", (root / "architecture.js").read_text())
+        self.assertIn("'https://metrics.homeawayfromhome.house/'", (root / "architecture.js").read_text())
+        self.assertNotIn("':8080/admin/'", (root / "architecture.js").read_text())
+        self.assertNotIn("':3000/'", (root / "architecture.js").read_text())
 
     def test_shared_theme_is_same_origin_read_only_and_packaged(self):
         root = Path(__file__).resolve().parents[2]

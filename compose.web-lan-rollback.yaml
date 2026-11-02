@@ -1,0 +1,16 @@
+# TEMPORARY EXPLICIT ROLLBACK: restore old LAN HTTP and HTTPS bindings.
+# Append LAST only for targeted rollback, not during routine deployment.
+# The existing Pi-hole DNS 53, WireGuard UDP and Caddy 443 remain unchanged.
+services:
+  pihole:
+    ports:
+      - "${PI_LAN_IP:?Set PI_LAN_IP in .env}:8080:80/tcp"
+  portal:
+    ports:
+      - "${PI_LAN_IP:?Set PI_LAN_IP in .env}:8088:8080/tcp"
+  grafana:
+    ports:
+      - "${PI_LAN_IP:?Set PI_LAN_IP in .env}:3000:3000/tcp"
+  gateway:
+    ports:
+      - "${PI_LAN_IP:?Set PI_LAN_IP in .env}:8443:8443/tcp"

@@ -62,7 +62,7 @@
         const url = new URL(data.url);
         if (url.protocol !== 'https:' ||
             url.hostname !== 'home.homeawayfromhome.house' ||
-            (url.port !== '' && url.port !== '8443') ||
+            url.port !== '' ||
             url.pathname !== '/control/' || url.search || url.hash) return;
         control.href = url.href;
         control.hidden = false;

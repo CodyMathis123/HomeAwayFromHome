@@ -75,8 +75,8 @@ window.HomeAwayArchitecture = (() => {
       link.href = href;
       link.hidden = false;
     };
-    showLink('architecture-dns', 'http://' + location.hostname + ':8080/admin/');
-    showLink('architecture-grafana', 'http://' + location.hostname + ':3000/');
+    showLink('architecture-dns', '/dns/admin/');
+    showLink('architecture-grafana', 'https://metrics.homeawayfromhome.house/');
     root.querySelector('#arch-probes-refresh')?.addEventListener('click', () => void refresh());
 
     fetch('/api/control-config', {credentials: 'same-origin', cache: 'no-store'})
@@ -87,7 +87,8 @@ window.HomeAwayArchitecture = (() => {
       .then(data => {
         if (!data.enabled || !data.url) return;
         const url = new URL(data.url);
-        if (url.protocol !== 'https:' || url.port !== '8443' ||
+        if (url.protocol !== 'https:' ||
+            url.hostname !== 'home.homeawayfromhome.house' || url.port !== '' ||
             url.pathname !== '/control/' || url.search || url.hash) return;
         showLink('architecture-control', url.href);
         showLink('architecture-windows', url.href);

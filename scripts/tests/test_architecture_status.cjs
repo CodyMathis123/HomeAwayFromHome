@@ -37,7 +37,7 @@ function simulate(statusResponse) {
   };
   const window = {};
   vm.runInNewContext(script, {
-    window, document, fetch, location: {hostname:'homeaway.test'},
+    window, document, fetch, location: {hostname:'home.homeawayfromhome.house'},
     URL, Map, Date, Number
   }, {filename: 'portal/architecture.js'});
   const settle = async () => {
@@ -62,6 +62,8 @@ const success = () => ({
 (async () => {
   const working = simulate(success);
   await working.settle();
+  assert.equal(working.el('architecture-dns').href, '/dns/admin/');
+  assert.equal(working.el('architecture-grafana').href, 'https://metrics.homeawayfromhome.house/');
   assert.equal(working.el('arch-check-dns').textContent, 'Responding');
   assert.equal(working.el('arch-check-dns').dataset.state, 'responding');
   assert.equal(working.el('arch-check-wireguard').textContent, 'Responding');

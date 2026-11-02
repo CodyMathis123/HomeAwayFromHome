@@ -25,9 +25,10 @@ def check(config: dict, ip: str) -> None:
             for p in published(service)
         )
 
-    for port, proto in [(53, "tcp"), (53, "udp"), (8080, "tcp")]:
-        dest = 80 if port == 8080 else 53
-        assert exactly("pihole", port=port, internal=dest, proto=proto, ip_address=ip)
+    for port, proto in [(53, "tcp"), (53, "udp")]:
+        assert exactly("pihole", port=port, internal=53, proto=proto, ip_address=ip)
+    assert len(published("pihole")) == 2, "Pi-hole must publish DNS only, no web admin"
+    assert services["pihole"]["environment"]["FTLCONF_webserver_paths_prefix"] == "/dns"
 
     assert exactly("wg-easy", port=51821, internal=51821,
                    proto="tcp", ip_address="127.0.0.1")
@@ -38,8 +39,8 @@ def check(config: dict, ip: str) -> None:
         for p in published("wg-easy")
     )
     assert len(published("wg-easy")) == 2
-    assert exactly("portal", port=8088, internal=8080, proto="tcp", ip_address=ip)
-    assert exactly("grafana", port=3000, internal=3000, proto="tcp", ip_address=ip)
+    assert not published("portal"), "Portal must only be accessible through Caddy"
+    assert not published("grafana"), "Grafana must only be accessible through Caddy"
     assert not published("telemetry-ingest"), (
         "Telemetry receiver must be bridge-only behind the authenticated HTTPS metrics route"
     )

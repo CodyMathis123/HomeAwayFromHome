@@ -4,12 +4,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 class Private443Preview(unittest.TestCase):
-    def test_only_private_gateway_gains_second_published_port(self):
+    def test_private_gateway_only_exposes_standard_https(self):
         c = (ROOT / "compose.control.yaml").read_text()
         self.assertIn('PI_LAN_IP in .env}:443:8443/tcp', c)
-        self.assertIn('PI_LAN_IP in .env}:8443:8443/tcp', c)
+        self.assertNotIn('PI_LAN_IP in .env}:8443:8443/tcp', c)
         gateway = c.split("\n  gateway:", 1)[1].split("\n  authelia:", 1)[0]
-        self.assertEqual(gateway.count('443:8443/tcp'), 2)
+        self.assertEqual(gateway.count('443:8443/tcp'), 1)
         self.assertNotIn("0.0.0.0", gateway)
         self.assertNotIn("127.0.0.1:443", gateway)
         control = c.split("\n  pc-control:",1)[1].split("\n  metrics-diagnostics:",1)[0]

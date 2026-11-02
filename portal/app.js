@@ -71,7 +71,7 @@ window.HomeAwayOverview = (() => {
         // Never embed an arbitrary origin. Use only the private metrics gateway.
         if (url.protocol !== 'https:' ||
             url.hostname !== 'metrics.homeawayfromhome.house' ||
-            (url.port !== '' && url.port !== '8443') ||
+            url.port !== '' ||
             !url.pathname.startsWith('/public-dashboards/') ||
             !/^[a-fA-F0-9]{32,128}$/.test(url.pathname.slice('/public-dashboards/'.length))) {
           throw new Error('Embedded URL must use this Pi host and a shared-dashboard link');
@@ -121,7 +121,7 @@ window.HomeAwayOverview = (() => {
         const parsed = new URL(data.url);
         if (parsed.protocol !== 'https:' ||
             parsed.hostname !== 'home.homeawayfromhome.house' ||
-            (parsed.port !== '' && parsed.port !== '8443') ||
+            parsed.port !== '' ||
             parsed.pathname !== '/control/' || parsed.search || parsed.hash) return;
         const link = byId('link-pc-control');
         link.href = (location.protocol === 'https:' && location.host === parsed.host)
