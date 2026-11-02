@@ -135,6 +135,35 @@ class EndpointTests(unittest.TestCase):
             self.assertEqual(result["state"], "requested")
             mutate.assert_called_once_with("gaming", "wake", "homeowner")
 
+    def test_private_default_https_origin_requires_explicit_configuration(self):
+        """A portless origin is accepted only when deployed as the second allowed origin."""
+        headers = {"X-HomeAway-User":"homeowner", "X-HomeAway-Groups":"admins",
+                   "X-HomeAway-Request":"1", "Sec-Fetch-Site":"same-origin"}
+        payload = {"host":"gaming", "action":"wake", "confirm":""}
+        original = "https://home.homeawayfromhome.house:8443"
+        portless = "https://home.homeawayfromhome.house"
+        with patch.object(api, "apply_action", return_value={
+                "ok":True, "state":"requested", "detail":"Wake sent"}) as send:
+            with patch.dict(os.environ, {"HOMEAWAY_CONTROL_ORIGIN": original,
+                                         "HOMEAWAY_CONTROL_ALT_ORIGIN": ""}):
+                code, _ = self.request("POST", "/control/api/actions", payload,
+                                       {**headers, "Origin":portless})
+                self.assertEqual(code, 403)
+                send.assert_not_called()
+            with patch.dict(os.environ, {"HOMEAWAY_CONTROL_ORIGIN": original,
+                                         "HOMEAWAY_CONTROL_ALT_ORIGIN":portless}):
+                for allowed in (original, portless):
+                    code, _ = self.request("POST", "/control/api/actions", payload,
+                                           {**headers, "Origin":allowed})
+                    self.assertEqual(code, 200, allowed)
+                for disallowed in ("http://home.homeawayfromhome.house",
+                                    "https://home.homeawayfromhome.house:444",
+                                    "https://evil.example"):
+                    code, _ = self.request("POST", "/control/api/actions", payload,
+                                           {**headers, "Origin":disallowed})
+                    self.assertEqual(code, 403, disallowed)
+                self.assertEqual(send.call_count, 2)
+
     def test_roles_and_malformed_claims(self):
         self.assertEqual(api.verified_role("admins,operators"), "admins")
         self.assertEqual(api.verified_role(" operators, viewers "), "operators")

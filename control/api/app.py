@@ -693,6 +693,7 @@ class Handler(BaseHTTPRequestHandler):
         permitted_origins = {
             "https://homeaway.home.arpa:8443",
             "https://home.homeawayfromhome.house:8443",
+            "https://home.homeawayfromhome.house",
         }
         trusted_origins = {expected_origin} if expected_origin in permitted_origins else set()
         if trusted_origins and alternate_origin in permitted_origins:
