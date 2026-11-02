@@ -42,10 +42,12 @@ class AccountAssets(unittest.TestCase):
 
     def test_pending_user_create_has_explicit_feedback(self):
         js = (API / "accounts.js").read_text()
-        self.assertIn('Created pending user "', js)
-        self.assertIn("if (created) form.reset()", js,
-                      "Do not clear entered account fields after a failed request")
-        self.assertIn("const refreshed = await refresh()", js)
+        self.assertIn("Created pending account", js)
+        self.assertIn("form.reset();", js)
+        self.assertIn("const refreshed=await refresh()", js)
+        self.assertIn("invitationRequested", js)
+        self.assertIn("Send setup invitation", js)
+        self.assertIn("catch(err)", js)
         self.assertIn("Change succeeded, but the user list could not refresh", js)
         self.assertIn("Change failed:", js)
         self.assertIn("No HomeAway access · pending or revoked", js)
