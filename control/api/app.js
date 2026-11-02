@@ -101,7 +101,9 @@ function card(item) {
   const state = node('span', 'state ' + (item.state === 'online' ? 'online' : 'offline'),
                      item.state === 'online' ? 'Reachable' : item.state === 'offline' ? 'Not reachable' : 'Unknown');
   top.append(heading, state);
-  article.append(top, node('p', 'detail', item.detail));
+  article.append(top);
+  if (item.address) article.append(node('p', 'host-ip', 'Configured IP: ' + item.address));
+  article.append(node('p', 'detail', item.detail));
   const row = node('div', 'buttons');
   actions.filter(([action]) => identity?.capabilities?.actions?.includes(action))
     .forEach(([action, label]) => {

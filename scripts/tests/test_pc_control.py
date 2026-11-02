@@ -165,6 +165,32 @@ class EndpointTests(unittest.TestCase):
                 self.assertEqual(code, 403, (group, action, result))
             mutate.assert_not_called()
 
+    def test_configured_ip_is_admin_only_and_never_exposes_connection_secrets(self):
+        with tempfile.TemporaryDirectory() as folder:
+            inventory_path = Path(folder) / "hosts.json"
+            host = example()
+            inventory_path.write_text(json.dumps({"hosts": [host]}))
+            with patch.object(api, "INVENTORY", inventory_path), \
+                 patch.object(api, "rpc", return_value={"ok": True, "state": "online",
+                                                        "detail": "reachable"}):
+                admin = {"X-HomeAway-User":"homeowner", "X-HomeAway-Groups":"admins"}
+                member = {"X-HomeAway-User":"member", "X-HomeAway-Groups":"operators"}
+                code, result = self.request("GET", "/control/api/hosts", extra=admin)
+                self.assertEqual(code, 200)
+                self.assertEqual(result["hosts"][0]["address"], "192.168.1.88")
+                self.assertEqual(result["hosts"][0]["state"], "online")
+                for private_field in ("mac", "broadcast", "ssh_user", "ssh_port"):
+                    self.assertNotIn(private_field, result["hosts"][0])
+                code, result = self.request("GET", "/control/api/hosts", extra=member)
+                self.assertEqual(code, 200)
+                self.assertNotIn("address", result["hosts"][0])
+                # Do not echo malformed or public addresses even to admins.
+                host["address"] = "8.8.8.8"
+                inventory_path.write_text(json.dumps({"hosts": [host]}))
+                code, result = self.request("GET", "/control/api/hosts", extra=admin)
+                self.assertEqual(code, 200)
+                self.assertNotIn("address", result["hosts"][0])
+
     def test_operator_status_allowed_but_history_hidden(self):
         with patch.object(api, "inventory", return_value=[]), patch.object(api, "record_denial"):
             head = {"X-HomeAway-User":"member","X-HomeAway-Groups":"operators"}
