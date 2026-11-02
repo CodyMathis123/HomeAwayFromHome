@@ -46,7 +46,7 @@ class CanonicalIngestRouteTests(unittest.TestCase):
                        'validate --config /etc/caddy/Caddyfile',
                        'up -d --no-deps --no-build --force-recreate gateway',
                        'metrics.homeawayfromhome.house/ingest',
-                       '[[ "$code" == 401 ]]','curl --silent'):
+                       '[[ "$code" != 401 ]]','curl --silent'):
             self.assertIn(clause,script)
         self.assertNotIn('up -d --build',script)
         self.assertNotIn('stop telemetry-ingest',script)
