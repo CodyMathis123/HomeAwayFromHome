@@ -4,6 +4,17 @@
 const HomeAwayAccounts = (() => {
   let initialized = false;
   let mutationPending = false;
+  let cachedUsers = [];
+  function renderDirectory() {
+    const query = ($('accounts-search')?.value || '').trim().toLocaleLowerCase();
+    const role = $('accounts-filter')?.value || 'all';
+    const visible = cachedUsers.filter(user =>
+      (role === 'all' || (role === 'pending' ? !user.role : user.role === role)) &&
+      [user.name,user.id,user.email].some(part => String(part || '').toLocaleLowerCase().includes(query)));
+    $('accounts-users').replaceChildren(...visible.map(renderUser));
+    if (!visible.length) $('accounts-users').textContent = cachedUsers.length ? 'No users match these filters.' : 'No accounts found.';
+    $('accounts-count').textContent = visible.length + ' of ' + cachedUsers.length + ' users';
+  }
   const $ = id => document.getElementById(id);
   const make = (tag, className, text) => {
     const element = document.createElement(tag);
@@ -89,14 +100,14 @@ const HomeAwayAccounts = (() => {
     });
     save.addEventListener('click', async () => {
       if (!select.value || user.role === select.value) return;
-      if (!confirm('Change HomeAway permissions for ' + user.id + '?')) return;
+      if (!await HomeAwayAdminDialog.confirm('Change HomeAway permissions for ' + user.id + '?')) return;
       await mutate('/set-role',{id:user.id,revision:user.revision,role:select.value});
     });
     const revoke = make('button','danger','Revoke HomeAway access');
     revoke.type='button';
     revoke.disabled = !user.homeawayAccess;
     revoke.addEventListener('click', async () => {
-      if (!confirm('Revoke all HomeAway access for ' + user.id +
+      if (!await HomeAwayAdminDialog.confirm('Revoke all HomeAway access for ' + user.id +
                    '? This does not disable their LDAP password or other applications.')) return;
       await mutate('/revoke',{id:user.id,revision:user.revision});
     });
@@ -104,7 +115,7 @@ const HomeAwayAccounts = (() => {
       const invite = make('button','','Send setup invitation');
       invite.type='button';
       invite.addEventListener('click', async () => {
-        if (!confirm('Email a password-setup link to ' + user.email +
+        if (!await HomeAwayAdminDialog.confirm('Email a password-setup link to ' + user.email +
                      '? Confirm the address belongs to the intended person.')) return;
         const ok=await mutate('/invite',{id:user.id,revision:user.revision},
           'Password-setup email requested for ' + user.email +
@@ -120,7 +131,7 @@ const HomeAwayAccounts = (() => {
                            'Permanently remove this directory account';
     remove.addEventListener('click', async () => {
       if (user.role) return;
-      const answer=prompt('Permanently delete ' + user.id +
+      const answer=await HomeAwayAdminDialog.input('Permanently delete ' + user.id +
         ' and their directory credentials? Type the exact username to confirm.');
       if (answer!==user.id) {
         if (answer!==null) message('Deletion cancelled: username did not match.','warning');
@@ -138,8 +149,8 @@ const HomeAwayAccounts = (() => {
     btn.disabled=true;
     try {
       const result=await api('');
-      $('accounts-users').replaceChildren(...result.users.map(renderUser));
-      if (!result.users.length) $('accounts-users').textContent='No accounts found.';
+      cachedUsers = result.users;
+      renderDirectory();
       return true;
     } catch (err) {
       message('Account list unavailable: ' + err.message, 'error');
@@ -156,6 +167,8 @@ const HomeAwayAccounts = (() => {
     if (initialized) return;
     initialized=true;
     $('accounts-refresh').addEventListener('click',refresh);
+    $('accounts-search').addEventListener('input',renderDirectory);
+    $('accounts-filter').addEventListener('change',renderDirectory);
     // Canonical directory usernames are lowercase. Normalize as the user types
     // so native pattern validation doesn't block mixed-case names silently.
     const usernameInput=$('accounts-add').elements.namedItem('username');
@@ -170,7 +183,7 @@ const HomeAwayAccounts = (() => {
       const name=form.elements.namedItem('displayname').value.trim();
       const email=form.elements.namedItem('email').value.trim();
       const invite=form.elements.namedItem('sendinvite').checked;
-      if (!confirm('Create pending account ' + user + (invite ?
+      if (!await HomeAwayAdminDialog.confirm('Create pending account ' + user + (invite ?
                    ' and request a setup email for ' + email :
                    ' without an invitation') +
                    '? No HomeAway role will be granted.')) return;

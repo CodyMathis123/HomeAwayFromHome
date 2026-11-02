@@ -407,6 +407,7 @@ AUDIT_LOCK = threading.Lock()
 SAFE_FILES = {"/control/": ("index.html", "text/html; charset=utf-8"),
               "/control/app.js": ("app.js", "text/javascript; charset=utf-8"),
               "/control/accounts.js": ("accounts.js", "text/javascript; charset=utf-8"),
+              "/control/admin-dialog.js": ("admin-dialog.js", "text/javascript; charset=utf-8"),
               "/control/computers.js": ("computers.js", "text/javascript; charset=utf-8"),
               "/control/readiness.js": ("readiness.js", "text/javascript; charset=utf-8"),
               "/control/styles.css": ("styles.css", "text/css; charset=utf-8")}

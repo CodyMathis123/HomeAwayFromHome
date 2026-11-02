@@ -12,6 +12,26 @@ const HomeAwayComputers = (() => {
   let started = false;
   let busy = false;
   let auditBusy = false;
+  let cachedInventory = null;
+  function renderInventory() {
+    if (!cachedInventory) return;
+    const data = cachedInventory;
+    const query = ($('computer-admin-search')?.value || '').trim().toLocaleLowerCase();
+    const state = $('computer-admin-filter')?.value || 'all';
+    const match = item => [item.name,item.id,item.address,item.mac].some(part =>
+      String(part || '').toLocaleLowerCase().includes(query));
+    const active = (data.active || []).filter(item => (state === 'all' || state === 'active') && match(item));
+    const drafts = (data.drafts || []).filter(item => (state === 'all' || state === 'draft') && match(item));
+    const retired = (data.retired || []).filter(record => (state === 'all' || (record.archived ? state === 'archived' : state === 'disabled')) && match(record.host));
+    $('computer-admin-active').replaceChildren(...active.map(item => activeCard(item,data.revision)));
+    if (!active.length) $('computer-admin-active').textContent='No matching active computers.';
+    $('computer-admin-drafts').replaceChildren(...drafts.map(item => draftCard(item,data.revision)));
+    if (!drafts.length) $('computer-admin-drafts').textContent='No matching drafts.';
+    $('computer-admin-retired').replaceChildren(...retired.map(item => retiredCard(item,data.revision)));
+    if (!retired.length) $('computer-admin-retired').textContent='No matching disabled or archived computers.';
+    const total = (data.active || []).length + (data.drafts || []).length + (data.retired || []).length;
+    $('computer-admin-count').textContent = (active.length + drafts.length + retired.length) + ' of ' + total + ' computers';
+  }
   // Browser state is UX only. The host writer verifies SSH again on activate.
   const recentlyVerified = new Set();
   const message = value => { $('computer-admin-message').textContent = value; };
@@ -39,10 +59,10 @@ const HomeAwayComputers = (() => {
     const rename = make('button','','Rename display name');
     rename.type = 'button';
     rename.addEventListener('click', async () => {
-      const next = prompt('New display name (the computer ID will not change):',item.name);
+      const next = await HomeAwayAdminDialog.input('New display name (the computer ID will not change):',item.name);
       if (next === null || next.trim() === item.name) return;
       if (!next.trim()) { message('A display name is required.'); return; }
-      if (!confirm('Rename ' + item.id + ' without changing its connection settings?')) return;
+      if (!await HomeAwayAdminDialog.confirm('Rename ' + item.id + ' without changing its connection settings?')) return;
       await mutate('/rename',{id:item.id,name:next.trim(),revision},
         'Updated display name for ' + item.id + '. Existing Shortcut IDs are unchanged.');
     });
@@ -55,9 +75,9 @@ const HomeAwayComputers = (() => {
     const disable=make('button','danger','Disable computer controls');
     disable.type='button';
     disable.addEventListener('click',async()=>{
-      const typed=prompt('Type "'+item.id+'" to DISABLE all new power commands for this computer:');
+      const typed=await HomeAwayAdminDialog.input('Type "'+item.id+'" to DISABLE all new power commands for this computer:');
       if(typed!==item.id) return;
-      if(!confirm('Disable '+item.id+'? Existing iOS Shortcuts for this ID will stop controlling it. ' +
+      if(!await HomeAwayAdminDialog.confirm('Disable '+item.id+'? Existing iOS Shortcuts for this ID will stop controlling it. ' +
         'Already-running commands cannot be cancelled. Its configuration will be saved for recovery.')) return;
       await mutate('/disable',{id:item.id,revision,confirm:typed},
         'Disabled '+item.id+'. It is no longer an active power-command target; its configuration was retained.');
@@ -84,9 +104,9 @@ const HomeAwayComputers = (() => {
       const archive=make('button','','Archive (retain recovery record)');
       archive.type='button';
       archive.addEventListener('click',async()=>{
-        const typed=prompt('Type "'+item.id+'" to archive this disabled computer:');
+        const typed=await HomeAwayAdminDialog.input('Type "'+item.id+'" to archive this disabled computer:');
         if(typed!==item.id) return;
-        if(!confirm('Archive '+item.id+'? No keys or historical data will be deleted.')) return;
+        if(!await HomeAwayAdminDialog.confirm('Archive '+item.id+'? No keys or historical data will be deleted.')) return;
         await mutate('/archive',{id:item.id,revision:record.revision,confirm:typed},
           'Archived '+item.id+'. Recovery details and audit history remain available.');
       });
@@ -95,9 +115,9 @@ const HomeAwayComputers = (() => {
     const restore=make('button','','Restore with SSH verification');
     restore.type='button';
     restore.addEventListener('click',async()=>{
-      const typed=prompt('Type "'+item.id+'" to restore this computer to live power controls:');
+      const typed=await HomeAwayAdminDialog.input('Type "'+item.id+'" to restore this computer to live power controls:');
       if(typed!==item.id) return;
-      if(!confirm('Restore '+item.id+'? The Pi must verify its pinned SSH host key and '+
+      if(!await HomeAwayAdminDialog.confirm('Restore '+item.id+'? The Pi must verify its pinned SSH host key and '+
         'restricted Windows status command again. The original address and key must still match.')) return;
       await mutate('/restore',{id:item.id,revision:record.revision,
         inventoryRevision,confirm:typed},
@@ -191,10 +211,10 @@ const HomeAwayComputers = (() => {
       });
       activate.addEventListener('click', async () => {
         if (!recentlyVerified.has(marker) || busy) return;
-        const typed=prompt('Type the EXACT stable computer ID "' + item.id +
+        const typed=await HomeAwayAdminDialog.input('Type the EXACT stable computer ID "' + item.id +
           '" to add it to the live controllable inventory:');
         if (typed !== item.id) return;
-        if (!confirm('Activate ' + item.id + '? This adds the verified PC to real power controls and existing iOS Shortcut inventory.')) return;
+        if (!await HomeAwayAdminDialog.confirm('Activate ' + item.id + '? This adds the verified PC to real power controls and existing iOS Shortcut inventory.')) return;
         const done=await mutate('/activate',{
           id:item.id,revision:item.revision,inventoryRevision,confirm:typed
         },'Activated ' + item.id + '. The Pi reverified SSH trust before saving; verify normal status and controls.');
@@ -206,7 +226,7 @@ const HomeAwayComputers = (() => {
       'Clear completed draft only' : 'Discard draft');
     discard.type='button';
     discard.addEventListener('click', async () => {
-      if (!confirm('Discard unconfigured draft ' + item.id + '?')) return;
+      if (!await HomeAwayAdminDialog.confirm('Discard unconfigured draft ' + item.id + '?')) return;
       await mutate('/draft-discard',{id:item.id,revision:item.revision},
         'Draft discarded. No active computer was changed.');
     });
@@ -249,15 +269,8 @@ const HomeAwayComputers = (() => {
     button.disabled = true;
     try {
       const data=await api('');
-      const active=data.active || [];
-      const drafts=data.drafts || [];
-      const retired=data.retired || [];
-      $('computer-admin-active').replaceChildren(...active.map(item=>activeCard(item,data.revision)));
-      if (!active.length) $('computer-admin-active').textContent='No active computers.';
-      $('computer-admin-drafts').replaceChildren(...drafts.map(d=>draftCard(d,data.revision)));
-      if (!drafts.length) $('computer-admin-drafts').textContent='No unconfigured drafts.';
-      $('computer-admin-retired').replaceChildren(...retired.map(r=>retiredCard(r,data.revision)));
-      if (!retired.length) $('computer-admin-retired').textContent='No disabled or archived computers.';
+      cachedInventory=data;
+      renderInventory();
       if ($('computer-admin-audit')?.open) void refreshAudit();
       return true;
     } catch (err) {
@@ -292,6 +305,8 @@ const HomeAwayComputers = (() => {
     if (started) return;
     started=true;
     $('computer-admin-refresh').addEventListener('click',()=>{ void refresh(); });
+    $('computer-admin-search').addEventListener('input',renderInventory);
+    $('computer-admin-filter').addEventListener('change',renderInventory);
     $('computer-admin-audit')?.addEventListener('toggle',event=>{
       if (event.currentTarget.open) void refreshAudit();
     });
@@ -304,7 +319,7 @@ const HomeAwayComputers = (() => {
         mac:value('mac'),broadcast:value('broadcast'),ssh_user:value('ssh_user'),
         ssh_port:Number(value('ssh_port'))
       };
-      if (!confirm('Save ' + draft.id + ' as an INACTIVE draft? No power commands will be enabled.')) return;
+      if (!await HomeAwayAdminDialog.confirm('Save ' + draft.id + ' as an INACTIVE draft? No power commands will be enabled.')) return;
       if (await mutate('/draft-create',draft,
           'Draft created. It is NOT active; Windows setup and SSH verification come next.'))
         form.reset();
