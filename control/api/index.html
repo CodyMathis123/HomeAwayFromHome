@@ -31,6 +31,7 @@
 <section id="computer-admin" class="accounts history" data-view-section="computer-admin" tabindex="-1" hidden aria-label="Computer administration">
   <div class="heading"><h2>Computer management</h2><button id="computer-admin-refresh" type="button">Refresh inventory</button></div>
   <p class="detail">Existing machines remain active. New entries start as drafts and cannot be controlled until their Windows setup and SSH trust are verified in a later enrollment step.</p>
+  <div class="admin-toolbar"><label>Find computer <input id="computer-admin-search" type="search" placeholder="Name, ID, IP or MAC" autocomplete="off"></label><label>State <select id="computer-admin-filter"><option value="all">All computers</option><option value="active">Active</option><option value="draft">Drafts</option><option value="disabled">Disabled</option><option value="archived">Archived</option></select></label><span id="computer-admin-count" role="status"></span></div>
   <div id="computer-admin-active" class="account-list"></div>
   <details class="admin-enrollment"><summary>Prepare a new computer · guided draft setup</summary><p class="detail">Step 1: save its network identity as an inactive draft. Step 2: follow the Windows pairing checklist on the draft card. Step 3: verify pinned SSH trust before activation. Existing computer IDs and power controls are unaffected.</p>
   <form id="computer-admin-create" class="computer-create">
@@ -44,7 +45,7 @@
     <button type="submit">Save draft (no activation)</button>
   </form></details>
   <h3>Unconfigured drafts</h3>
-  <div class="admin-toolbar"><label>Find computer <input id="computer-admin-search" type="search" placeholder="Name, ID, IP or MAC" autocomplete="off"></label><label>State <select id="computer-admin-filter"><option value="all">All computers</option><option value="active">Active</option><option value="draft">Drafts</option><option value="disabled">Disabled</option><option value="archived">Archived</option></select></label><span id="computer-admin-count" role="status"></span></div><p id="computer-admin-message" role="status" aria-live="polite"></p>
+  <p id="computer-admin-message" role="status" aria-live="polite"></p>
   <div id="computer-admin-drafts" class="account-list"></div>
   <h3>Disabled and archived computers</h3>
   <p class="detail">Disabled computers are removed from the active power-control inventory. Their last verified configuration is retained privately. Restoring one requires a fresh authenticated SSH identity check.</p>
