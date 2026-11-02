@@ -40,7 +40,7 @@ def updated(text: str) -> tuple[bool, str]:
         raise ValueError("Access-control rules are missing or ambiguous")
     if len(re.findall(r"(?m)^  default_policy:[ \t]*deny[ \t]*$", block)) != 1:
         raise ValueError("Unexpected default access policy")
-    if RULE.strip() in block:
+    if RULE.rstrip("\n") in block:
         return False, text
     # Never add another rule if this resource is already mentioned in a different form.
     if "/dns" in block:
