@@ -32,6 +32,62 @@ class FinalHTTPS443Tests(unittest.TestCase):
         self.assertEqual(mod.state_and_render(after, "portless"), ("portless", after))
         self.assertEqual(mod.state_and_render(after, "legacy"), ("portless", before))
 
+    def sample_dual(self, reverse=False):
+        """Actual-style migration: preserve a separate original .home.arpa cookie."""
+        old = (
+            '    - domain: "homeaway.home.arpa"\n'
+            '      authelia_url: "https://auth.homeaway.home.arpa:8443"\n'
+            '      default_redirection_url: "https://homeaway.home.arpa:8443"\n'
+        )
+        new = (
+            '    - domain: "homeawayfromhome.house"\n'
+            '      authelia_url: "https://auth.homeawayfromhome.house:8443"\n'
+            '      default_redirection_url: "https://home.homeawayfromhome.house:8443"\n'
+        )
+        prefix = 'session:\n  secret: session_SECRET\n  cookies:\n'
+        suffix = 'regulation:\n  max_retries: 4\nstorage:\n  secret: storage_SECRET\n'
+        return prefix + (new + old if reverse else old + new) + suffix
+
+    def test_dual_domain_migration_changes_only_house_cookie(self):
+        for reverse in (False, True):
+            with self.subTest(reverse=reverse):
+                original = self.sample_dual(reverse)
+                state, portless = mod.state_and_render(original, "portless")
+                self.assertEqual(state, "legacy")
+                self.assertNotEqual(portless, original)
+                legacy = (
+                    '    - domain: "homeaway.home.arpa"\n'
+                    '      authelia_url: "https://auth.homeaway.home.arpa:8443"\n'
+                    '      default_redirection_url: "https://homeaway.home.arpa:8443"\n'
+                )
+                self.assertIn(legacy, portless)
+                self.assertIn('authelia_url: "https://auth.homeawayfromhome.house"', portless)
+                self.assertIn('default_redirection_url: "https://home.homeawayfromhome.house"', portless)
+                self.assertIn("session_SECRET", portless)
+                self.assertIn("storage_SECRET", portless)
+                self.assertEqual(mod.state_and_render(portless, "portless"), ("portless", portless))
+                self.assertEqual(mod.state_and_render(portless, "legacy"), ("portless", original))
+                self.assertEqual(mod.state_and_render(original, "legacy"), ("legacy", original))
+
+    def test_dual_domain_fail_closed_on_unrecognized_cookie_layouts(self):
+        base = self.sample_dual()
+        cases = [
+            base.replace("homeaway.home.arpa", "other.private.example"),
+            base.replace("homeaway.home.arpa", "homeawayfromhome.house"),
+            base.replace("homeawayfromhome.house", "evil.private.example"),
+            base.replace('default_redirection_url: "https://home.homeawayfromhome.house:8443"',
+                         'default_redirection_url: "https://evil.example"'),
+            base.replace('authelia_url: "https://auth.homeawayfromhome.house:8443"',
+                         'authelia_url: "https://auth.homeawayfromhome.house"'),
+            base.replace('default_redirection_url:', 'custom_redirection_url:'),
+            base.replace('    - domain: "homeawayfromhome.house"', '    - unknown: "homeawayfromhome.house"'),
+            base.replace('  cookies:', '  other:'),
+        ]
+        for i, candidate in enumerate(cases):
+            with self.subTest(case=i):
+                with self.assertRaises(ValueError):
+                    mod.state_and_render(candidate, "portless")
+
     def test_fail_closed_for_mixed_or_unexpected_redirects(self):
         for text in (self.sample(a="https://auth.homeawayfromhome.house"),
                      self.sample(a="https://evil.example"),

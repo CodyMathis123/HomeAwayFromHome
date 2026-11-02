@@ -129,7 +129,10 @@ unknown or in an unsupported format. It also reports whether a previous
 protected backup or pending candidate exists. **It never prints URLs,
 credentials, cookie secrets, LDAP bind passwords or config content.**
 
-If there is more than one cookie URL pair, a missing key, unusual formatting,
-or an unexpected redirect, the migration intentionally stops. Review the
+The migration supports exactly one `homeawayfromhome.house` cookie and, optionally,
+one `homeaway.home.arpa` legacy cookie. It updates only the production-domain
+URLs and preserves the legacy cookie byte for byte. An unexpected domain, a
+missing key, unusual formatting, or a mismatched production redirect still
+causes the migration to stop. Review the
 safe inspection result before extending the supported transformation; do not
 weaken Authelia's access controls or chmod its configuration.
