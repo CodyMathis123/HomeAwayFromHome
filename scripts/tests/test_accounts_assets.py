@@ -46,6 +46,8 @@ class AccountAssets(unittest.TestCase):
         for script in (accounts, computers):
             self.assertIn("refreshPending", script)
             self.assertIn("accessEpoch", script)
+            self.assertIn("const isActive = ()", script)
+            self.assertIn("if (isActive()) void refresh();", script)
             self.assertIn("authorization unavailable", script.lower())
             self.assertIn("dataset.stale='true'", script)
             self.assertIn("Updated ' + new Date().toLocaleTimeString()", script)
