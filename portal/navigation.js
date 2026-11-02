@@ -87,6 +87,7 @@
       .catch(() => { control.hidden = true; });
   }
 
+  let lastCurrent = null;
   function sync() {
     let current = 'overview';
     if (isControl) {
@@ -101,12 +102,20 @@
     } else if (location.hash === '#metrics-heading') {
       current = 'metrics';
     }
+    let selected = null;
     for (const link of nav.querySelectorAll('a[data-nav-key]')) {
-      if (!link.hidden && link.dataset.navKey === current)
+      if (!link.hidden && link.dataset.navKey === current) {
         link.setAttribute('aria-current', isControl ? 'location' : 'page');
-      else
+        selected = link;
+      } else {
         link.removeAttribute('aria-current');
+      }
     }
+    // The mobile sidebar is horizontally scrollable. Keep the active section
+    // in view without moving the whole page or overriding reduced motion.
+    if (current !== lastCurrent && window.matchMedia?.('(max-width: 900px)').matches)
+      selected?.scrollIntoView?.({block: 'nearest', inline: 'nearest', behavior: 'instant'});
+    lastCurrent = current;
   }
   // Replaces only the navigation markup, never page content or capabilities.
   // /control/ ships a minimal static fallback so it can still function when
