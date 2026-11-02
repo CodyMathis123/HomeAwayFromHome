@@ -32,16 +32,20 @@ sudo install -m 0600 /dev/null secrets/control/lldap-smtp.env
 sudo nano secrets/control/lldap-smtp.env
 ```
 
-Insert **real provider-specific values**, not these placeholders:
+For Resend, the verified sending domain is `homeawayfromhome.house`.
+The SMTP settings are:
 
 ```dotenv
-LLDAP_SMTP_OPTIONS__SERVER=smtp.example.com
-LLDAP_SMTP_OPTIONS__PORT=587
-LLDAP_SMTP_OPTIONS__SMTP_ENCRYPTION=STARTTLS
-LLDAP_SMTP_OPTIONS__USER=your-smtp-username
-LLDAP_SMTP_OPTIONS__PASSWORD=your-smtp-password
-LLDAP_SMTP_OPTIONS__FROM=HomeAway <sender@example.com>
+LLDAP_SMTP_OPTIONS__SERVER=smtp.resend.com
+LLDAP_SMTP_OPTIONS__PORT=465
+LLDAP_SMTP_OPTIONS__SMTP_ENCRYPTION=TLS
+LLDAP_SMTP_OPTIONS__USER=resend
+LLDAP_SMTP_OPTIONS__PASSWORD=<your private Resend sending API key>
+LLDAP_SMTP_OPTIONS__FROM=HomeAway <accounts@homeawayfromhome.house>
 ```
+
+These are **illustrative values**. The operator has already created the
+private file on the Pi with the real key; do not re-create, print, or paste it.
 
 Docker Compose's `env_file.format: raw` preserves literal password
 characters; requires Compose v2.30.0+ (check `docker compose version`). LLDAP
