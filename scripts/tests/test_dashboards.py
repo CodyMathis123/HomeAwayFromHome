@@ -339,21 +339,24 @@ class DashboardContracts(unittest.TestCase):
             self.assertEqual(d["time"]["from"], "now-24h")
             self.assertEqual(len({p["id"] for p in d["panels"]}), len(d["panels"]))
 
-    def test_cpu_amd_librehardwaremonitor_paths_are_included(self):
-        # LibreHardwareMonitor AMD CPUs use /amdcpu/... not /cpu/...;
-        # Grafana selectors are full regex matches, so /cpu/ was a bug.
+    def test_cpu_gpu_cards_use_exported_device_family_instead_of_id_guessing(self):
         import re
         d = json.loads((PANELS / "overview.json").read_text(encoding="utf-8"))
         panels = {p["id"]: p for p in d["panels"]}
-        for id in (1, 5, 7, 200, 201):
+        for id, family in ((1, "Cpu"), (2, "Gpu"), (5, "Cpu"),
+                           (6, "Gpu"), (7, "Cpu"), (8, "Gpu")):
             query = panels[id]["targets"][0]["expr"]
-            self.assertNotIn(".*/cpu.*/", query, id)
-            self.assertNotIn(".*/(cpu|gpu", query, id)
-            # Ensure a genuine AMD CPU ID is covered by a selector.
-            matches = re.findall(r'sensor=~"([^"]+)"', query)
-            self.assertTrue(matches, id)
-            example = "/amdcpu/0/power/0" if id in (7, 201) else "/amdcpu/0/temperature/0"
-            self.assertTrue(any(re.fullmatch(pattern, example) for pattern in matches), id)
+            self.assertIn('device_type="' + family + '"', query, id)
+            self.assertIn("sensordash_sensor_info_value", query, id)
+            self.assertIn("on(host,sensor)", query, id)
+            self.assertNotIn("sensor=~", query, id)
+        # Historical overview plots may still use broad vendor-compatible
+        # selectors until their display-name joins are refactored.
+        for id in (200, 201):
+            query = panels[id]["targets"][0]["expr"]
+            example = "/amdcpu/0/power/0" if id == 201 else "/amdcpu/0/temperature/0"
+            selectors = re.findall(r'sensor=~"([^"]+)"', query)
+            self.assertTrue(any(re.fullmatch(s, example) for s in selectors), id)
 
     def test_sensordash_style_overview_is_read_only_and_gap_safe(self):
         d = json.loads((PANELS / "overview.json").read_text(encoding="utf-8"))

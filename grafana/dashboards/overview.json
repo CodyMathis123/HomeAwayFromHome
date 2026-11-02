@@ -97,7 +97,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Highest CPU temperature from sensors currently exported; may be hotspot rather than package temperature.",
+      "description": "Cpu temperature from active SensorDash device_type metadata; no vendor-specific sensor ID assumptions. Latest exported observed sample. Missing is not zero.",
       "gridPos": {
         "x": 0,
         "y": 3,
@@ -111,7 +111,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\",sensor=~\".*cpu.*/temperature/.*\"})",
+          "expr": "max(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Cpu\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\"} == 1))",
           "range": true,
           "legendFormat": "CPU · warmest reported"
         }
@@ -158,7 +158,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Highest GPU temperature, often hotspot. A GPU with multiple sensors is not a single core reading.",
+      "description": "Gpu temperature from active SensorDash device_type metadata; no vendor-specific sensor ID assumptions. Latest exported observed sample. Missing is not zero.",
       "gridPos": {
         "x": 6,
         "y": 3,
@@ -172,7 +172,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\",sensor=~\".*/gpu.*/temperature/.*\"})",
+          "expr": "max(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Gpu\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\"} == 1))",
           "range": true,
           "legendFormat": "GPU · warmest reported"
         }
@@ -362,7 +362,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Peak observed CPU temperature in selected time range; not an estimated temperature during gaps.",
+      "description": "Cpu temperature from active SensorDash device_type metadata; no vendor-specific sensor ID assumptions. Maximum of observed samples in selected range. Missing is not zero.",
       "gridPos": {
         "x": 0,
         "y": 11,
@@ -376,7 +376,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max(max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\",sensor=~\".*cpu.*/temperature/.*\"}[$__range]))",
+          "expr": "max(max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range]) * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Cpu\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\"} == 1))",
           "instant": true,
           "legendFormat": "CPU · temperature peak"
         }
@@ -423,7 +423,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Peak observed GPU temperature within selected time range; does not extrapolate through gaps.",
+      "description": "Gpu temperature from active SensorDash device_type metadata; no vendor-specific sensor ID assumptions. Maximum of observed samples in selected range. Missing is not zero.",
       "gridPos": {
         "x": 6,
         "y": 11,
@@ -437,7 +437,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max(max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\",sensor=~\".*/gpu.*/temperature/.*\"}[$__range]))",
+          "expr": "max(max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range]) * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Gpu\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\"} == 1))",
           "instant": true,
           "legendFormat": "GPU · temperature peak"
         }
@@ -484,7 +484,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Highest available CPU hardware-power channel, not a sum of overlapping package/core rails.",
+      "description": "Cpu power from active SensorDash device_type metadata; no vendor-specific sensor ID assumptions. Latest exported observed sample. Missing is not zero.",
       "gridPos": {
         "x": 12,
         "y": 11,
@@ -498,7 +498,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max(sensordash_reading_value{host=~\"$host\",kind=\"Power\",sensor=~\".*cpu.*/power/.*\"})",
+          "expr": "max(sensordash_reading_value{host=~\"$host\",kind=\"Power\"} * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Cpu\",kind=\"Power\",name!~\"(?i).*(warning|critical).*\"} == 1))",
           "range": true,
           "legendFormat": "CPU · reported power"
         }
@@ -545,7 +545,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Highest available GPU hardware-power channel, not an inferred total board power.",
+      "description": "Gpu power from active SensorDash device_type metadata; no vendor-specific sensor ID assumptions. Latest exported observed sample. Missing is not zero.",
       "gridPos": {
         "x": 18,
         "y": 11,
@@ -559,7 +559,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max(sensordash_reading_value{host=~\"$host\",kind=\"Power\",sensor=~\".*/gpu.*/power/.*\"})",
+          "expr": "max(sensordash_reading_value{host=~\"$host\",kind=\"Power\"} * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Gpu\",kind=\"Power\",name!~\"(?i).*(warning|critical).*\"} == 1))",
           "range": true,
           "legendFormat": "GPU · reported power"
         }
