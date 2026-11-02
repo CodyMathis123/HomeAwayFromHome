@@ -74,6 +74,28 @@ jobs:
             docker compose -f compose.yaml -f compose.control.yaml -f compose.accounts.yaml --profile control --profile accounts --profile metrics config -q
           python3 scripts/check_accounts_contracts.py
           python3 scripts/check_computers_contracts.py
+      - name: Validate current full Production recovery and SMTP network boundaries
+        run: |
+          # All secrets below are synthetic and must never reach a live account.
+          printf '%s\\n' 'ci-cloudflare-placeholder' > secrets/control/cloudflare_dns01_token
+          printf '%s\\n' 'ci-resend-placeholder' > secrets/control/authelia_smtp_password
+          printf '%s\\n' 'LLDAP_SMTP_OPTIONS__SERVER=smtp.resend.com' \\
+            'LLDAP_SMTP_OPTIONS__PORT=465' \\
+            'LLDAP_SMTP_OPTIONS__SMTP_ENCRYPTION=TLS' \\
+            'LLDAP_SMTP_OPTIONS__USER=resend' \\
+            'LLDAP_SMTP_OPTIONS__PASSWORD=ci-only-no-real-key' \\
+            'LLDAP_SMTP_OPTIONS__FROM=HomeAway <accounts@homeawayfromhome.house>' \\
+            > secrets/control/lldap-smtp.env
+          HOMEAWAY_DOMAIN=home.homeawayfromhome.house \\
+          HOMEAWAY_AUTH_DOMAIN=auth.homeawayfromhome.house \\
+          HOMEAWAY_METRICS_DOMAIN=metrics.homeawayfromhome.house \\
+          PCCTL_GID=999 PCINV_GID=998 \\
+            docker compose \\
+            -f compose.yaml -f compose.control.yaml -f compose.accounts.yaml \\
+            -f compose.computers.yaml -f compose.production.yaml \\
+            -f compose.account-recovery.yaml -f compose.authelia-smtp.yaml \\
+            --profile control --profile accounts --profile metrics \\
+            config --format json | python3 scripts/check_active_overlay_contracts.py
       - name: Build application and wg-easy images without starting VPN
         run: |
           docker compose build portal wg-easy
