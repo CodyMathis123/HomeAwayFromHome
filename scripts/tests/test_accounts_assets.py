@@ -53,6 +53,8 @@ class AccountAssets(unittest.TestCase):
             self.assertIn("Updated ' + new Date().toLocaleTimeString()", script)
         self.assertIn("HomeAwayAccounts.start(null)", control)
         self.assertIn("HomeAwayComputers.start(null)", control)
+        self.assertIn("'computer-admin-audit-events')?.replaceChildren()", computers)
+        self.assertIn("if (!authorized || accessEpoch !== epoch) return;", computers)
         self.assertIn("if (currentView !== 'hosts') return;", control)
         self.assertIn("if (currentView === 'hosts') void refresh();", control)
         self.assertIn(".admin-directory-updated[data-stale=\"true\"]", css)
