@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "owner": "CodyMathis123",
+  "tag_prefix": "archive/pre-prod-only-20261102/",
+  "repositories": {
+    "HomeAwayFromHome": [
+      {
+        "branch": "feature/homeaway-computer-management",
+        "sha": "22899dcb87dc21008bbf6661afc5fab613134b12"
+      },
+      {
+        "branch": "feature/homeaway-operations-maintenance",
+        "sha": "3fc2f1d02cc3d78b5e326284d9a947451917049d"
+      },
+      {
+        "branch": "feature/homeaway-setup-monitoring",
+        "sha": "266645aaa522a49763d94aff1a221e3fded8ba63"
+      },
+      {
+        "branch": "fix/offline-github-branch-cleanup-snapshot-20261102",
+        "sha": "7e6ca7bc04c9750a6bc96bde8b5d4150d4da2bb5"
+      },
+      {
+        "branch": "fix/pi-metrics-diagnostics",
+        "sha": "6ba9f7c67de437beea1e4bcefea9fa109c2f6754"
+      }
+    ],
+    "SensorDash": [
+      {
+        "branch": "validation/chart-dates-20261029",
+        "sha": "17db6296940bb28b09035a173cf7767bf4825c51"
+      },
+      {
+        "branch": "validation/cooling-phase1-20261028",
+        "sha": "305322291bcc12bf824c27e20ad2f9fd4d1cfb2c"
+      },
+      {
+        "branch": "validation/electrical-model-20261029",
+        "sha": "417b611975388f8650e01c5249d9ebad88353b52"
+      },
+      {
+        "branch": "validation/electrical-preset-tdz-20261030",
+        "sha": "29b2e33bb2e76e7f63e76307cc932a69c3eb9196"
+      },
+      {
+        "branch": "validation/fan-commissioning-20261027",
+        "sha": "38738b04bb5bb95a8b3953688b6b46d5c1e832a4"
+      },
+      {
+        "branch": "validation/fan-control-engine-20261027",
+        "sha": "f6ad8027cc3b42ee575394fcd5659be0a6b71f6a"
+      },
+      {
+        "branch": "validation/fan-resume-logging-20261028",
+        "sha": "41e595a667c02d510e775c97a313c47c6841db45"
+      },
+      {
+        "branch": "validation/fan-review-ux-20261027",
+        "sha": "f34ce7c52665a367dcda30992fbb7f385b350641"
+      },
+      {
+        "branch": "validation/history-gap-20261029",
+        "sha": "d652ae77e925f6a548232f8b1c7dc27327813a87"
+      },
+      {
+        "branch": "validation/overview-stats-20261029",
+        "sha": "ec05aebffd4f7c5caef5f1e6b9899872c96b7c70"
+      },
+      {
+        "branch": "validation/performance-diagnostics-20261027",
+        "sha": "5e763f90b0b3566110e29c33f55075eb366ad7e3"
+      },
+      {
+        "branch": "validation/sensordash-0.4.0-cooling-systems",
+        "sha": "e16d41581a09293e84b3d6d2e78c2a8023bb93ec"
+      },
+      {
+        "branch": "validation/sensordash-0.4.0-r2",
+        "sha": "9515ad22c50f785c87e47c5969ba60f9cf489f4b"
+      },
+      {
+        "branch": "validation/sensordash-0.4.0-r3",
+        "sha": "854fdc52cb983062550e8a758c4bb3ffef471906"
+      },
+      {
+        "branch": "validation/sensordash-0.4.0",
+        "sha": "f02872977a514cdbbf11e5f1d6bff1c58682db2f"
+      },
+      {
+        "branch": "validation/sensordash-0.5.0-fan-control",
+        "sha": "7708e33e9ba6a58f6f7092a8712fd9fb0e0b523f"
+      },
+      {
+        "branch": "validation/sensordash-0.5.1-fan-mode",
+        "sha": "080919635b297004f5bcf8f8ed01452821771fe9"
+      },
+      {
+        "branch": "validation/sensordash-0.6.0-corrected",
+        "sha": "361e1edf5f10b33dedbc5823c9d3090d8d904b2f"
+      },
+      {
+        "branch": "validation/sensordash-0.6.0-persistent-fan-profiles",
+        "sha": "0a879c4c68a4a1cc9ba6a83e42474382d1105dea"
+      }
+    ]
+  }
+}
