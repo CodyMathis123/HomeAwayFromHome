@@ -49,27 +49,95 @@ def session_slice(document: str) -> tuple[int, int]:
     return start, next_section.start() if next_section else len(document)
 
 
+# The original HomeAway deployment retains a second .home.arpa cookie
+# configuration. Never change that cookie or its redirects during the
+# homeawayfromhome.house canonical HTTPS migration.
+PRODUCTION_COOKIE_DOMAIN = "homeawayfromhome.house"
+LEGACY_COOKIE_DOMAIN = "homeaway.home.arpa"
+COOKIE_DOMAIN_LINE = re.compile(
+    r'(?m)^(?P<indent>[ \t]+)-[ \t]+domain:[ \t]*'
+    r'(?P<quote>["\']?)(?P<domain>[a-zA-Z0-9.-]+)(?P=quote)[ \t]*$'
+)
+
+
+def session_cookie_blocks(section: str) -> list[tuple[str, int, int]]:
+    """Identify only exact, well-formed cookie entries inside session.cookies.
+
+    Reject ambiguous YAML (repeated domains, unknown domains, stray redirect
+    declarations) rather than risk changing the wrong authentication site.
+    """
+    headers = list(re.finditer(r"(?m)^[ \t]+cookies:[ \t]*$", section))
+    if len(headers) != 1:
+        raise ValueError("Expected a single session.cookies list")
+    header = headers[0]
+    header_indent = len(header.group(0)) - len(header.group(0).lstrip())
+    lines = section[header.end():].splitlines(keepends=True)
+    cookie_end = header.end()
+    for line in lines:
+        whitespace = len(line) - len(line.lstrip(" \t"))
+        if line.strip() and not line.lstrip().startswith("#") and whitespace <= header_indent:
+            break
+        cookie_end += len(line)
+    region = section[header.end():cookie_end]
+    matches = list(COOKIE_DOMAIN_LINE.finditer(region))
+    if not 1 <= len(matches) <= 2:
+        raise ValueError("Unsupported number of session cookie domains")
+    domains = [match.group("domain") for match in matches]
+    if domains.count(PRODUCTION_COOKIE_DOMAIN) != 1 or len(set(domains)) != len(domains):
+        raise ValueError("Expected exactly one canonical production cookie domain")
+    if any(domain not in (PRODUCTION_COOKIE_DOMAIN, LEGACY_COOKIE_DOMAIN)
+           for domain in domains):
+        raise ValueError("Unrecognized session cookie domain")
+    boundaries = [
+        (header.end() + match.start(), header.end() + (
+            matches[i + 1].start() if i + 1 < len(matches) else len(region)))
+        for i, match in enumerate(matches)
+    ]
+    # Require every redirect declaration (including unsupported syntax) to
+    # belong to one of these cookie blocks; never skip a stray field.
+    declared = [re.findall(r"(?m)^[ \t]+" + re.escape(key) + r":[ \t]*", region)
+                for key in URLS]
+    if any(len(group) != len(matches) for group in declared):
+        raise ValueError("Redirect declarations do not match cookie count")
+    return [(domain, begin, end) for domain, (begin, end) in zip(domains, boundaries)]
+
+
 def state_and_render(document: str, target: str) -> tuple[str, str]:
+    if target not in ("portless", "legacy"):
+        raise ValueError("Unsupported target state")
     start, end = session_slice(document)
     section = document[start:end]
-    matches = list(LINE.finditer(section))
-    if len(matches) != 2 or {m.group(2) for m in matches} != set(URLS):
-        raise ValueError("Expected exactly one canonical Authelia and home redirect URL")
+    blocks = session_cookie_blocks(section)
+    updates: list[tuple[int, int, str]] = []
     observed = {}
-    for match in matches:
-        key, url = match.group(2), match.group("url")
-        if url not in URLS[key]:
-            raise ValueError("Unexpected Authelia redirect host or port")
-        observed[key] = URLS[key].index(url)
-    if len(set(observed.values())) != 1:
-        raise ValueError("Mixed legacy and portless redirect values; refusing change")
+    for domain, begin, finish in blocks:
+        block = section[begin:finish]
+        lines = list(LINE.finditer(block))
+        if len(lines) != 2 or {match.group(2) for match in lines} != set(URLS):
+            raise ValueError("Expected one URL pair per cookie domain")
+        for match in lines:
+            # Detect malformed/duplicate declarations before editing.
+            key = match.group(2)
+            if len(re.findall(r"(?m)^[ \t]+" + re.escape(key) + r":[ \t]*", block)) != 1:
+                raise ValueError("Duplicate or unsupported redirect declaration")
+            if domain == PRODUCTION_COOKIE_DOMAIN:
+                if match.group("url") not in URLS[key]:
+                    raise ValueError("Production cookie redirect does not match known host")
+                observed[key] = URLS[key].index(match.group("url"))
+                desired = 1 if target == "portless" else 0
+                replacement = match.group(0).replace(
+                    match.group("url"), URLS[key][desired], 1)
+                updates.append((start + begin + match.start(),
+                                start + begin + match.end(), replacement))
+        # Deliberately preserve every byte of the .home.arpa cookie, even if it
+        # has different operational URLs. Never rewrite its redirects.
+    if len(observed) != 2 or len(set(observed.values())) != 1:
+        raise ValueError("Production cookie has mixed redirect port states")
     old_state = "portless" if next(iter(observed.values())) else "legacy"
-    desired = 1 if target == "portless" else 0
-    def rewrite(match: re.Match[str]) -> str:
-        key = match.group(2)
-        return match.group(0).replace(match.group("url"), URLS[key][desired], 1)
-    revised = document[:start] + LINE.sub(rewrite, section) + document[end:]
-    return old_state, revised
+    result = document
+    for begin, finish, replacement in reversed(updates):
+        result = result[:begin] + replacement + result[finish:]
+    return old_state, result
 
 
 def safe_redirect_report(document: str) -> str:
