@@ -44,7 +44,14 @@ verify(){
     --output /dev/null --write-out '%{http_code}' \
     -X POST -H 'Content-Type: text/plain' --data-binary 'invalid metric' \
     https://metrics.homeawayfromhome.house/ingest)" || return 1
-  [[ "$code" == 401 ]] || { echo "Expected 401 for unauthenticated ingestion, got $code" >&2; return 1; }
+  if [[ "$code" != 401 ]]; then
+    echo "Expected 401 for unauthenticated ingestion, got $code." >&2
+    if [[ "$code" == 302 ]]; then
+      echo "The request appears to reach Grafana's login redirect, not the new ingestion route." >&2
+      echo "Check the gateway rollout first; do not change SensorDash." >&2
+    fi
+    return 1
+  fi
   grafana="$(curl --silent --show-error --max-time 10 \
     --resolve "metrics.homeawayfromhome.house:443:$ip" \
     --output /dev/null --write-out '%{http_code}' \
@@ -61,7 +68,27 @@ fi
 echo "PLAN: Caddy flavor=$flavor; metrics hostname already exists; only gateway restart requested."
 echo "PLAN: old https://$ip:8429/ingest remains live; no SensorDash, Pi-hole, DNS or VPN changes."
 echo "PLAN: gateway receives only telemetry/ca.crt (public CA certificate, never any keys)."
+# Cloudflare's pinned Caddy DNS module checks the *shape* of a token while
+# provisioning, even when all networking is disabled. A short text placeholder
+# fails validation before it can inspect the route. Use a fixed synthetic
+# 40-character token matching that shape. Never load or print the real token.
+# The container has --network none, so it cannot reach Cloudflare.
+offline_cf_token="0123456789abcdefghijklmnopqrstuvwxyzABCD"
+validate_offline() {
+  sudo docker run --rm --network none --cap-drop ALL \
+    -e PI_LAN_IP="$ip" -e CF_API_TOKEN="$offline_cf_token" \
+    -v "$PWD/control/gateway/Caddyfile.$flavor:/etc/caddy/Caddyfile:ro" \
+    -v "$PWD/secrets/telemetry/ca.crt:/run/telemetry-ca.crt:ro" \
+    --entrypoint /usr/local/bin/homeaway-caddy \
+    homeaway-caddy-dns01:2.11.7-cloudflare-v0.2.4 \
+    validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null ||
+    fail "Offline Caddy validation failed; live gateway not restarted."
+  echo "PASS: Caddy configuration validated offline without real Cloudflare credentials."
+}
 python3 scripts/prepare-gateway-permissions.py --plan --config "$flavor"
+# Always validate in --plan so a bad Caddy configuration cannot first surface
+# after an operator has begun an actual deployment.
+validate_offline
 if [[ "$mode" == "--plan" ]]; then
   echo "PLAN ONLY: nothing changed."
   exit 0
@@ -69,14 +96,6 @@ fi
 python3 scripts/prepare-gateway-permissions.py --apply --config "$flavor"
 # Public CA cert is intentionally readable inside the gateway. Keys/token stay private.
 sudo chmod 0644 secrets/telemetry/ca.crt
-sudo docker run --rm --network none --cap-drop ALL \
-  -e PI_LAN_IP="$ip" -e CF_API_TOKEN=offline-validation-only \
-  -v "$PWD/control/gateway/Caddyfile.$flavor:/etc/caddy/Caddyfile:ro" \
-  -v "$PWD/secrets/telemetry/ca.crt:/run/telemetry-ca.crt:ro" \
-  --entrypoint /usr/local/bin/homeaway-caddy \
-  homeaway-caddy-dns01:2.11.7-cloudflare-v0.2.4 \
-  validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null ||
-  fail "Offline Caddy validation failed; live gateway not restarted."
 echo "Recreating only the existing Caddy gateway (brief HTTPS interruption)."
 "${compose[@]}" up -d --no-deps --no-build --force-recreate gateway ||
   fail "Gateway recreation failed; inspect gateway logs. Other services untouched."
