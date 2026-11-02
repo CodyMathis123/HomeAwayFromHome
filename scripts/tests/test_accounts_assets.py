@@ -44,6 +44,13 @@ class AccountAssets(unittest.TestCase):
         self.assertIn('.invite-option input[type="checkbox"]',css)
         self.assertIn('width:16px;height:16px',css)
 
+    def test_invite_create_username_normalization_and_error_mapping(self):
+        js=(API/"accounts.js").read_text()
+        api=(API/"app.py").read_text()
+        self.assertIn("usernameInput.addEventListener('input'",js)
+        self.assertIn("value.trim().toLowerCase()",js)
+        self.assertIn('operation in ("create", "create-invite")',api)
+
     def test_feature_gated_users_markup_and_script_present(self):
         html = (API / "index.html").read_text()
         js = (API / "app.js").read_text()
