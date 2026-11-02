@@ -634,6 +634,8 @@ class Handler(BaseHTTPRequestHandler):
         request_path = urlsplit(self.path).path
         is_account = request_path in (
             "/control/api/admin/users/create",
+            "/control/api/admin/users/create-invite",
+            "/control/api/admin/users/invite",
             "/control/api/admin/users/set-role",
             "/control/api/admin/users/revoke")
         is_computer = request_path in (
