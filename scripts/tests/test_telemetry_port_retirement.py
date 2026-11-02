@@ -49,6 +49,23 @@ class TelemetryPortRetirementTests(unittest.TestCase):
         self.assertNotIn("up -d --build",script)
         self.assertNotIn("tls_insecure_skip_verify",script)
 
+    def test_post_recreate_waits_for_readiness_before_rollback(self):
+        script=(ROOT/"scripts/deploy-telemetry-private.sh").read_text()
+        self.assertIn("receiver_socket_ready(){",script)
+        self.assertIn("wait_for_private_route(){",script)
+        self.assertIn("socket.create_connection",script)
+        self.assertIn("for attempt in {1..20}; do",script)
+        self.assertIn("sleep 2",script)
+        self.assertIn("ingest_running && receiver_socket_ready && route_ok",script)
+        recreate=script.index('echo "Recreating only the existing telemetry-ingest')
+        wait=script.index('if ! ingest_running || ! no_published_ports || ! wait_for_private_route')
+        restore=script.index('post-cutover verification failed; automatically restoring')
+        self.assertLess(recreate,wait)
+        self.assertLess(wait,restore)
+        self.assertNotIn("docker restart gateway",script)
+        self.assertNotIn("force-recreate gateway",script)
+        self.assertNotIn("tls_insecure_skip_verify",script)
+
     def test_verification_uses_canonical_https(self):
         script=(ROOT/"scripts/verify-telemetry.sh").read_text()
         self.assertIn("https://metrics.homeawayfromhome.house/ingest",script)

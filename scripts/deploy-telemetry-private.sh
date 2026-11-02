@@ -95,6 +95,29 @@ no_published_ports(){
   [[ -z "$published" ]] || { echo "Receiver still has a published port: $published" >&2; return 1; }
 }
 
+receiver_socket_ready(){
+  # Docker "Started" does not guarantee Python has bound its TLS socket.
+  # Probe inside this container only: no credentials and no hardware changes.
+  sudo docker exec "$cid" python -B -c \
+    'import socket; s=socket.create_connection(("127.0.0.1",8443), timeout=2); s.close()' \
+    >/dev/null 2>&1
+}
+wait_for_private_route(){
+  local attempt
+  # Receiver restart can change its Docker bridge IP. Allow the TLS listener
+  # to start and Caddy to establish a connection using the new Docker DNS IP.
+  for attempt in {1..20}; do
+    if ingest_running && receiver_socket_ready && route_ok >/dev/null 2>&1; then
+      echo "PASS: receiver TLS socket and private Caddy route are healthy."
+      return 0
+    fi
+    if [[ "$attempt" -lt 20 ]]; then sleep 2; fi
+  done
+  echo "Private Caddy route did not recover after bounded retries." >&2
+  route_ok || true
+  return 1
+}
+
 ingest_running || fail "Telemetry receiver unavailable; no changes made."
 if [[ "$mode" == "--status" ]]; then
   no_published_ports || fail "Receiver still exposes a host port."
@@ -129,10 +152,11 @@ if ! "${base[@]}" up -d --no-deps --no-build --force-recreate telemetry-ingest; 
     fail "Automatic rollback failed; inspect telemetry-ingest and run --rollback."
   fail "Private-only recreation failed; original LAN port has been restored."
 fi
-if ! ingest_running || ! no_published_ports || ! route_ok; then
+if ! ingest_running || ! no_published_ports || ! wait_for_private_route; then
   echo "WARN: post-cutover verification failed; automatically restoring original LAN mapping." >&2
   "${rollback[@]}" up -d --no-deps --no-build --force-recreate telemetry-ingest ||
     fail "Automatic rollback failed; run --rollback after reviewing logs."
+  echo "Rollback restored port 8429; confirm the live route has recovered before further changes." >&2
   fail "Cutover did not pass checks; original port mapping was restored."
 fi
 echo "PASS: direct 8429 mapping retired; canonical HTTPS ingestion and Grafana healthy."
