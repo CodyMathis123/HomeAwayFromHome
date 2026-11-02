@@ -1,0 +1,27 @@
+# Optional Authelia notification email via Resend (SMTP over implicit TLS).
+# Apply only after scripts/prepare-authelia-smtp.py --apply has safely replaced
+# the filesystem notifier in the local /config/configuration.yml.
+# Do not restart unrelated services.
+services:
+  authelia:
+    environment:
+      AUTHELIA_NOTIFIER_DISABLE_STARTUP_CHECK: "false"
+      AUTHELIA_NOTIFIER_SMTP_ADDRESS: "submissions://smtp.resend.com:465"
+      AUTHELIA_NOTIFIER_SMTP_USERNAME: "resend"
+      AUTHELIA_NOTIFIER_SMTP_SENDER: "HomeAway <accounts@homeawayfromhome.house>"
+      AUTHELIA_NOTIFIER_SMTP_PASSWORD_FILE: "/run/secrets/authelia_smtp_password"
+    secrets:
+      - authelia_smtp_password
+    networks:
+      pc-control: {}
+      account-directory: {}
+      authelia-mail-egress:
+        gw_priority: 100
+
+networks:
+  authelia-mail-egress:
+    driver: bridge
+
+secrets:
+  authelia_smtp_password:
+    file: ./secrets/control/authelia_smtp_password
