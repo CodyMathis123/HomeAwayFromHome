@@ -87,7 +87,13 @@ routes_ok(){
   [[ "$home" == 200 ]] || return 1
   dns="$(curl -sS --max-time 10 --resolve "home.homeawayfromhome.house:443:$ip" \
     -o /dev/null -w '%{http_code}' https://home.homeawayfromhome.house/dns/admin/)" || return 1
-  [[ "$dns" == 302 || "$dns" == 401 || "$dns" == 403 ]] || return 1
+  # A 403 is not healthy: it previously concealed a broken DNS policy.
+  [[ "$dns" == 302 ]] || return 1
+  local location
+  location="$(curl -sS --max-time 10 --resolve "home.homeawayfromhome.house:443:$ip" \
+    -D - -o /dev/null https://home.homeawayfromhome.house/dns/admin/ \
+    | tr -d '\r' | grep -i '^location:' | head -1)" || return 1
+  [[ "$location" == *"https://auth.homeawayfromhome.house/"* ]] || return 1
   grafana="$(curl -sS --max-time 10 --resolve "metrics.homeawayfromhome.house:443:$ip" \
     -o /dev/null -w '%{http_code}' https://metrics.homeawayfromhome.house/login)" || return 1
   [[ "$grafana" == 200 || "$grafana" == 302 ]] || return 1
