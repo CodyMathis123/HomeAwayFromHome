@@ -74,7 +74,7 @@ verify_route(){
   local location
   location="$(curl -sS --max-time 10 --resolve "home.homeawayfromhome.house:443:$ip" \
     -D - -o /dev/null https://home.homeawayfromhome.house/dns/admin/ \
-    | tr -d '\\r' | grep -i '^location:' | head -1)" || return 1
+    | tr -d '\r' | grep -i '^location:' | head -1)" || return 1
   [[ "$location" == *"https://auth.homeawayfromhome.house/"* ]] ||
     { echo "Pi-hole admin did not redirect to canonical Authelia login" >&2; return 1; }
   metrics="$(curl -sS --max-time 10 --resolve "metrics.homeawayfromhome.house:443:$ip" \
