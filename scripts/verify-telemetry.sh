@@ -15,14 +15,15 @@ echo "Checking Grafana health..."
 curl --fail --silent --show-error --max-time 8 "http://$IP:3000/api/health"
 echo
 echo "Checking authenticated TLS receiver never permits unauthenticated writes..."
-code="$(curl --silent --show-error --max-time 8 --cacert secrets/telemetry/ca.crt \
+code="$(curl --silent --show-error --max-time 8 \
+  --resolve "metrics.homeawayfromhome.house:443:$IP" \
   --output /dev/null --write-out '%{http_code}' -X POST \
-  --data-binary 'invalid metric' "https://$IP:8429/ingest")"
+  --data-binary 'invalid metric' "https://metrics.homeawayfromhome.house/ingest")"
 if [[ "$code" != "401" ]]; then
-  echo "FAIL: Unauthorized intake returned HTTP $code (expected 401)." >&2
+  echo "FAIL: Canonical HTTPS ingress returned HTTP $code (expected 401)." >&2
   exit 1
 fi
-echo "PASS: dedicated CA validates receiver; unauthenticated request denied"
+echo "PASS: public TLS certificate validated; unauthenticated intake denied by receiver"
 echo "Reading series counts via internal Docker network (VictoriaMetrics has no LAN port)..."
 docker compose --profile metrics exec -T telemetry-ingest python - "$HOST" <<'PY'
 import json

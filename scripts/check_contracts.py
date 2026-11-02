@@ -40,11 +40,15 @@ def check(config: dict, ip: str) -> None:
     assert len(published("wg-easy")) == 2
     assert exactly("portal", port=8088, internal=8080, proto="tcp", ip_address=ip)
     assert exactly("grafana", port=3000, internal=3000, proto="tcp", ip_address=ip)
-    assert exactly("telemetry-ingest", port=8429, internal=8443, proto="tcp", ip_address=ip)
+    assert not published("telemetry-ingest"), (
+        "Telemetry receiver must be bridge-only behind the authenticated HTTPS metrics route"
+    )
     assert not published("victoria-metrics"), "Never publish VictoriaMetrics directly"
     for name in ("grafana", "telemetry-ingest", "victoria-metrics", "pihole-exporter", "pi-node-exporter"):
         assert "metrics" in services[name].get("profiles", []), name
-    assert len(published("telemetry-ingest")) == 1
+    assert "infra" in services["telemetry-ingest"].get("networks", {}), (
+        "Telemetry ingress must remain accessible privately from Caddy"
+    )
     assert not published("pihole-exporter"), "Pi-hole exporter must be bridge-only"
     assert not published("pi-node-exporter"), "Pi system exporter must be bridge-only"
     host = services["pi-node-exporter"]
