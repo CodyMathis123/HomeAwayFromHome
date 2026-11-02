@@ -113,3 +113,23 @@ while rollback is active, because Production uses the portless defaults.
 
 Retiring port 8443 is a **separate** optional cleanup after LAN and WireGuard
 validation. Do not forward port 443 through the router.
+
+## Diagnosing a blocked Authelia redirect preflight
+
+If `bash scripts/deploy-https443-final.sh --plan` reports an Authelia
+validation blocker, **do not run --apply**. Use the built-in read-only
+inspection command:
+
+```bash
+sudo python3 scripts/update-authelia-canonical-urls.py --inspect
+```
+
+It reports counts and whether recognized redirect fields are legacy, portless,
+unknown or in an unsupported format. It also reports whether a previous
+protected backup or pending candidate exists. **It never prints URLs,
+credentials, cookie secrets, LDAP bind passwords or config content.**
+
+If there is more than one cookie URL pair, a missing key, unusual formatting,
+or an unexpected redirect, the migration intentionally stops. Review the
+safe inspection result before extending the supported transformation; do not
+weaken Authelia's access controls or chmod its configuration.

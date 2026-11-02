@@ -72,6 +72,51 @@ def state_and_render(document: str, target: str) -> tuple[str, str]:
     return old_state, revised
 
 
+def safe_redirect_report(document: str) -> str:
+    """Describe only known field names, counts and statuses, never their URLs.
+
+    Existing Authelia may have multiple cookie domains or locally chosen
+    redirect URLs. Inspect their shape, but never rewrite an unknown layout.
+    """
+    try:
+        start, end = session_slice(document)
+    except ValueError:
+        return "session_sections=unexpected"
+    section = document[start:end]
+    parsed = list(LINE.finditer(section))
+    statuses = []
+    for key in URLS:
+        declared = len(re.findall(
+            r"(?m)^[ \t]+" + re.escape(key) + r":[ \t]*", section))
+        matches = [match for match in parsed if match.group(2) == key]
+        legacy = sum(match.group("url") == URLS[key][0] for match in matches)
+        portless = sum(match.group("url") == URLS[key][1] for match in matches)
+        unknown = len(matches) - legacy - portless
+        unparsed = max(0, declared - len(matches))
+        statuses.append(
+            f"{key}(fields={declared},legacy={legacy},portless={portless},"
+            f"unexpected={unknown},unparsed={unparsed})")
+    return "; ".join(statuses)
+
+
+def safe_preflight_report() -> str:
+    """Only a fixed schema and binary presence indicators are printed."""
+    if DIRECTORY.is_symlink() or ACTIVE.is_symlink():
+        layout = "configuration_symlink_detected"
+    elif not ACTIVE.is_file():
+        layout = "configuration_missing_or_not_regular"
+    else:
+        try:
+            layout = safe_redirect_report(ACTIVE.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError):
+            layout = "configuration_unreadable"
+    return (
+        "authelia=" + layout
+        + "; previous_backup=" + ("present" if BACKUP.exists() else "absent")
+        + "; candidate=" + ("present" if CANDIDATE.exists() else "absent")
+    )
+
+
 def private_active() -> tuple[str, os.stat_result]:
     if DIRECTORY.is_symlink() or ACTIVE.is_symlink() or not ACTIVE.is_file():
         raise RuntimeError("Authelia configuration unavailable or symlinked")
@@ -155,14 +200,22 @@ def main() -> None:
     group.add_argument("--plan", action="store_true")
     group.add_argument("--apply", action="store_true")
     group.add_argument("--rollback", action="store_true")
+    group.add_argument("--inspect", action="store_true",
+                       help="Report safe counts/statuses of redirect fields only")
     args = parser.parse_args()
     if os.geteuid() != 0:
         parser.error("Requires sudo; do not reveal root-protected configuration")
+    if args.inspect:
+        print("SAFE INSPECTION: " + safe_preflight_report())
+        return
     mode = "plan" if args.plan else "apply" if args.apply else "rollback"
     try:
         print(run(mode))
     except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired):
-        parser.exit(1, "ERROR: Authelia redirect migration could not be validated; no secrets printed.\n")
+        # Exception bodies can contain private paths/URLs: never emit them.
+        parser.exit(1, "ERROR: Authelia redirect preflight blocked. "
+                    "Run sudo python3 scripts/update-authelia-canonical-urls.py --inspect "
+                    "for a safe field-status report; no secrets printed.\n")
 
 
 if __name__ == "__main__":

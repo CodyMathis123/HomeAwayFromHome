@@ -42,6 +42,46 @@ class FinalHTTPS443Tests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     mod.state_and_render(text, "portless")
 
+    def test_safe_inspection_reports_only_expected_field_statuses(self):
+        secret = "PRIVATE_SECRET_SHOULD_NEVER_APPEAR_27"
+        before = self.sample().replace("supersecret_never_log", secret)
+        details = mod.safe_redirect_report(before)
+        self.assertIn("authelia_url(fields=1,legacy=1,portless=0,unexpected=0,unparsed=0)", details)
+        self.assertIn("default_redirection_url(fields=1,legacy=1,portless=0,unexpected=0,unparsed=0)", details)
+        self.assertNotIn(secret, details)
+        self.assertNotIn("https://", details)
+
+        unusual = self.sample(a="https://unexpected.private.example").replace(
+            '    - domain: "homeawayfromhome.house"',
+            '    - domain: "homeawayfromhome.house"')
+        unusual = unusual.replace(
+            "regulation:",
+            "    - domain: other.example\n"
+            '      authelia_url: "https://auth.homeawayfromhome.house"\n'
+            '      default_redirection_url: "https://home.homeawayfromhome.house:8443"\n'
+            "regulation:")
+        details = mod.safe_redirect_report(unusual)
+        self.assertIn("authelia_url(fields=2,legacy=0,portless=1,unexpected=1,unparsed=0)", details)
+        self.assertIn("default_redirection_url(fields=2,legacy=2,portless=0,unexpected=0,unparsed=0)", details)
+        self.assertNotIn("unexpected.private", details)
+        self.assertNotIn("https://", details)
+
+        indented_comment = self.sample().replace(
+            '      authelia_url: "https://auth.homeawayfromhome.house:8443"',
+            '      authelia_url: "https://auth.homeawayfromhome.house:8443" # custom')
+        details = mod.safe_redirect_report(indented_comment)
+        self.assertIn("authelia_url(fields=1,legacy=0,portless=0,unexpected=0,unparsed=1)", details)
+        self.assertEqual(mod.safe_redirect_report("sessions:\n  other: true"),
+                         "session_sections=unexpected")
+
+    def test_inspect_action_is_read_only(self):
+        helper = (ROOT / "scripts/update-authelia-canonical-urls.py").read_text()
+        self.assertIn('group.add_argument("--inspect"', helper)
+        self.assertIn("safe_preflight_report()", helper)
+        self.assertIn('if args.inspect:', helper)
+        self.assertIn("return\n    mode =", helper)
+        self.assertNotIn("print(current)", helper)
+
     def test_exact_portless_destinations_and_fallback(self):
         prod = (ROOT / "compose.production.yaml").read_text()
         self.assertIn('HOMEAWAY_CONTROL_ORIGIN: "https://home.homeawayfromhome.house"',prod)
