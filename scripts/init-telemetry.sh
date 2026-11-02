@@ -35,7 +35,9 @@ openssl x509 -req -in "$temp/server.csr" -CA "$temp/ca.crt" -CAkey "$temp/ca.key
 openssl verify -CAfile "$temp/ca.crt" -verify_ip "$IP" "$temp/server.crt"
 install -m 600 "$temp/ca.key" secrets/telemetry-ca.key
 mkdir -p secrets/telemetry
-install -m 600 "$temp/ca.crt" secrets/telemetry/ca.crt
+# The public CA certificate may also be used by the reverse proxy.
+# Never relax server.key, token, or the offline CA private key.
+install -m 644 "$temp/ca.crt" secrets/telemetry/ca.crt
 install -m 600 "$temp/server.crt" secrets/telemetry/server.crt
 install -m 600 "$temp/server.key" secrets/telemetry/server.key
 openssl rand -hex 32 > secrets/telemetry/token
