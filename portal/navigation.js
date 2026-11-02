@@ -37,8 +37,8 @@
   links.forEach(([label, href, key]) => add(label, href, key));
 
   title('SERVICES', 'sidebar-section');
-  add('Pi-hole DNS', 'http://' + location.hostname + ':8080/admin/', 'dns');
-  add('Grafana', 'http://' + location.hostname + ':3000/', 'grafana');
+  add('Pi-hole DNS', '/dns/admin/', 'dns');
+  add('Grafana', 'https://metrics.homeawayfromhome.house/', 'grafana');
 
   if (isControl) {
     title('MANAGE', 'sidebar-section');
@@ -60,7 +60,9 @@
       .then(data => {
         if (!data.enabled || !data.url) return;
         const url = new URL(data.url);
-        if (url.protocol !== 'https:' || url.port !== '8443' ||
+        if (url.protocol !== 'https:' ||
+            url.hostname !== 'home.homeawayfromhome.house' ||
+            (url.port !== '' && url.port !== '8443') ||
             url.pathname !== '/control/' || url.search || url.hash) return;
         control.href = url.href;
         control.hidden = false;

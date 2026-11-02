@@ -18,6 +18,9 @@ services:
       FTLCONF_dns_listeningMode: ALL
       FTLCONF_dns_upstreams: "${UPSTREAM_DNS:-1.1.1.1;9.9.9.9}"
       WEBPASSWORD_FILE: pihole_password
+      # Pi-hole v6 generates browser URLs under /dns/admin/ and /dns/api/;
+      # Caddy strips /dns before passing requests to this internal listener.
+      FTLCONF_webserver_paths_prefix: "/dns"
     secrets:
       - pihole_password
     ports:
