@@ -140,10 +140,17 @@ const HomeAwayAccounts = (() => {
     if (initialized) return;
     initialized=true;
     $('accounts-refresh').addEventListener('click',refresh);
+    // Canonical directory usernames are lowercase. Normalize as the user types
+    // so native pattern validation doesn't block mixed-case names silently.
+    const usernameInput=$('accounts-add').elements.namedItem('username');
+    usernameInput.addEventListener('input', () => {
+      const normalized=usernameInput.value.toLowerCase();
+      if (usernameInput.value !== normalized) usernameInput.value=normalized;
+    });
     $('accounts-add').addEventListener('submit',async event => {
       event.preventDefault();
       const form=event.currentTarget;
-      const user=form.elements.namedItem('username').value.trim();
+      const user=form.elements.namedItem('username').value.trim().toLowerCase();
       const name=form.elements.namedItem('displayname').value.trim();
       const email=form.elements.namedItem('email').value.trim();
       const invite=form.elements.namedItem('sendinvite').checked;
