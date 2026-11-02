@@ -2,7 +2,7 @@
 
 **Self-hosted home infrastructure and monitoring on a Raspberry Pi 4 (8 GB).** Core services are Pi-hole and WireGuard; optional profiles add VictoriaMetrics/Grafana and a private HTTPS HomeAway control gateway. Windows SensorDash owns hardware sampling and fan control. HomeAway displays history and can separately manage registered PCs through its restricted `pcctl` agent; it never controls radiator PWM.
 
-> **Current status (November 1, 2026):** `Production` contains the Pi infrastructure, Grafana/VictoriaMetrics, authenticated HomeAway control, LLDAP-backed household account administration and Phase 2 Computer Management (merged in [PR #14](https://github.com/CodyMathis123/HomeAwayFromHome/pull/14)). The operator completed live Pi socket checks, role/UI checks and an inactive computer draft exercise; the Production container cutover was subsequently reported complete. **Real enrollment and disable/archive/restore on a second Windows PC remain unverified.** Future setup/monitoring and operations/maintenance phases are **planning**, not shipped. See the [current roadmap](docs/ROADMAP.md) for branch ownership and outstanding acceptance.
+> **Current status (November 2, 2026):** `Production` contains the Pi infrastructure, Grafana/VictoriaMetrics, authenticated HomeAway control, LLDAP-backed household account administration and Phase 2 Computer Management (merged in [PR #14](https://github.com/CodyMathis123/HomeAwayFromHome/pull/14)). The operator completed live Pi socket checks, role/UI checks and an inactive computer draft exercise; the Production container cutover was subsequently reported complete. **Real enrollment and disable/archive/restore on a second Windows PC remain unverified.** Future setup/monitoring and operations/maintenance phases are **planning**, not shipped. See the [current roadmap](docs/ROADMAP.md) for branch ownership and outstanding acceptance.
  
 ## Start with Production
 
@@ -11,7 +11,7 @@
 | Core DNS/VPN/portal and metrics | Implemented in `Production`; opt-in Compose profiles still apply | [Install](docs/INSTALL.md) · [Telemetry](docs/TELEMETRY.md) |
 | Read-only Grafana embed | Implemented; sharing is opt-in and separate from Grafana administration | [Embed](docs/PORTAL-METRICS-EMBED.md) |
 | Private HTTPS, Authelia/LLDAP, roles and PC power | Implemented; preserve existing user and host data | [PC controls](docs/PC-CONTROL.md) · [Operations](docs/OPERATIONS.md) |
-| Household account administration | Implemented; SMTP invitations/recovery are deferred to [issue #9](https://github.com/CodyMathis123/HomeAwayFromHome/issues/9) | [Account plan](docs/PLANS/ACCOUNT-MANAGEMENT.md) |
+| Household account administration | **Live and verified:** LLDAP user invitations, password setup/reset via Resend, role administration and deletion; Authelia factor security notifications use Resend rather than `notification.txt` | [Account recovery](docs/ACCOUNT-EMAIL-RECOVERY.md) · [Authelia email](docs/AUTHELIA-RESEND-NOTIFICATIONS.md) |
 | Phase 2 Computer Management | Implemented; new-Windows-PC physical lifecycle acceptance deferred | [Rollout and recovery](docs/COMPUTER-ADMIN-ROLLOUT.md) |
 | Phase 3 Setup/Monitoring; Phase 4 Operations/Maintenance | Design-only branches; **not** deployment branches | [Roadmap](docs/ROADMAP.md) |
 
@@ -87,6 +87,40 @@ Full tunnel is optional: use `0.0.0.0/0` for IPv4 AllowedIPs when intentionally 
 | Authelia login | `https://auth.homeaway.home.arpa:8443` | Optional local account and enrolled second factor |
 
 Start optional Grafana/VictoriaMetrics using the [telemetry guide](docs/TELEMETRY.md), which includes local HTTPS certificate and bearer token bootstrap. Monitoring charts never authorize physical fan control. Do not add a Docker socket to any web service.
+
+## Current private HTTPS deployment
+
+The live Pi uses `home.homeawayfromhome.house`,
+`auth.homeawayfromhome.house` and
+`metrics.homeawayfromhome.house` on **LAN/VPN-only port 8443**.
+The historical `.home.arpa` links above are retained as initial-install
+examples, **not the canonical live endpoints**.
+
+The live production Compose project uses these overlays, in order, for
+account/HTTPS work:
+
+```bash
+files=(
+  -f compose.yaml
+  -f compose.control.yaml
+  -f compose.accounts.yaml
+  -f compose.computers.yaml
+  -f compose.production.yaml
+  -f compose.account-recovery.yaml
+  -f compose.authelia-smtp.yaml
+)
+profiles=(--profile control --profile accounts --profile metrics)
+```
+
+The last two overlays are **opt-in on a new Pi** and already enabled
+on the current deployment. They give LLDAP password-setup mail and
+Authelia second-factor security mail a working Resend SMTP path.
+After changing Compose files, recreate **only the affected services**,
+never issue unscoped `up -d` on a functioning DNS/VPN installation.
+The non-secret Caddyfile bound by `compose.account-recovery.yaml` is
+`control/gateway/Caddyfile.account-recovery`, which must be readable
+by non-root Caddy. Keep tokens and private credentials restricted.
+See [production operations](docs/OPERATIONS.md) for preflight commands.
 
 ## Operator commands
 

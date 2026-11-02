@@ -26,11 +26,23 @@ SUDO_STUB = r"""#!/usr/bin/env bash
 set -euo pipefail
 printf 'sudo %s\n' "$*" >> "$DEPLOY_TEST_LOG"
 if [[ "${1:-}" == docker && "${2:-}" == ps ]]; then
-  echo gateway-test-cid
+  if [[ "$*" == *"name=^/homeawayfromhome-authelia-1$"* ]]; then
+    echo authelia-test-cid
+  else
+    echo gateway-test-cid
+  fi
   exit 0
 fi
 if [[ "${1:-}" == docker && "${2:-}" == inspect ]]; then
-  printf '%s\n' "$PWD/control/gateway/Caddyfile.production"
+  if [[ "$*" == *"authelia-test-cid"* ]]; then
+    if [[ "$FAKE_SMTP" == 1 ]]; then
+      echo "AUTHELIA_NOTIFIER_SMTP_ADDRESS=submissions://smtp.resend.com:465"
+    fi
+  elif [[ "$FAKE_GATEWAY_RECOVERY" == 1 ]]; then
+    printf '%s\n' "$PWD/control/gateway/Caddyfile.account-recovery"
+  else
+    printf '%s\n' "$PWD/control/gateway/Caddyfile.production"
+  fi
   exit 0
 fi
 [[ "${1:-}" == docker && "${2:-}" == compose ]] || exit 88
@@ -66,6 +78,13 @@ class TargetedUiDeployTests(unittest.TestCase):
         (root / "control/gateway").mkdir(parents=True)
         (root / "control/gateway/Caddyfile.production").write_text(
             "# synthetic gateway configuration\\n", encoding="utf-8")
+        (root / "control/gateway/Caddyfile.account-recovery").write_text(
+            "# synthetic recovery configuration\n", encoding="utf-8")
+        for name in ("compose.account-recovery.yaml", "compose.authelia-smtp.yaml"):
+            (root / name).write_text("services: {}\n", encoding="utf-8")
+        (root / "secrets/control").mkdir(parents=True)
+        (root / "secrets/control/authelia_smtp_password").write_text(
+            "synthetic-only", encoding="utf-8")
         (root / "scripts/prepare-gateway-permissions.py").write_text(
             "# synthetic no-op for deploy test\\n", encoding="utf-8")
         fake = root / "fakebin"
@@ -78,7 +97,8 @@ class TargetedUiDeployTests(unittest.TestCase):
         self.log = root / "calls.log"
         self.env = {**os.environ,
                     "PATH": str(fake) + os.pathsep + os.environ["PATH"],
-                    "DEPLOY_TEST_LOG": str(self.log)}
+                    "DEPLOY_TEST_LOG": str(self.log),
+                    "FAKE_SMTP": "0", "FAKE_GATEWAY_RECOVERY": "0"}
 
     def run_script(self, *args, **settings):
         env = {**self.env, **settings}
@@ -109,6 +129,26 @@ class TargetedUiDeployTests(unittest.TestCase):
         self.assertNotIn("up -d --no-deps --build portal pc-control", calls)
         self.assertNotIn("ps --status running --quiet pc-control", calls)
         self.assertNotIn("pihole wg-easy", calls)
+
+    def test_recovery_gateway_uses_matching_compose_overlay(self):
+        result, calls = self.run_script("--apply", "--services", "portal",
+                                        FAKE_GATEWAY_RECOVERY="1")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("-f compose.account-recovery.yaml", calls)
+        self.assertIn("up -d --no-deps --build portal", calls)
+
+    def test_existing_authelia_smtp_overlay_is_kept(self):
+        result, calls = self.run_script("--plan", FAKE_SMTP="1",
+                                        FAKE_GATEWAY_RECOVERY="1")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("-f compose.authelia-smtp.yaml", calls)
+
+    def test_refuses_missing_smtp_overlay_instead_of_silent_downgrade(self):
+        (self.root / "compose.authelia-smtp.yaml").unlink()
+        result, calls = self.run_script("--apply", FAKE_SMTP="1")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("SMTP", result.stderr)
+        self.assertNotIn("git fetch", calls)
 
     def test_refuses_dirty_or_nonproduction_checkout(self):
         for settings in ({"FAKE_DIRTY": "1"}, {"FAKE_BRANCH": "feature/test"}):

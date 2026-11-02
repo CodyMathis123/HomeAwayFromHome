@@ -14,6 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 GATEWAY = ROOT / "control/gateway/Caddyfile.production"
+GATEWAY_RECOVERY = ROOT / "control/gateway/Caddyfile.account-recovery"
 SECRET = ROOT / "secrets/control/cloudflare_dns01_token"
 HOST_ITEMS = (
     Path("/etc/homeaway-pcctl/hosts.json"),
@@ -48,7 +49,12 @@ def check_file(path: Path, label: str, *, readable_by_all: bool = False,
     return True
 
 
-def check_gateway_mount() -> bool:
+def check_gateway_mount() -> tuple[bool, Path | None]:
+    """Resolve actual production gateway config, including account recovery.
+
+    Never presume the legacy production Caddyfile is mounted when the
+    account-recovery overlay overrides that binding.
+    """
     command = ["docker", "inspect", "homeawayfromhome-gateway-1",
                "--format", '{{range .Mounts}}{{if eq .Destination "/etc/caddy/Caddyfile"}}{{.Source}}{{end}}{{end}}']
     try:
@@ -56,17 +62,18 @@ def check_gateway_mount() -> bool:
                                 check=False, timeout=8)
     except (OSError, subprocess.TimeoutExpired):
         print("WARN gateway mount: Docker inspect unavailable (run with sudo if needed)")
-        return True
+        return True, None
     if result.returncode:
         print("WARN gateway mount: cannot inspect running gateway")
-        return True
+        return True, None
     mounted = result.stdout.strip()
-    expected = str(GATEWAY.resolve())
-    if mounted != expected:
-        print("FAIL gateway mount: live Caddyfile differs from canonical production path")
-        return False
-    print("PASS gateway mount: canonical production Caddyfile")
-    return True
+    candidates = (GATEWAY, GATEWAY_RECOVERY)
+    for expected in candidates:
+        if mounted == str(expected.resolve()):
+            print(f"PASS gateway mount: {expected.relative_to(ROOT)}")
+            return True, expected
+    print("FAIL gateway mount: unexpected Caddyfile bind mount; inspect Compose overlays")
+    return False, None
 
 
 def audit_host_state() -> None:
@@ -86,15 +93,21 @@ def main() -> int:
                         help="Skip live gateway mount inspection")
     args = parser.parse_args()
     print("HomeAway production permission audit (read-only)")
+    mount_ok, active_gateway = (True, None) if args.skip_docker else check_gateway_mount()
     results = [
-        check_file(GATEWAY, "canonical Caddyfile", readable_by_all=True),
         check_file(ROOT / "control/api/app.py", "control API source"),
         check_file(ROOT / "control/api/Dockerfile", "control API Dockerfile"),
+        check_file(ROOT / "control/accounts/Dockerfile", "account broker Dockerfile"),
         check_file(ROOT / "control/gateway/start-dns01.sh", "DNS-01 entrypoint"),
         check_file(SECRET, "Cloudflare token", secret=True),
+        mount_ok,
     ]
-    if not args.skip_docker:
-        results.append(check_gateway_mount())
+    # Read-only permission checks for both supported mounted configurations.
+    # It is normal for the inactive file to be mode-restricted in the checkout.
+    selected = active_gateway or GATEWAY
+    results.append(check_file(selected, "active Caddyfile", readable_by_all=True))
+    if active_gateway is None and not args.skip_docker:
+        print("NOTE: live mount unavailable; default Caddyfile checked only")
     audit_host_state()
     if all(results):
         print("\nPASS: production permission preflight")

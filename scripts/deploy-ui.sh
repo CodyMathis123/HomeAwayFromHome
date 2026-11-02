@@ -65,16 +65,41 @@ compose=(sudo docker compose
   --profile accounts
   --profile metrics)
 
-# Refuse UI deploys if running gateway has not been migrated to canonical production.
-# This guards against silently replacing active app URLs through a stale stack.
+# Detect the actual mounted gateway before validating the production overlays.
+# The recovery Caddyfile is canonical for PIs with password reset enabled.
+# Never silently adopt an unknown or historical mount.
 check_gateway() {
-  local cid mounted expected
+  local cid mounted standard recovery
   cid="$(sudo docker ps -q --filter name=^/homeawayfromhome-gateway-1$ --filter status=running)"
   [[ -n "$cid" ]] || fail "The production gateway is not running."
-  mounted="$(sudo docker inspect --format '{{range .Mounts}}{{if eq .Destination "/etc/caddy/Caddyfile"}}{{.Source}}{{end}}{{end}}' "$cid")" || fail "Cannot inspect gateway mount."
-  expected="$(realpath control/gateway/Caddyfile.production)"
-  [[ "$mounted" == "$expected" ]] || fail "Gateway uses non-canonical Caddyfile; follow the consolidation cutover runbook first."
+  mounted="$(sudo docker inspect --format '{{range .Mounts}}{{if eq .Destination "/etc/caddy/Caddyfile"}}{{.Source}}{{end}}{{end}}' "$cid")" ||
+    fail "Cannot inspect gateway mount."
+  standard="$(realpath control/gateway/Caddyfile.production)"
+  recovery="$(realpath control/gateway/Caddyfile.account-recovery)"
+  if [[ "$mounted" == "$standard" ]]; then
+    gateway_config=production
+  elif [[ "$mounted" == "$recovery" ]]; then
+    gateway_config=account-recovery
+  else
+    fail "Unexpected active gateway Caddyfile; refusing a deploy from mismatched overlays."
+  fi
 }
+check_gateway
+if [[ "$gateway_config" == account-recovery ]]; then
+  [[ -f compose.account-recovery.yaml ]] ||
+    fail "Live gateway uses recovery Caddyfile but its Compose overlay is missing."
+  compose+=( -f compose.account-recovery.yaml )
+fi
+# Keep an existing SMTP-enabled Authelia overlay in the resolved project.
+# This is read-only detection; never print SMTP credential values.
+authelia_cid="$(sudo docker ps -q --filter name=^/homeawayfromhome-authelia-1$ --filter status=running)"
+if [[ -n "$authelia_cid" ]] &&
+   sudo docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$authelia_cid" |
+     grep -q '^AUTHELIA_NOTIFIER_SMTP_ADDRESS='; then
+  [[ -f compose.authelia-smtp.yaml && -f secrets/control/authelia_smtp_password ]] ||
+    fail "Live Authelia uses SMTP but required overlay or secret is missing."
+  compose+=( -f compose.authelia-smtp.yaml )
+fi
 
 # Validate all overlays without printing values that might contain credentials.
 "${compose[@]}" config -q || fail "Compose validation failed; no changes applied."
@@ -117,7 +142,7 @@ git merge --ff-only origin/Production || fail "Fast-forward failed; containers u
 check_gateway
 # Git checkout umask may leave tracked Caddyfile at 0600 after a pull.
 # Repair ONLY this non-secret config before reconciling the selected UI.
-python3 scripts/prepare-gateway-permissions.py --apply ||
+python3 scripts/prepare-gateway-permissions.py --apply --config "$gateway_config" ||
   fail "Canonical Caddyfile is unreadable; refusing UI deployment."
 printf 'Rebuilding ONLY %s (no dependencies)...\n' "${services[*]}"
 "${compose[@]}" up -d --no-deps --build "${services[@]}" ||

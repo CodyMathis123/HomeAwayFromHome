@@ -28,8 +28,8 @@ services:
     image: authelia/authelia:4.39.28
     restart: unless-stopped
     user: "65534:65534"
-    environment:
-      AUTHELIA_CONFIG: /config/configuration.yml
+    # Authelia image already loads /config/configuration.yml; AUTHELIA_CONFIG
+    # is not a recognized setting in pinned 4.39.28 and emits a warning.
     volumes:
       - ./data/control/authelia:/config
     cap_drop: [ALL]

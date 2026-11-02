@@ -10,7 +10,11 @@ import os
 import stat
 from pathlib import Path
 
-PATH = Path(__file__).resolve().parent.parent / "control/gateway/Caddyfile.production"
+ROOT = Path(__file__).resolve().parent.parent
+SUPPORTED = {
+    "production": ROOT / "control/gateway/Caddyfile.production",
+    "account-recovery": ROOT / "control/gateway/Caddyfile.account-recovery",
+}
 
 
 def main() -> int:
@@ -18,9 +22,12 @@ def main() -> int:
     group = p.add_mutually_exclusive_group(required=True)
     group.add_argument("--plan", action="store_true")
     group.add_argument("--apply", action="store_true")
+    p.add_argument("--config", choices=sorted(SUPPORTED), default="production",
+                   help="Choose the mounted config explicitly; recovery overlay uses account-recovery")
     args = p.parse_args()
+    path = SUPPORTED[args.config]
     try:
-        info = PATH.lstat()
+        info = path.lstat()
     except FileNotFoundError:
         print("FAIL: canonical Caddyfile missing; no changes made")
         return 1
@@ -36,12 +43,12 @@ def main() -> int:
         print("PLAN ONLY: no changes made")
         return 0
     if original != 0o644:
-        os.chmod(PATH, 0o644, follow_symlinks=False)
-    final = PATH.lstat()
+        os.chmod(path, 0o644, follow_symlinks=False)
+    final = path.lstat()
     if not stat.S_ISREG(final.st_mode) or stat.S_IMODE(final.st_mode) != 0o644:
         print("FAIL: mode check did not succeed")
         return 1
-    print("PASS: canonical Caddyfile mode 0644; no other file changed")
+    print(f"PASS: {args.config} Caddyfile mode 0644; no other file changed")
     return 0
 
 

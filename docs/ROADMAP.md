@@ -1,6 +1,6 @@
 # HomeAwayFromHome — current roadmap and branch inventory
 
-**Updated November 1, 2026.** This is the current status index for the live project, rather than a claim that every feature has undergone full physical-device acceptance. The [root README](../README.md) is the entry point for new installs; the [operations guide](OPERATIONS.md) covers the deployed system.
+**Updated November 2, 2026.** This is the current status index for the live project, rather than a claim that every feature has undergone full physical-device acceptance. The [root README](../README.md) is the entry point for new installs; the [operations guide](OPERATIONS.md) covers the deployed system.
 
 > **Implementation status correction (November 1, 2026):** The historical
 > Phase 3 and Phase 4 statuses below were written before the HTTPS and
@@ -13,12 +13,26 @@
 > for the reconciled view and remaining gates. This historical inventory is
 > retained for branch traceability, not as the current feature checklist.
 >
+
+## Active deployment cleanup (November 2)
+
+The active Pi uses the canonical `compose.production.yaml` plus opt-in
+`compose.account-recovery.yaml` and `compose.authelia-smtp.yaml`.
+Both LLDAP invitations and Authelia factor notifications were received via
+Resend. LLDAP web paths and DNS-01 access are scoped to private LAN/VPN.
+The active Caddy mount uses `Caddyfile.account-recovery`, not
+`Caddyfile.production`; readiness/perms audits must inspect the live mount.
+Docker accounts and broker sources must be readable by non-root container
+users (`COPY --chmod`), but SMTP/ACME credentials must remain private.
+A normal login and an Authelia security-notification email were confirmed.
+An isolated full restore is still outstanding.
+
 ## Current baseline and gates
 
 | Stage | Code/merge status | Operator acceptance | Outstanding |
 | --- | --- | --- | --- |
 | Core Raspberry Pi DNS, WireGuard, portal and metrics | In `Production` | Existing household operation and dashboard ingestion reported working | Continue normal maintenance and off-device restore verification |
-| Phase 1 — Accounts/access | In `Production` | Authelia TOTP, LLDAP roles, admin/operator/viewer and existing PC controls previously exercised | SMTP invitation/password and factor recovery is separately tracked in [issue #9](https://github.com/CodyMathis123/HomeAwayFromHome/issues/9); do not imply it ships |
+| Phase 1 — Accounts/access | In `Production` | Authelia TOTP, LLDAP roles, admin/operator/viewer and existing PC controls previously exercised | SMTP invitation, LLDAP password setup/reset, account deletion, and Authelia factor notification via Resend verified on live Pi; follow-up includes complete second-PC acceptance and hardening |
 | Phase 2 — Computer Management | In `Production`, [integration PR #14](https://github.com/CodyMathis123/HomeAwayFromHome/pull/14) merged; original [PR #10](https://github.com/CodyMathis123/HomeAwayFromHome/pull/10) closed as superseded | Read-only Pi host socket smoke; restricted admin UI; inactive draft create, denied SSH trust verification, discard and audit; existing power controls and Shortcut reportedly preserved | Actual **second** Windows PC onboarding, authenticated host-key pinning, activation, disable/archive/restore, and real offline-recovery test remain deferred |
 | Phase 3 — Setup and Monitoring | **Design only**, [planning branch](https://github.com/CodyMathis123/HomeAwayFromHome/tree/feature/homeaway-setup-monitoring) | None on Pi | Read-only unified readiness; controlled certificate and private DNS plan; reviewed privileged broker only if genuinely needed |
 | Phase 4 — Operations and Maintenance | **Design only**, [planning branch](https://github.com/CodyMathis123/HomeAwayFromHome/tree/feature/homeaway-operations-maintenance) | None on Pi | Backup coverage/restore, reliable update orchestration, useful health diagnostics, scoped admin actions |
@@ -39,12 +53,12 @@ The existing `scripts/backup.sh --offline` creates a consistent archive of **onl
 ## Existing open items and how they fit
 
 - [PR #8](https://github.com/CodyMathis123/HomeAwayFromHome/pull/8) is a still-open Pi metrics diagnostics improvement against older code. Its diagnostic script/docs changes are **not** in Production by ancestry. Review its incremental value before closing or selectively reworking it; do not blindly merge an obsolete branch.
-- [Issue #9](https://github.com/CodyMathis123/HomeAwayFromHome/issues/9): free SMTP-backed account invitations and password/factor recovery. This is Phase 1 follow-up work, not implicit Phase 3 implementation.
+- [Issue #9](https://github.com/CodyMathis123/HomeAwayFromHome/issues/9): account invitation/password/factor-notification mail has now been implemented and **verified with received messages** on the live Pi. Review remaining issue wording and close only after checking its specific acceptance criteria; avoid conflating this with full account recovery or second-PC validation.
 - Earlier `feature/*`, `fix/*`, `chore/docs-and-legacy-cleanup` and the Phase 2 `integration/*` branches are mostly historical ancestors of Production. Presence of a branch is not evidence that it should be merged.
 - Unmerged Phase 3 and 4 **planning** documents are intentionally retained as design input; decide their implementation order by risk and dependencies rather than branch age.
 
 ## Next implementation sequence
 
-**Small UI refinement PR** (no changes to Pi provisioning or DNS/VPN) → review and verify on a test browser → **Phase 3 S0/S1 read-only readiness probes** using stable check IDs and existing service data → operator-reviewed public HTTPS / DNS-01 migration **only if explicitly desired** → **Phase 4** consistent full-state backup/restore, then narrowly scoped operational actions.
+**Immediate:** reconcile current overlays, permissions/network/security preflights and eliminate obsolete docs. **Then:** focused second-PC enrollment testing; actionable readiness diagnostics and service alerts; lifecycle/runbook refinements; encrypted host-state recovery coverage and isolated restore testing. **Already delivered:** private DNS-01 HTTPS, readiness observations and encrypted full-state backup. Keep the SensorDash/HomeAway ownership split.
 
 The browser certificate migration discussed in Phase 3 is **not** a reason to expose HomeAway admin ports to the internet. Keep all browser services LAN/VPN-only, even with publicly trusted certificates, and keep the Windows telemetry trust/CA separate.
