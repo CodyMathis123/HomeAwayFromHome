@@ -96,8 +96,12 @@ authelia_cid="$(sudo docker ps -q --filter name=^/homeawayfromhome-authelia-1$ -
 if [[ -n "$authelia_cid" ]] &&
    sudo docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$authelia_cid" |
      grep -q '^AUTHELIA_NOTIFIER_SMTP_ADDRESS='; then
-  [[ -f compose.authelia-smtp.yaml && -f secrets/control/authelia_smtp_password ]] ||
-    fail "Live Authelia uses SMTP but required overlay or secret is missing."
+  [[ -f compose.authelia-smtp.yaml ]] ||
+    fail "Live Authelia uses SMTP but the optional Compose overlay is missing."
+  # File is deliberately root-protected. Never require the login user to
+  # traverse the secrets directory or weaken its permissions to inspect it.
+  sudo test -f secrets/control/authelia_smtp_password ||
+    fail "Live Authelia uses SMTP but its root-protected secret file is missing."
   compose+=( -f compose.authelia-smtp.yaml )
 fi
 

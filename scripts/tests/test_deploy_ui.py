@@ -45,6 +45,10 @@ if [[ "${1:-}" == docker && "${2:-}" == inspect ]]; then
   fi
   exit 0
 fi
+if [[ "${1:-}" == test && "${2:-}" == -f ]]; then
+  [[ "${FAKE_MISSING_SMTP_SECRET:-0}" != 1 ]] && exit 0
+  exit 1
+fi
 [[ "${1:-}" == docker && "${2:-}" == compose ]] || exit 88
 if [[ "$*" == *"config --format json"* ]]; then
   printf '{"name":"%s"}\n' "${FAKE_PROJECT:-homeawayfromhome}"
@@ -142,6 +146,19 @@ class TargetedUiDeployTests(unittest.TestCase):
                                         FAKE_GATEWAY_RECOVERY="1")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("-f compose.authelia-smtp.yaml", calls)
+
+    def test_smtp_secret_is_checked_as_root(self):
+        result, calls = self.run_script("--plan", FAKE_SMTP="1")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("sudo test -f secrets/control/authelia_smtp_password", calls)
+
+    def test_refuses_missing_protected_smtp_secret(self):
+        result, calls = self.run_script("--apply", FAKE_SMTP="1",
+                                        FAKE_MISSING_SMTP_SECRET="1")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("secret file is missing", result.stderr)
+        self.assertNotIn("git fetch", calls)
+        self.assertNotIn(" up -d ", calls)
 
     def test_refuses_missing_smtp_overlay_instead_of_silent_downgrade(self):
         (self.root / "compose.authelia-smtp.yaml").unlink()
