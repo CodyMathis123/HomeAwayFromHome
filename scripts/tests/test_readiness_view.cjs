@@ -133,6 +133,8 @@ function simulate({role = 'admins', servicesFail = false, hostsFail = false,
     '/control/api/admin/maintenance',
     '/control/api/admin/backup-status'
   ]);
+  assert.match(admin.element('readiness-overview-summary').textContent, /observed/);
+  assert.match(admin.element('readiness-overview-summary').textContent, /not an end-to-end health verdict/);
   assert.equal(admin.element('readiness-transport').textContent, 'HTTPS in use');
   assert.equal(admin.element('readiness-accounts').textContent, 'Available');
   assert.equal(admin.element('readiness-computers').textContent, 'Available');
@@ -177,6 +179,7 @@ function simulate({role = 'admins', servicesFail = false, hostsFail = false,
     assert.equal(partial.element('readiness-' + id).dataset.state, 'unknown');
   }
   assert.equal(partial.element('readiness-hosts').textContent, '1 / 2');
+  assert.match(partial.element('readiness-overview-summary').textContent, /older results/);
 
   const missingHosts = simulate({hostsFail:true});
   missingHosts.readiness.start({capabilities:{role:'admins'}});
