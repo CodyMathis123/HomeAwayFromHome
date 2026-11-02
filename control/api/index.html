@@ -63,7 +63,7 @@
     <label>Username <input name="username" required maxlength="30" pattern="[a-z][a-z0-9_-]{1,30}"></label>
     <label>Display name <input name="displayname" required maxlength="80"></label>
     <label>Email <input name="email" type="email" required maxlength="200"></label>
-    <label><input name="sendinvite" type="checkbox" checked> Email password-setup invitation (via Resend)</label>
+    <label class="invite-option"><input name="sendinvite" type="checkbox" checked> Email password-setup invitation (via Resend)</label>
     <button type="submit">Create pending user</button>
   </form>
   <p class="detail">New users have no HomeAway access until an administrator assigns a role. Invitations use LLDAP password-reset email; users set their own passwords. Only invite a trusted address, and tell recipients they must be on your LAN or VPN to open the link. For existing pending users, select Send setup invitation below.</p>
