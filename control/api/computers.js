@@ -205,8 +205,10 @@ const HomeAwayComputers = (() => {
         busy=true;
         verify.disabled=true;
         message('Checking pinned SSH host key and authenticated Windows status…');
+        const epoch=accessEpoch;
         try {
           const result = await api('/verify',{id:item.id,revision:item.revision});
+          if (!authorized || accessEpoch !== epoch) return;
           if (!result.verified) {
             recentlyVerified.delete(marker);
             note.textContent='Not verified: ' + (result.code || 'SSH check failed');
@@ -219,6 +221,7 @@ const HomeAwayComputers = (() => {
             activate.disabled=false;
           }
         } catch (err) {
+          if (!authorized || accessEpoch !== epoch) return;
           recentlyVerified.delete(marker);
           activate.disabled=true;
           message('SSH verification failed: ' + err.message);
@@ -253,7 +256,8 @@ const HomeAwayComputers = (() => {
   }
 
   async function refreshAudit() {
-    if (auditBusy) return;
+    if (!authorized || auditBusy) return;
+    const epoch=accessEpoch;
     const details=$('computer-admin-audit');
     if (!details?.open) return;
     auditBusy=true;
@@ -262,6 +266,7 @@ const HomeAwayComputers = (() => {
     status.textContent='Loading recent administrative events…';
     try {
       const result=await api('/audit');
+      if (!authorized || accessEpoch !== epoch) return;
       if (!Array.isArray(result.events)) throw new Error('Unexpected audit format');
       const rows=result.events.map(event=>{
         const item=make('li','');
@@ -275,6 +280,7 @@ const HomeAwayComputers = (() => {
         'Showing '+result.events.length+' most recent events (newest first).' :
         'No computer-management activity recorded.';
     } catch(error) {
+      if (!authorized || accessEpoch !== epoch) return;
       status.textContent='Could not load audit history: '+error.message;
     } finally {
       auditBusy=false;
@@ -348,6 +354,8 @@ const HomeAwayComputers = (() => {
       for(const id of ['computer-admin-active','computer-admin-drafts','computer-admin-retired'])
         $(id).replaceChildren();
       $('computer-admin-count').textContent='';
+      $('computer-admin-audit-events')?.replaceChildren();
+      $('computer-admin-audit-message').textContent='Audit authorization unavailable';
       $('computer-admin-updated').textContent='Computer inventory authorization unavailable';
       return;
     }
