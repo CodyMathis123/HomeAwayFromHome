@@ -159,3 +159,17 @@ main [data-view-section]:focus-visible{outline:2px solid var(--accent);outline-o
   .control-view-role{white-space:normal}
   .app-sidebar nav a[aria-current]{scroll-margin-inline:16px}
 }
+
+/* Admin directories: visible lifecycle groupings and optional creation forms. */
+.admin-directory-group{margin:20px 0 0}
+.admin-directory-group[hidden]{display:none}
+.admin-directory-group h3{display:flex;align-items:baseline;gap:8px;margin:0 0 12px}
+.admin-group-count{font-size:12px;font-weight:500;color:var(--muted)}
+.admin-filter-reset{align-self:end;white-space:nowrap;background:transparent;border-color:var(--line);color:var(--muted)}
+.admin-filter-reset:hover:not(:disabled){color:var(--ink);background:#17394a}
+#accounts-create-panel{margin:18px 0}
+#accounts-create-panel .account-create{margin-top:14px}
+@media(max-width:700px){
+  .admin-filter-reset{width:100%;align-self:stretch}
+  .admin-directory-group{margin-top:16px}
+}
