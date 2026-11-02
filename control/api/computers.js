@@ -11,6 +11,9 @@ const HomeAwayComputers = (() => {
   };
   let started = false;
   let busy = false;
+  let refreshPending = false;
+  let authorized = false;
+  let accessEpoch = 0;
   let auditBusy = false;
   let cachedInventory = null;
   function renderInventory() {
@@ -52,7 +55,11 @@ const HomeAwayComputers = (() => {
          headers:{'Content-Type':'application/json','X-HomeAway-Request':'1'},
          body:JSON.stringify(body)});
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'Inventory request rejected');
+    if (!response.ok) {
+      const failure=new Error(data.error || 'Inventory request rejected');
+      failure.status=response.status;
+      throw failure;
+    }
     return data;
   }
 
@@ -273,19 +280,42 @@ const HomeAwayComputers = (() => {
   }
 
   async function refresh() {
+    if (!authorized || busy || refreshPending) return false;
+    refreshPending=true;
+    const epoch=accessEpoch;
     const button=$('computer-admin-refresh');
-    if (busy) return false;
+    const updated=$('computer-admin-updated');
     button.disabled = true;
+    updated.textContent='Refreshing computer inventory…';
     try {
       const data=await api('');
+      if (!authorized || accessEpoch !== epoch) return false;
+      if (!Array.isArray(data.active) || !Array.isArray(data.drafts) ||
+          !Array.isArray(data.retired)) throw new Error('Invalid inventory response');
       cachedInventory=data;
       renderInventory();
+      delete updated.dataset.stale;
+      for(const id of ['computer-admin-active','computer-admin-drafts','computer-admin-retired'])
+        delete $(id).dataset.stale;
+      updated.textContent='Updated ' + new Date().toLocaleTimeString();
       if ($('computer-admin-audit')?.open) void refreshAudit();
       return true;
     } catch (err) {
-      message('Cannot load computer inventory: ' + err.message);
+      if (!authorized || accessEpoch !== epoch) return false;
+      if (err.status === 401 || err.status === 403) {
+        start(null);
+        message('Computer management authorization expired. Reopen Control and sign in.');
+      } else {
+        updated.dataset.stale='true';
+        for(const id of ['computer-admin-active','computer-admin-drafts','computer-admin-retired'])
+          $(id).dataset.stale='true';
+        updated.textContent=cachedInventory ?
+          'Refresh failed · showing previous inventory (status may have changed)' :
+          'Computer inventory unavailable';
+        message('Cannot load computer inventory: ' + err.message);
+      }
       return false;
-    } finally { button.disabled=false; }
+    } finally { button.disabled=false; refreshPending=false; }
   }
 
   async function mutate(op,payload,success) {
@@ -307,11 +337,24 @@ const HomeAwayComputers = (() => {
   function start(identity) {
     const section=$('computer-admin');
     if (!section || !identity?.capabilities?.manageComputers) {
+      if (authorized) accessEpoch++;
+      authorized=false;
+      cachedInventory=null;
+      recentlyVerified.clear();
       if (section) section.hidden=true;
+      for(const id of ['computer-admin-active','computer-admin-drafts','computer-admin-retired'])
+        $(id).replaceChildren();
+      $('computer-admin-count').textContent='';
+      $('computer-admin-updated').textContent='Computer inventory authorization unavailable';
       return;
     }
+    const regained=!authorized;
+    authorized=true;
     section.hidden=false;
-    if (started) return;
+    if (started) {
+      if (regained) void refresh();
+      return;
+    }
     started=true;
     $('computer-admin-refresh').addEventListener('click',()=>{ void refresh(); });
     $('computer-admin-search').addEventListener('input',renderInventory);
