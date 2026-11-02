@@ -11,9 +11,9 @@ class DashboardContracts(unittest.TestCase):
     def test_both_dashboards_are_provisioned(self):
         dashboards = {
             name: json.loads((PANELS / name).read_text(encoding="utf-8"))
-            for name in ("overview.json", "sensordash.json", "cooling-systems.json", "electrical.json", "dns-vpn.json", "storage.json", "events.json", "system-health.json", "portal-metrics.json")
+            for name in ("overview.json", "sensordash.json", "cooling-systems.json", "electrical.json", "dns-vpn.json", "storage.json", "events.json", "system-health.json", "portal-metrics.json", "reporting-summary.json")
         }
-        self.assertEqual(len({d["uid"] for d in dashboards.values()}), 9)
+        self.assertEqual(len({d["uid"] for d in dashboards.values()}), 10)
         for name, d in dashboards.items():
             self.assertFalse(d["editable"], name)
             self.assertIn("read-only", d["tags"], name)
@@ -439,6 +439,22 @@ class DashboardContracts(unittest.TestCase):
             for target in p["targets"]:
                 self.assertNotIn("fan_control", target["expr"])
                 self.assertNotIn("remote_action", target["expr"])
+
+    def test_reporting_summary_uses_metadata_and_preserves_gaps(self):
+        d = json.loads((PANELS / "reporting-summary.json").read_text(encoding="utf-8"))
+        self.assertEqual(d["uid"], "homeaway-sensordash-summary")
+        self.assertFalse(d["editable"])
+        self.assertEqual(d["time"]["from"], "now-7d")
+        queries = "\\n".join(t["expr"] for p in d["panels"] for t in p["targets"])
+        self.assertIn('device_type="Cpu"', queries)
+        self.assertIn('device_type="Gpu"', queries)
+        self.assertIn("count_over_time(", queries)
+        self.assertIn("sensordash_spool_value", queries)
+        self.assertNotIn("or vector(0)", queries)
+        self.assertNotIn("[$__interval]", queries)
+        for p in d["panels"]:
+            if p["type"] == "timeseries":
+                self.assertFalse(p["fieldConfig"]["defaults"]["custom"]["spanNulls"])
 
     def test_dashboard_visual_contract(self):
         # Native panels only; the CSS/theme belongs to Grafana, not a patched
