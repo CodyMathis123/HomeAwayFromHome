@@ -82,8 +82,10 @@ function simulate(initialHash, firstCapabilities) {
       return capabilities
         ? {ok: true, json: async () => ({user: 'operator', capabilities})}
         : {ok: false, status: 401};
-    if (url === '/control/api/hosts')
+    if (url === '/control/api/hosts') {
+      calls.push('api:hosts');
       return {ok: true, json: async () => ({hosts: []})};
+    }
     if (url === '/control/api/history') {
       calls.push('api:history');
       return {ok: true, json: async () => ({events: []})};
@@ -96,13 +98,17 @@ function simulate(initialHash, firstCapabilities) {
   };
   const HomeAwayAccounts = {
     start(identity) {
-      element('accounts').hidden = !identity.capabilities.manageUsers;
-    }
+      element('accounts').hidden = !identity?.capabilities?.manageUsers;
+      if (!identity?.capabilities?.manageUsers) calls.push('accounts:clear');
+    },
+    refresh() { calls.push('accounts:refresh'); }
   };
   const HomeAwayComputers = {
     start(identity) {
-      element('computer-admin').hidden = !identity.capabilities.manageComputers;
-    }
+      element('computer-admin').hidden = !identity?.capabilities?.manageComputers;
+      if (!identity?.capabilities?.manageComputers) calls.push('computers:clear');
+    },
+    refresh() { calls.push('computers:refresh'); }
   };
   const HomeAwayReadiness = {
     start(identity) {
@@ -125,6 +131,7 @@ function simulate(initialHash, firstCapabilities) {
     await settle();
   };
   return {element, main, location, calls, links, settle, navigate, refresh,
+          visibleAgain() {handlers.visibilitychange();},
           setCapabilities(value) { capabilities = value; }};
 }
 
@@ -142,9 +149,19 @@ const viewers = {role: 'viewers', actions: [], manageUsers: false, manageCompute
   assert.equal(admin.element('accounts').hidden, false);
   assert.equal(admin.element('nav-activity').hidden, false);
   assert.equal(admin.element('nav-accounts').attrs['aria-current'], 'location');
+  assert.equal(admin.calls.filter(x=>x==='api:hosts').length,0,
+    'Opening Users must not check Windows SSH status');
+  admin.visibleAgain();
+  await admin.settle();
+  assert.equal(admin.calls.filter(x=>x==='api:hosts').length,0,
+    'Returning to Users must not query the Power Controls host list');
   admin.navigate('#computer-admin');
   assert.equal(admin.main.dataset.activeView, 'computer-admin');
   assert.ok(admin.calls.includes('focus:computer-admin'));
+  await admin.settle();
+  assert.ok(admin.calls.includes('computers:refresh'),
+    'Entering Computer Management should refresh its own directory');
+  assert.equal(admin.calls.filter(x=>x==='api:hosts').length,0);
   admin.navigate('#recent-activity');
   assert.equal(admin.main.dataset.activeView, 'recent-activity');
   await admin.settle();
@@ -156,11 +173,16 @@ const viewers = {role: 'viewers', actions: [], manageUsers: false, manageCompute
   assert.equal(admin.element('setup-readiness').hidden, false);
   assert.ok(admin.calls.includes('readiness:show'));
   admin.navigate('#hosts');
+  await admin.settle();
   assert.equal(admin.main.dataset.activeView, 'hosts');
+  assert.equal(admin.calls.filter(x=>x==='api:hosts').length,1,
+    'Host SSH requests are limited to the Power Controls view');
 
   // Revocation while the Users view is open must revoke navigation and its
   // mounted panel, regardless of a stale hash or previous role.
   admin.navigate('#accounts');
+  await admin.settle();
+  assert.ok(admin.calls.includes('accounts:refresh'));
   admin.setCapabilities(viewers);
   await admin.refresh();
   assert.equal(admin.main.dataset.activeView, 'hosts');
@@ -210,6 +232,8 @@ const viewers = {role: 'viewers', actions: [], manageUsers: false, manageCompute
   assert.equal(expired.element('identity').textContent, 'Authorization unavailable');
   assert.equal(expired.element('control-view-role').textContent, 'Access unavailable');
   assert.equal(expired.element('history-updated').textContent, 'Activity authorization unavailable');
+  assert.ok(expired.calls.includes('accounts:clear'));
+  assert.ok(expired.calls.includes('computers:clear'));
 
   console.log('Control views: deep links, history fragments, capability revocation and denial passed');
 })().catch(error => { console.error(error); process.exitCode = 1; });

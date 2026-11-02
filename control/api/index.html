@@ -37,6 +37,7 @@
 <section id="hosts" class="hosts" data-view-section="hosts" tabindex="-1" aria-label="Computer controls"></section>
 <section id="computer-admin" class="accounts history" data-view-section="computer-admin" tabindex="-1" hidden aria-label="Computer administration">
   <div class="heading"><h2>Computer management</h2><button id="computer-admin-refresh" type="button">Refresh inventory</button></div>
+  <p id="computer-admin-updated" class="admin-directory-updated" role="status" aria-live="polite">Inventory not checked yet.</p>
   <p class="detail">Existing machines remain active. New entries start as drafts and cannot be controlled until their Windows setup and SSH trust are verified in a later enrollment step.</p>
   <div class="admin-toolbar"><label>Find computer <input id="computer-admin-search" type="search" placeholder="Name, ID, IP or MAC" autocomplete="off"></label><label>State <select id="computer-admin-filter"><option value="all">All computers</option><option value="active">Active</option><option value="draft">Drafts</option><option value="disabled">Disabled</option><option value="archived">Archived</option></select></label><button id="computer-admin-clear" class="admin-filter-reset" type="button">Clear filters</button><span id="computer-admin-count" role="status"></span></div>
   <div id="computer-admin-active-group" class="admin-directory-group">
@@ -69,6 +70,7 @@
 </section>
 <section id="accounts" class="accounts history" data-view-section="accounts" tabindex="-1" hidden aria-label="Account administration">
   <div class="heading"><h2>Users and permissions</h2><button id="accounts-refresh" type="button">Refresh users</button></div>
+  <p id="accounts-updated" class="admin-directory-updated" role="status" aria-live="polite">User directory not checked yet.</p>
   <p class="detail">These are HomeAway permissions. Revoking access does not disable an LDAP password or access to unrelated applications.</p>
   
   <details id="accounts-create-panel" class="admin-enrollment">

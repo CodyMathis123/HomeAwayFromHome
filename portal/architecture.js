@@ -79,11 +79,14 @@ window.HomeAwayArchitecture = (() => {
     showLink('architecture-grafana', 'https://metrics.homeawayfromhome.house/');
     root.querySelector('#arch-probes-refresh')?.addEventListener('click', () => void refresh());
 
-    fetch('/api/control-config', {credentials: 'same-origin', cache: 'no-store'})
-      .then(response => {
-        if (!response.ok) throw Error('Control configuration unavailable');
-        return response.json();
-      })
+    (window.HomeAwayControlConfig?.get
+      ? window.HomeAwayControlConfig.get()
+      : fetch('/api/control-config', {
+          credentials: 'same-origin', cache: 'no-store'
+        }).then(response => {
+          if (!response.ok) throw Error('Control configuration unavailable');
+          return response.json();
+        }))
       .then(data => {
         if (!data.enabled || !data.url) return;
         const url = new URL(data.url);

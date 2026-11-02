@@ -40,6 +40,27 @@
   add('Pi-hole DNS', '/dns/admin/', 'dns');
   add('Grafana', 'https://metrics.homeawayfromhome.house/', 'grafana');
 
+  // Shared read-only capability lookup: Navigation, Overview, and
+  // Architecture consume one in-flight request instead of three. Failures are
+  // not cached, so a later navigation can retry if Control comes online.
+  let controlConfigPromise = null;
+  window.HomeAwayControlConfig = Object.freeze({
+    get() {
+      if (!controlConfigPromise) {
+        controlConfigPromise = fetch('/api/control-config', {
+          credentials: 'same-origin', cache: 'no-store'
+        }).then(response => {
+          if (!response.ok) throw Error('Control configuration unavailable');
+          return response.json();
+        }).catch(error => {
+          controlConfigPromise = null;
+          throw error;
+        });
+      }
+      return controlConfigPromise;
+    }
+  });
+
   if (isControl) {
     title('MANAGE', 'sidebar-section');
     add('Power controls', '#hosts', 'hosts', 'nav-power');
@@ -52,11 +73,7 @@
   } else {
     const control = add('Computers & users', '/control/', 'control', null, true);
     // Do not expose an unvalidated/unconfigured link on a public LAN page.
-    fetch('/api/control-config', {credentials: 'same-origin', cache: 'no-store'})
-      .then(response => {
-        if (!response.ok) throw Error('Control configuration unavailable');
-        return response.json();
-      })
+    window.HomeAwayControlConfig.get()
       .then(data => {
         if (!data.enabled || !data.url) return;
         const url = new URL(data.url);
@@ -70,6 +87,7 @@
       .catch(() => { control.hidden = true; });
   }
 
+  let lastCurrent = null;
   function sync() {
     let current = 'overview';
     if (isControl) {
@@ -84,12 +102,20 @@
     } else if (location.hash === '#metrics-heading') {
       current = 'metrics';
     }
+    let selected = null;
     for (const link of nav.querySelectorAll('a[data-nav-key]')) {
-      if (!link.hidden && link.dataset.navKey === current)
+      if (!link.hidden && link.dataset.navKey === current) {
         link.setAttribute('aria-current', isControl ? 'location' : 'page');
-      else
+        selected = link;
+      } else {
         link.removeAttribute('aria-current');
+      }
     }
+    // The mobile sidebar is horizontally scrollable. Keep the active section
+    // in view without moving the whole page or overriding reduced motion.
+    if (current !== lastCurrent && window.matchMedia?.('(max-width: 900px)').matches)
+      selected?.scrollIntoView?.({block: 'nearest', inline: 'nearest', behavior: 'instant'});
+    lastCurrent = current;
   }
   // Replaces only the navigation markup, never page content or capabilities.
   // /control/ ships a minimal static fallback so it can still function when

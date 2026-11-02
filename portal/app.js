@@ -114,9 +114,12 @@ window.HomeAwayOverview = (() => {
     
     async function setupPcControls() {
       try {
-        const response = await fetch('/api/control-config', {cache: 'no-store'});
-        if (!response.ok) return;
-        const data = await response.json();
+        const data = window.HomeAwayControlConfig?.get
+          ? await window.HomeAwayControlConfig.get()
+          : await fetch('/api/control-config', {
+              credentials: 'same-origin', cache: 'no-store'
+            }).then(response => response.ok ? response.json() : null);
+        if (!data) return;
         if (!data.enabled || !data.url) return;
         const parsed = new URL(data.url);
         if (parsed.protocol !== 'https:' ||

@@ -37,6 +37,7 @@ jobs:
           python3 -m compileall -q portal ingest monitoring control/accounts control/pcinventory control/pcctl scripts/tests
           node --check portal/app.js
           node --check portal/navigation.js
+          node scripts/tests/test_navigation_config.cjs
           node --check portal/router.js
           node scripts/tests/test_portal_router.cjs
           node --check portal/architecture.js

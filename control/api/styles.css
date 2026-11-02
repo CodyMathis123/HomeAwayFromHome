@@ -204,3 +204,12 @@ main [data-view-section]:focus-visible{outline:2px solid var(--accent);outline-o
   .readiness-detail-body{padding:4px 12px 14px}
   .readiness-overview-summary{padding:10px 12px}
 }
+
+/* A failed admin directory fetch must never look like fresh data. */
+.admin-directory-updated{
+  margin:8px 0 14px;color:var(--muted);font-size:12px;line-height:1.5
+}
+.admin-directory-updated[data-stale="true"]{color:#f4ce8c}
+.account-list[data-stale="true"] .account-user{
+  border-style:dashed;opacity:.72
+}
