@@ -1,0 +1,556 @@
+{
+  "schema_version": 1,
+  "repository_owner": "CodyMathis123",
+  "selection": "exact_branch_sha_of_merged_same_repository_pr",
+  "observed_on": "2026-11-02",
+  "repositories": {
+    "HomeAwayFromHome": {
+      "default_branch": "Production",
+      "candidates": [
+        {
+          "name": "chore/docs-and-legacy-cleanup",
+          "sha": "19dc3e0ccabc97baa4cf7c77f9c7dfaa4aec06f0",
+          "merged_pr": 4,
+          "merged_at": "2026-11-01T04:49:24Z"
+        },
+        {
+          "name": "chore/final-operational-docs-and-overlay-ci",
+          "sha": "c7af5cb9d56ac9ff9a44b38f2341053ba5831e3c",
+          "merged_pr": 57,
+          "merged_at": "2026-11-02T01:51:05Z"
+        },
+        {
+          "name": "chore/post-phase2-roadmap-cleanup",
+          "sha": "feed1488154f54bb604c13b09a2c4fa181dc6d36",
+          "merged_pr": 15,
+          "merged_at": "2026-11-01T16:01:13Z"
+        },
+        {
+          "name": "chore/production-housekeeping-20261101",
+          "sha": "512f5ba03370b34648038daf5609c28dfbe9052c",
+          "merged_pr": 56,
+          "merged_at": "2026-11-02T01:44:07Z"
+        },
+        {
+          "name": "chore/safe-merged-pr-branch-cleanup-20261102",
+          "sha": "143183acfb399f265db65d3bb95524961afd04f1",
+          "merged_pr": 68,
+          "merged_at": "2026-11-02T13:47:48Z"
+        },
+        {
+          "name": "chore/targeted-ui-deploy-helper",
+          "sha": "cfc21e79e2954246f219e836024b663760cb341c",
+          "merged_pr": 21,
+          "merged_at": "2026-11-01T16:51:32Z"
+        },
+        {
+          "name": "docs/faceid-working-flow-phase4",
+          "sha": "4600ec6a6cdf3bb1bd54e434b38ea1e3dbba2c8f",
+          "merged_pr": 44,
+          "merged_at": "2026-11-01T23:35:45Z"
+        },
+        {
+          "name": "feature/account-delete-username-and-authelia-mail",
+          "sha": "d0f4eb2739e6eb93f37050498eb14570ee00f5a7",
+          "merged_pr": 53,
+          "merged_at": "2026-11-02T01:10:58Z"
+        },
+        {
+          "name": "feature/account-email-recovery",
+          "sha": "e54e9b67d9ead16c122a2b6c9c4b4bcaf827bfcd",
+          "merged_pr": 47,
+          "merged_at": "2026-11-02T00:09:47Z"
+        },
+        {
+          "name": "feature/account-invitations",
+          "sha": "aba69aaf48cb74d831b6458dc9c4b83b21bcab26",
+          "merged_pr": 50,
+          "merged_at": "2026-11-02T00:39:47Z"
+        },
+        {
+          "name": "feature/admin-ui-directory-polish-20261101",
+          "sha": "857b85f74230a3e92ba14a25b7c177261611e268",
+          "merged_pr": 59,
+          "merged_at": "2026-11-02T02:24:32Z"
+        },
+        {
+          "name": "feature/architecture-readonly-live-checks",
+          "sha": "82ed9feb273fce6c90820e53d8eaa0dfe6d24b2f",
+          "merged_pr": 24,
+          "merged_at": "2026-11-01T17:47:14Z"
+        },
+        {
+          "name": "feature/authelia-faceid-webauthn",
+          "sha": "a5a0e5c4ece085141cdd72df9d1eb2d49507641e",
+          "merged_pr": 43,
+          "merged_at": "2026-11-01T23:23:04Z"
+        },
+        {
+          "name": "feature/authelia-resend-notifications",
+          "sha": "96a49b6151e0ef6f52853f3b4dc2fc5b9d3deaf0",
+          "merged_pr": 54,
+          "merged_at": "2026-11-02T01:20:54Z"
+        },
+        {
+          "name": "feature/control-focused-views",
+          "sha": "63dfc07f4572a1bfcd02078eb1a50c8ca2661df8",
+          "merged_pr": 23,
+          "merged_at": "2026-11-01T17:38:08Z"
+        },
+        {
+          "name": "feature/control-ui-navigation-polish",
+          "sha": "0ef3a35fdb2e19b18931668b947ec53515df2f32",
+          "merged_pr": 16,
+          "merged_at": "2026-11-01T16:01:27Z"
+        },
+        {
+          "name": "feature/control-unified-sidebar-ux",
+          "sha": "6402cf978b476d98c8c23ff90f82e33b25beab27",
+          "merged_pr": 18,
+          "merged_at": "2026-11-01T16:23:37Z"
+        },
+        {
+          "name": "feature/encrypted-full-state-backup",
+          "sha": "f9de1430aa81d265cf58ef7eaaf307c8926514cc",
+          "merged_pr": 38,
+          "merged_at": "2026-11-01T22:34:50Z"
+        },
+        {
+          "name": "feature/homeaway-account-management",
+          "sha": "9befe3f4fd6ccff9cc5d1f1e5c230e4bfd8d5dd0",
+          "merged_pr": 5,
+          "merged_at": "2026-11-01T06:58:05Z"
+        },
+        {
+          "name": "feature/homeaway-auth-pc-control",
+          "sha": "dea1e670cde81d8d1fb4ffbb5a34e3931e5b0a97",
+          "merged_pr": 3,
+          "merged_at": "2026-11-01T04:49:56Z"
+        },
+        {
+          "name": "feature/homeaway-computer-management-impl",
+          "sha": "692c9c497a67cd2a943b7b7eff17fb11df52f7b2",
+          "merged_pr": 10,
+          "merged_at": "2026-11-01T15:42:14Z"
+        },
+        {
+          "name": "feature/homeaway-grafana-embed",
+          "sha": "50b435e508e286c341791ef94318063fe37baf96",
+          "merged_pr": 2,
+          "merged_at": "2026-11-01T04:50:29Z"
+        },
+        {
+          "name": "feature/host-state-backup-preflight",
+          "sha": "570786707ec2095a9ca8eaa27d22ad96e8207eb6",
+          "merged_pr": 37,
+          "merged_at": "2026-11-01T22:13:05Z"
+        },
+        {
+          "name": "feature/operations-backup-status",
+          "sha": "e8d060b64a951fde0bd5e5484cdfe20f09e7eed5",
+          "merged_pr": 40,
+          "merged_at": "2026-11-01T22:49:46Z"
+        },
+        {
+          "name": "feature/operations-postbackup-publish",
+          "sha": "9e7a59b6b10aef906a53aeb7bac1aaaf39acf7e1",
+          "merged_pr": 41,
+          "merged_at": "2026-11-01T22:56:23Z"
+        },
+        {
+          "name": "feature/operations-readonly-ui",
+          "sha": "50bc2f5dfcb7e141148c729c123d09c1d1ccf403",
+          "merged_pr": 39,
+          "merged_at": "2026-11-01T22:43:50Z"
+        },
+        {
+          "name": "feature/operations-service-scrape-health",
+          "sha": "05b4c3734b4ff704af541fe5b1a7d7e28697e31f",
+          "merged_pr": 42,
+          "merged_at": "2026-11-01T23:11:21Z"
+        },
+        {
+          "name": "feature/pc-control-configured-ip-display-20261102",
+          "sha": "0640458f4484988daaf03425e03744207a501c50",
+          "merged_pr": 63,
+          "merged_at": "2026-11-02T12:33:38Z"
+        },
+        {
+          "name": "feature/phase3-assisted-readiness",
+          "sha": "219bd5b2fa117186df1d181dbc8b53465aa396d1",
+          "merged_pr": 25,
+          "merged_at": "2026-11-01T18:03:13Z"
+        },
+        {
+          "name": "feature/phase3-certificate-observations",
+          "sha": "eb19e7f9624fa2130ca083073b260c65b2bdef10",
+          "merged_pr": 27,
+          "merged_at": "2026-11-01T19:52:15Z"
+        },
+        {
+          "name": "feature/phase3-dns01-staging-prep",
+          "sha": "40f37dec4c61c40b1c3d2a2d296284b6de17d4b2",
+          "merged_pr": 28,
+          "merged_at": "2026-11-01T19:55:50Z"
+        },
+        {
+          "name": "feature/phase3-metrics-readiness",
+          "sha": "410b0677711e30c0b09583c032e7bb89f1cc55db",
+          "merged_pr": 26,
+          "merged_at": "2026-11-01T18:46:08Z"
+        },
+        {
+          "name": "feature/phase3-private-domain-routing",
+          "sha": "88b8cac388152124989472383323861112ee127a",
+          "merged_pr": 34,
+          "merged_at": "2026-11-01T21:45:08Z"
+        },
+        {
+          "name": "feature/phase3-production-dns01-certificates",
+          "sha": "810651fc0af0270642c75a7de2a412b3ae9a6219",
+          "merged_pr": 31,
+          "merged_at": "2026-11-01T20:41:12Z"
+        },
+        {
+          "name": "feature/phase4-backup-preflight-scheduler",
+          "sha": "41a5b84e8017372e7e1c8a2a3ff24ce9f639f599",
+          "merged_pr": 45,
+          "merged_at": "2026-11-01T23:42:47Z"
+        },
+        {
+          "name": "feature/phase4-recovery-first-backup",
+          "sha": "39d2f0b9468c67a7e2c3a855df38eeb396c61ca0",
+          "merged_pr": 46,
+          "merged_at": "2026-11-01T23:49:43Z"
+        },
+        {
+          "name": "feature/pi4-home-infrastructure",
+          "sha": "0866b9c027fb704ea9d1c24989fdb51176fc2097",
+          "merged_pr": 1,
+          "merged_at": "2026-11-01T04:50:39Z"
+        },
+        {
+          "name": "feature/portal-unified-navigation-architecture",
+          "sha": "cb75870bf66ee381aa400341dc4b160e274931ed",
+          "merged_pr": 17,
+          "merged_at": "2026-11-01T16:18:01Z"
+        },
+        {
+          "name": "feature/private-https-443-canonical-20261102",
+          "sha": "83ee37760af5a98969bdc1921ab7df2a2d2fc961",
+          "merged_pr": 65,
+          "merged_at": "2026-11-02T13:02:38Z"
+        },
+        {
+          "name": "feature/private-https-443-dual-port-20261102",
+          "sha": "ef75b1913c7b11c26a23dc2d4e2e040ebc5e9c12",
+          "merged_pr": 64,
+          "merged_at": "2026-11-02T12:49:56Z"
+        },
+        {
+          "name": "feature/production-hardening-preflight",
+          "sha": "1b57635cca21a902a2defcd1362ed9e5646c3a4d",
+          "merged_pr": 36,
+          "merged_at": "2026-11-01T22:07:47Z"
+        },
+        {
+          "name": "feature/reporting-period-comparisons-and-completeness-20261102",
+          "sha": "d35f4ecddc68d972088c6e7c1ea7bb1ad7b3800b",
+          "merged_pr": 62,
+          "merged_at": "2026-11-02T02:54:48Z"
+        },
+        {
+          "name": "feature/sensordash-reporting-summary-20261101",
+          "sha": "59cd526ed8ef793226d63d5e81542c138008471e",
+          "merged_pr": 60,
+          "merged_at": "2026-11-02T02:24:43Z"
+        },
+        {
+          "name": "feature/unified-client-shell-routing",
+          "sha": "52f2d6402a1d83c90f8da1be5f26c2118d306f72",
+          "merged_pr": 22,
+          "merged_at": "2026-11-01T17:23:40Z"
+        },
+        {
+          "name": "fix/account-broker-docker-file-permissions",
+          "sha": "6a8f3c9e713fa6f42aa1c3cae3dee69e5889ee97",
+          "merged_pr": 51,
+          "merged_at": "2026-11-02T00:52:39Z"
+        },
+        {
+          "name": "fix/account-invite-input-errors",
+          "sha": "6e797df08e6bba40a0c81b644c78d93c5eb548f0",
+          "merged_pr": 52,
+          "merged_at": "2026-11-02T00:57:36Z"
+        },
+        {
+          "name": "fix/account-recovery-gateway-network",
+          "sha": "099306cf84aaa28a28f8b1f01620b24dce29ea0c",
+          "merged_pr": 48,
+          "merged_at": "2026-11-02T00:20:52Z"
+        },
+        {
+          "name": "fix/authelia-notification-v439-verification",
+          "sha": "fb537eaebdb594aea9d59675fe27eb4509344728",
+          "merged_pr": 55,
+          "merged_at": "2026-11-02T01:34:04Z"
+        },
+        {
+          "name": "fix/consistent-offline-backups",
+          "sha": "10135b1b8824e7b6734544444f93b7deee0b1eec",
+          "merged_pr": 7,
+          "merged_at": "2026-11-01T06:57:25Z"
+        },
+        {
+          "name": "fix/deploy-ui-root-only-smtp-secret-check",
+          "sha": "76e5515037a666aa79640a41db945e43f20d1a9f",
+          "merged_pr": 58,
+          "merged_at": "2026-11-02T02:26:52Z"
+        },
+        {
+          "name": "fix/dns01-caddy-noexec",
+          "sha": "391d781f6ce83ac5dbee88b5e8c1ae6ddc841ad3",
+          "merged_pr": 30,
+          "merged_at": "2026-11-01T20:18:43Z"
+        },
+        {
+          "name": "fix/dns01-propagation-reliability",
+          "sha": "fb507507a2e296a7a492bc5b5c6cdee3afdbb820",
+          "merged_pr": 33,
+          "merged_at": "2026-11-01T21:13:14Z"
+        },
+        {
+          "name": "fix/dns01-root-owned-token",
+          "sha": "e030b53a0474f9d4fd9240366c2390a8c8dc4454",
+          "merged_pr": 29,
+          "merged_at": "2026-11-01T20:03:04Z"
+        },
+        {
+          "name": "fix/gpu-family-and-cooling-summary-20261102",
+          "sha": "f4163d379ff641de875fa0658787338861b24170",
+          "merged_pr": 61,
+          "merged_at": "2026-11-02T02:37:53Z"
+        },
+        {
+          "name": "fix/grafana-sensor-alias-preference",
+          "sha": "94a856502337ba0fede3f6736aa18007401be5f2",
+          "merged_pr": 12,
+          "merged_at": "2026-11-01T09:34:16Z"
+        },
+        {
+          "name": "fix/homeaway-status-account-ux",
+          "sha": "8f2e57789c0d49112cd70ebe434a29bead52ea1d",
+          "merged_pr": 19,
+          "merged_at": "2026-11-01T16:28:34Z"
+        },
+        {
+          "name": "fix/https443-authelia-preflight-inspection-20261102",
+          "sha": "01ff0aee9c53ab2ef1d77d060ff04d3174f7874c",
+          "merged_pr": 66,
+          "merged_at": "2026-11-02T13:08:05Z"
+        },
+        {
+          "name": "fix/https443-dual-cookie-authelia-migration-20261102",
+          "sha": "9dc018e7c32cabbbb6bff914cbf8800cee47a673",
+          "merged_pr": 67,
+          "merged_at": "2026-11-02T13:18:07Z"
+        },
+        {
+          "name": "fix/lldap-asset-prefix",
+          "sha": "4e1873e1b4dedf013a5cfc5a87cf4192adcc01e2",
+          "merged_pr": 49,
+          "merged_at": "2026-11-02T00:27:59Z"
+        },
+        {
+          "name": "fix/phase3-production-deployment-consolidation",
+          "sha": "7ad2b407f9a11f402ef80f71a63ae0015c7581db",
+          "merged_pr": 35,
+          "merged_at": "2026-11-01T21:56:15Z"
+        },
+        {
+          "name": "fix/phase3-production-gateway-health-rollback",
+          "sha": "2896060f8f3f8418814246349102830778451cc0",
+          "merged_pr": 32,
+          "merged_at": "2026-11-01T20:56:19Z"
+        },
+        {
+          "name": "fix/pi-host-monitoring-ci",
+          "sha": "b6ae4681d56b41ebef3533514d1d463e1c9c0f2b",
+          "merged_pr": 6,
+          "merged_at": "2026-11-01T05:35:40Z"
+        },
+        {
+          "name": "fix/shared-homeaway-visual-theme",
+          "sha": "06c68dd0dca4d5dba9bbf682518d7b4c592df563",
+          "merged_pr": 20,
+          "merged_at": "2026-11-01T16:51:16Z"
+        },
+        {
+          "name": "fix/static-ssd-temperature-reference-only",
+          "sha": "6f865168f95c9f5df96733763f4f9710fef91b92",
+          "merged_pr": 13,
+          "merged_at": "2026-11-01T09:55:00Z"
+        },
+        {
+          "name": "fix/storage-live-temperature-only",
+          "sha": "affb0a8a04ff5141bb26d2ac26aad2b16a85f4fd",
+          "merged_pr": 11,
+          "merged_at": "2026-11-01T09:19:18Z"
+        },
+        {
+          "name": "integration/phase2-computers",
+          "sha": "b212741cacb8d3ab7e11583b6fd547afcddd5335",
+          "merged_pr": 14,
+          "merged_at": "2026-11-01T15:42:12Z"
+        }
+      ],
+      "observed_total_branches": 71,
+      "observed_open_pr_branches": [],
+      "rejected": []
+    },
+    "SensorDash": {
+      "default_branch": "Production",
+      "candidates": [
+        {
+          "name": "chore/sensordash-telemetry-docs",
+          "sha": "b45280e683781817991ac7871e199763d1202ffc",
+          "merged_pr": 14,
+          "merged_at": "2026-11-01T04:51:12Z"
+        },
+        {
+          "name": "feat/accessory-power-curves",
+          "sha": "a11b03c1851fdf8e2acb586d59085bc193d45b77",
+          "merged_pr": 7,
+          "merged_at": "2026-10-30T14:19:29Z"
+        },
+        {
+          "name": "feat/cooling-preset-catalog",
+          "sha": "8f74cfb34a6e1aac9163fee7ead4d84d6de44a7a",
+          "merged_pr": 8,
+          "merged_at": "2026-10-30T14:42:55Z"
+        },
+        {
+          "name": "feat/settings-alias-picker",
+          "sha": "be25405ff915e29d233b445d7782b93e0e49199c",
+          "merged_pr": 10,
+          "merged_at": "2026-10-30T15:21:42Z"
+        },
+        {
+          "name": "feature/history-family-cadence",
+          "sha": "ca8e1cee50e37f1bfde72a1e7a22051e6718ef72",
+          "merged_pr": 16,
+          "merged_at": "2026-11-01T09:03:40Z"
+        },
+        {
+          "name": "feature/native-sensor-dashboard",
+          "sha": "edca002e411acd721c8686b3dee045b07d18c18e",
+          "merged_pr": 1,
+          "merged_at": "2026-10-30T11:22:00Z"
+        },
+        {
+          "name": "feature/reporting-quality-contract-20261101",
+          "sha": "4508d409d4e2b5f0da9af078f6f50189b7a46efb",
+          "merged_pr": 18,
+          "merged_at": "2026-11-02T02:24:52Z"
+        },
+        {
+          "name": "feature/telemetry-grafana-export",
+          "sha": "f4f34785cb810c2e428cc2cbbd088d234354278d",
+          "merged_pr": 13,
+          "merged_at": "2026-11-01T04:51:28Z"
+        },
+        {
+          "name": "fix/cooling-autosave",
+          "sha": "90557f22ca448fd1fb7cca677cdb2a75f213688e",
+          "merged_pr": 2,
+          "merged_at": "2026-10-30T12:06:32Z"
+        },
+        {
+          "name": "fix/cooling-power-summary",
+          "sha": "cf3ebe98f2e298dcc2ba868c773381b77238d37c",
+          "merged_pr": 11,
+          "merged_at": "2026-10-30T15:40:58Z"
+        },
+        {
+          "name": "fix/docs-only-ci-triggers",
+          "sha": "dbfc1c4ee92b6a119140f14ffda695e70bd3ac7f",
+          "merged_pr": 15,
+          "merged_at": "2026-11-01T05:44:20Z"
+        },
+        {
+          "name": "fix/monotonic-msi-builds",
+          "sha": "7c02bd7bda120b344c4fa671b9fc6d1a7e0ee1f9",
+          "merged_pr": 5,
+          "merged_at": "2026-10-30T13:14:08Z"
+        },
+        {
+          "name": "fix/msi-restart-manager-ci",
+          "sha": "21134a76d30032a0665002e4c4296483a7d0243f",
+          "merged_pr": 17,
+          "merged_at": "2026-11-01T09:31:02Z"
+        },
+        {
+          "name": "fix/msi-upgrade-versioning",
+          "sha": "ec0fe1f7f9c128d4f7542b9091cc97b729db4e50",
+          "merged_pr": 3,
+          "merged_at": "2026-10-30T12:24:52Z"
+        },
+        {
+          "name": "fix/pawnio-status",
+          "sha": "f1640deb445066f8619f25bb42e256c35e56daed",
+          "merged_pr": 9,
+          "merged_at": "2026-10-30T15:07:15Z"
+        },
+        {
+          "name": "fix/sensor-alias-display",
+          "sha": "14059b325ade62151610a7b0581f6182b5978a80",
+          "merged_pr": 4,
+          "merged_at": "2026-10-30T12:40:39Z"
+        },
+        {
+          "name": "fix/ui-clarity-retention",
+          "sha": "6205a0072a3b0cf075c3297f15773c715ad3d364",
+          "merged_pr": 6,
+          "merged_at": "2026-10-30T13:25:39Z"
+        }
+      ],
+      "observed_total_branches": 38,
+      "observed_open_pr_branches": [
+        "feature/lan-mobile-dashboard"
+      ],
+      "rejected": []
+    },
+    "walnut-loop-lab": {
+      "default_branch": "Production",
+      "candidates": [
+        {
+          "name": "feature/drag-linked-90-degree-elbows",
+          "sha": "11584985c8691d0ee804536da7f25c5a42841edd",
+          "merged_pr": 3,
+          "merged_at": "2026-10-26T17:51:02Z"
+        },
+        {
+          "name": "feature/locked-90-degree-tube-corners",
+          "sha": "c03fb10fde320dcfa878914f4bf1125144c61105",
+          "merged_pr": 1,
+          "merged_at": "2026-10-26T16:19:37Z"
+        },
+        {
+          "name": "feature/parametric-radiator-bridge",
+          "sha": "cc4a981340bd1933fd44b87c7a9ed419d4f04238",
+          "merged_pr": 2,
+          "merged_at": "2026-10-26T16:49:45Z"
+        },
+        {
+          "name": "fix/strict-axis-aligned-hard-tubing",
+          "sha": "af1d39e86f369a4af6b76b41983a361c0c31418f",
+          "merged_pr": 4,
+          "merged_at": "2026-10-26T18:09:18Z"
+        }
+      ],
+      "observed_total_branches": 24,
+      "observed_open_pr_branches": [],
+      "rejected": []
+    }
+  }
+}

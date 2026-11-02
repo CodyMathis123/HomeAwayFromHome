@@ -1,41 +1,48 @@
-# Safe remote branch housekeeping
+# Safe remote branch cleanup
 
-HomeAway maintains GitHub branch history across three repositories:
-\`HomeAwayFromHome\`, \`SensorDash\`, and \`walnut-loop-lab\`.
+The Pi's unauthenticated GitHub REST requests can hit the API rate limit and
+report a generic HTTPError. **This does not indicate a branch-deletion attempt.**
 
-Use the **read-only** branch cleanup script from a trusted machine that has
-Git SSH credentials (normally the Pi). It calls the GitHub REST API to confirm
-which same-repository PRs are **merged** and whether the matching remote branch
-tip is *exactly* the PR head recorded by GitHub. It does **not** select:
-\`Production\`, protected refs, open-PR branches, updated-after-merge branches,
-unmerged/closed PRs, or historical branches with no matching merged PR.
-It is intentionally conservative about squash merges.
+Use the reviewed GitHub snapshot committed alongside the cleanup helper.
+It includes only exact branch heads whose corresponding same-repository PR
+was confirmed merged when the snapshot was generated (2026-11-02).
+No GitHub API token, package, or credential setup is required.
 
-\`\`\`bash
+From a trusted machine with GitHub SSH access:
+
+```bash
 cd ~/HomeAwayFromHome
+git fetch origin
+git switch Production
+git merge --ff-only origin/Production
+
 python3 scripts/cleanup-merged-pr-branches.py --repo HomeAwayFromHome
 python3 scripts/cleanup-merged-pr-branches.py --repo SensorDash
 python3 scripts/cleanup-merged-pr-branches.py --repo walnut-loop-lab
-\`\`\`
+```
 
-Only after reviewing each plan, you may apply **one repository at a time**:
+The preview reads the saved eligibility snapshot **and** calls
+\`git ls-remote --heads\` over the existing SSH connection to check each
+branch SHA against the actual remote tip. It reports new, missing, moved,
+unmerged, protected, and open-PR branches as excluded. A snapshot that
+becomes stale is *conservative*: it never selects additional branches.
 
-\`\`\`bash
+Only after reviewing the preview, run \`--apply\` for one repo at a time:
+
+```bash
 python3 scripts/cleanup-merged-pr-branches.py --repo HomeAwayFromHome --apply
-\`\`\`
+```
 
-\`--apply\` requires a typed confirmation with repository and candidate count.
-It rechecks heads through \`git ls-remote\` over SSH and deletes each branch
-using an **explicit expected-SHA Git lease**, so a branch changed since audit
-will not be removed. Failures preserve the branch and are reported.
+Apply requires an exact typed confirmation. It rechecks all remote refs,
+then uses a per-ref expected-SHA Git lease to reject concurrent changes.
+Do not attempt to bulk-delete historical SensorDash validation branches or
+the still-open LAN/mobile dashboard PR #12. Those need separate review.
+This snapshot selects *merged-PR branch tips only*, not other branches that
+happen to be ancestors of Production.
 
-The GitHub API is readable without a token for public repositories. For a
-private repo or to avoid rate limits, set \`GITHUB_TOKEN\` securely in the
-operator environment; **never paste a token into a chat, shell history or
-commit**. Git pushes authenticate through existing SSH configuration. Running
-the script does not touch containers, the Pi's local branches or worktrees,
-DNS, VPN or Windows SensorDash.
+For a fresh optional live GitHub API review, use \`--live-api\`; it may need
+a separately configured \`GITHUB_TOKEN\` or a wait for rate limit reset.
+Avoid pasting tokens into chat, files, or shell history.
 
-Keep the still-open SensorDash LAN/mobile PR branch until separately reviewed.
-Non-PR historical validation branches and any divergent work remain for a
-separate archival decision; do not bulk-delete them using pattern matching.
+The script never starts/stops services, edits local branches, or modifies
+Pi-hole, WireGuard, Authelia, Grafana, or SensorDash fan control.

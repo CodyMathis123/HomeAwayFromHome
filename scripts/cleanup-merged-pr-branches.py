@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Preview or explicitly delete stale GitHub branches from merged pull requests.
 
-Only branch heads for *merged* same-repository PRs whose recorded head SHA
-still exactly matches the live branch tip are eligible. Never touches default,
-protected, open-PR, changed-after-merge, or unreviewed branches.
+Uses a reviewed GitHub PR/branch snapshot to avoid unauthenticated REST API
+rate limits on the Pi. Only exact SHA-matching previously merged PR branches
+are eligible. Git SSH rechecks live tips before every deletion. Never touches
+default, protected, open-PR, changed-after-merge, or unreviewed branches.
 
 Usage:
   python3 scripts/cleanup-merged-pr-branches.py --repo HomeAwayFromHome
@@ -17,6 +18,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from pathlib import Path
 import re
 import subprocess
 import sys
@@ -113,30 +115,96 @@ def current_remote_refs(repo: str) -> dict[str, str]:
     return refs
 
 
+SNAPSHOT = Path(__file__).with_name("branch-cleanup-merged-pr-snapshot-20261102.json")
+HEX40 = re.compile(r"^[0-9a-f]{40}$")
+
+
+def snapshot_candidates(repo: str, snapshot: dict, remote: dict[str, str]
+                        ) -> tuple[list[tuple[str, str, int]], dict[str, str]]:
+    """Use pinned merged-PR evidence plus real-time Git SSH branch tips.
+
+    Snapshot metadata is static. Any deleted, moved, new or unexpected branch
+    is not selected. The manifest explicitly excludes the open SensorDash PR.
+    """
+    if (snapshot.get("schema_version") != 1 or
+            snapshot.get("repository_owner") != OWNER or
+            snapshot.get("selection") != "exact_branch_sha_of_merged_same_repository_pr"):
+        raise RuntimeError("Invalid/unknown snapshot metadata")
+    record = snapshot.get("repositories", {}).get(repo)
+    if not isinstance(record, dict) or record.get("default_branch") != "Production":
+        raise RuntimeError("Missing expected repository snapshot")
+    default = record["default_branch"]
+    open_branches = set(record.get("observed_open_pr_branches", []))
+    entries = record.get("candidates")
+    if not isinstance(entries, list):
+        raise RuntimeError("Missing snapshot candidates")
+    ready = []
+    excluded = {}
+    seen = set()
+    for item in entries:
+        name, sha, number = item["name"], item["sha"], item["merged_pr"]
+        if (not isinstance(name, str) or not REF_RE.fullmatch(name) or
+                ".." in name or name.startswith("/") or name.endswith("/") or
+                name.endswith(".lock") or not isinstance(sha, str) or
+                not HEX40.fullmatch(sha) or type(number) is not int or number <= 0 or
+                name in seen or name == default or name in open_branches or
+                not item.get("merged_at")):
+            raise RuntimeError("Unsafe or inconsistent snapshot candidate")
+        seen.add(name)
+        if remote.get(name) == sha:
+            ready.append((name, sha, number))
+        else:
+            excluded[name] = "missing or changed since reviewed snapshot"
+    # New branches are deliberately excluded, even if a later PR was merged.
+    for name in remote:
+        if name != default and name not in seen:
+            excluded[name] = "not in reviewed snapshot"
+    if default not in remote:
+        raise RuntimeError("Remote default branch cannot be verified")
+    return sorted(ready), excluded
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", choices=REPOS, required=True)
     parser.add_argument("--apply", action="store_true",
                         help="Explicit destructive action, with typed confirmation")
+    parser.add_argument("--live-api", action="store_true",
+                        help="Optional fresh GitHub REST check; may require GITHUB_TOKEN")
     args = parser.parse_args()
     repo = args.repo
     try:
-        info = read_api(repo, "")
-        branches = read_api(repo, "branches?per_page=100")
-        prs = read_api(repo, "pulls?state=all&per_page=100")
-        if not isinstance(info, dict) or not isinstance(branches, list) or not isinstance(prs, list):
-            raise RuntimeError("Unexpected GitHub response; no deletions")
-        default_branch = info["default_branch"]
-        ready, excluded = candidates(repo, branches, prs, default_branch)
-        print(f"{repo}: {len(ready)} merged PR branches eligible, "
-              f"{len(excluded)} excluded; default={default_branch}")
+        remote = current_remote_refs(repo)
+        if args.live_api:
+            info = read_api(repo, "")
+            branches = read_api(repo, "branches?per_page=100")
+            prs = read_api(repo, "pulls?state=all&per_page=100")
+            if not isinstance(info, dict) or not isinstance(branches, list) or not isinstance(prs, list):
+                raise RuntimeError("Unexpected GitHub response; no deletions")
+            wanted, _ = candidates(repo, branches, prs, info["default_branch"])
+            ready = [x for x in wanted if remote.get(x[0]) == x[1]]
+            excluded = {
+                name: "not eligible on live PR audit or tip changed"
+                for name in remote
+                if name != info["default_branch"] and name not in {x[0] for x in ready}
+            }
+            source = "live GitHub REST metadata"
+        else:
+            with SNAPSHOT.open(encoding="utf-8") as file:
+                snapshot = json.load(file)
+            ready, excluded = snapshot_candidates(repo, snapshot, remote)
+            source = "reviewed 2026-11-02 GitHub snapshot (live Git SSH SHA checks)"
+        print(f"{repo}: {len(ready)} merged-PR branches eligible; "
+              f"{len(excluded)} excluded; source={source}", flush=True)
         for name, sha, number in ready:
             print(f"  candidate  {name:<60} PR #{number:<4} {sha[:12]}")
+        for name, why in sorted(excluded.items()):
+            print(f"  keep       {name:<60} {why}")
         print("\nAll other branches are PRESERVED, including open PRs, "
               "unmerged work and divergent historical branches.")
         if not args.apply:
             print("\nPLAN ONLY: nothing deleted. Re-run with --apply to review "
-                  "and confirm the same live checks.")
+                  "and confirm the same tip checks.")
             return 0
         if not ready:
             print("Nothing to delete.")
@@ -148,14 +216,13 @@ def main() -> int:
         if input("> ").strip() != expected:
             print("Cancelled; nothing deleted.")
             return 1
-
-        # Recheck current refs via SSH immediately before acting. The explicit
-        # --force-with-lease guards each deletion against concurrent updates.
-        remote = current_remote_refs(repo)
-        if any(remote.get(name) != sha for name, sha, _ in ready):
-            raise RuntimeError("Remote branch tips changed since audit; aborting")
+        # Recheck all selected heads immediately before acting. The per-ref
+        # --force-with-lease also guards against a concurrent branch update.
+        remote_now = current_remote_refs(repo)
+        if any(remote_now.get(name) != sha for name, sha, _ in ready):
+            raise RuntimeError("Remote branch tips changed since preview; aborting")
         url = f"git@github.com:{OWNER}/{repo}.git"
-        failed: list[str] = []
+        failed = []
         for name, sha, _ in ready:
             command = [
                 "git", "push", "--porcelain",
@@ -172,11 +239,10 @@ def main() -> int:
         return 1 if failed else 0
     except (OSError, urllib.error.URLError, ValueError, KeyError, RuntimeError,
             subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
-        # Never echo token, GitHub private response body, or auth headers.
+        # Do not echo tokens, credentials, exception response bodies or secrets.
         print(f"ERROR: {type(exc).__name__}; no further branches changed. "
-              "Check GitHub API access and Git SSH permissions.", file=sys.stderr)
+              "Check Git SSH and the reviewed snapshot file.", file=sys.stderr)
         return 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

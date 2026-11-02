@@ -41,9 +41,64 @@ class BranchCleanupContracts(unittest.TestCase):
         code = (ROOT / "scripts/cleanup-merged-pr-branches.py").read_text()
         self.assertIn("sys.stdin.isatty()",code)
         self.assertIn("--force-with-lease=refs/heads/",code)
-        self.assertIn("remote.get(name) != sha", code)
+        self.assertIn("remote_now.get(name) != sha", code)
         self.assertIn('parser.add_argument("--apply"',code)
         self.assertNotIn("force=True", code)
+
+    def test_snapshot_uses_remote_sha_and_keeps_new_or_changed_branches(self):
+        sha = "a" * 40
+        manifest = {
+            "schema_version": 1,
+            "repository_owner": "CodyMathis123",
+            "selection": "exact_branch_sha_of_merged_same_repository_pr",
+            "repositories": {
+                "SensorDash": {
+                    "default_branch": "Production",
+                    "observed_open_pr_branches": ["feature/lan-mobile-dashboard"],
+                    "candidates": [
+                        {"name": "feature/merged", "sha": sha, "merged_pr": 11,
+                         "merged_at": "2026-11-02"},
+                        {"name": "feature/moved", "sha": "b"*40, "merged_pr": 12,
+                         "merged_at": "2026-11-02"},
+                    ]
+                }
+            }
+        }
+        remote = {
+            "Production": "f"*40,
+            "feature/merged": sha,
+            "feature/moved": "c"*40,
+            "feature/lan-mobile-dashboard": "e"*40,
+            "feature/unknown": "d"*40
+        }
+        ready, excluded = mod.snapshot_candidates("SensorDash", manifest, remote)
+        self.assertEqual(ready, [("feature/merged", sha, 11)])
+        self.assertIn("feature/moved", excluded)
+        self.assertIn("feature/unknown", excluded)
+        self.assertIn("feature/lan-mobile-dashboard", excluded)
+        manifest["repositories"]["SensorDash"]["candidates"].append(
+            {"name": "feature/lan-mobile-dashboard", "sha": "e"*40,
+             "merged_pr": 99, "merged_at": "2026-11-02"}
+        )
+        with self.assertRaises(RuntimeError):
+            mod.snapshot_candidates("SensorDash", manifest, remote)
+
+    def test_snapshot_is_present_and_all_candidates_have_sha_evidence(self):
+        import json
+        manifest = json.loads(mod.SNAPSHOT.read_text())
+        self.assertEqual(manifest["repository_owner"], "CodyMathis123")
+        self.assertEqual(manifest["schema_version"], 1)
+        self.assertGreaterEqual(sum(len(r["candidates"]) for r in
+                                    manifest["repositories"].values()), 80)
+        for repo in mod.REPOS:
+            record = manifest["repositories"][repo]
+            self.assertEqual(record["default_branch"], "Production")
+            names = [c["name"] for c in record["candidates"]]
+            self.assertEqual(len(names), len(set(names)))
+            for candidate in record["candidates"]:
+                self.assertRegex(candidate["sha"], r"^[0-9a-f]{40}$")
+                self.assertIsInstance(candidate["merged_pr"], int)
+
 
 if __name__ == "__main__":
     unittest.main()
