@@ -93,8 +93,11 @@
     <h2 id="readiness-title">Operations &amp; diagnostics</h2>
     <button id="readiness-refresh" type="button">Refresh checks</button>
   </div>
-  <p class="detail">Service health, telemetry, certificates, and recovery status.</p>
+  <p class="detail">A quick view of observed service signals, followed by expandable technical evidence. A responding listener does not prove a VPN handshake, successful certificate renewal, or a verified restore.</p>
+  <p id="readiness-overview-summary" class="readiness-overview-summary" role="status" aria-live="polite">Checks have not completed yet.</p>
   <p id="readiness-updated" role="status" aria-live="polite">Not checked yet</p>
+  <h3 class="readiness-overview-heading">Everyday status</h3>
+  <p class="detail">Seven bounded checks. Unknown and optional are not treated as outages.</p>
   <div class="readiness-grid" aria-label="Bounded setup readiness checks">
     <article class="readiness-item"><h3>Private browser connection</h3><span id="readiness-transport" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-transport">Not checked in this session</p></article>
     <article class="readiness-item"><h3>Account administration</h3><span id="readiness-accounts" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-accounts">Not checked in this session</p></article>
@@ -104,6 +107,9 @@
     <article class="readiness-item"><h3>Grafana listener (optional)</h3><span id="readiness-monitor" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-monitor">Not checked in this session</p></article>
     <article class="readiness-item"><h3>Registered computer reachability</h3><span id="readiness-hosts" class="readiness-badge" data-state="unknown">Unknown</span><p id="readiness-detail-hosts">Not checked in this session</p></article>
   </div>
+  <details class="readiness-detail-section" id="readiness-detail-metrics">
+    <summary>Telemetry and internal metrics <span class="readiness-summary-note">Scrapes, Pi measurements, SensorDash freshness</span></summary>
+    <div class="readiness-detail-body">
   <h3 id="readiness-services-heading">Metrics scrape health</h3>
   <p class="detail">Internal metrics endpoints.</p>
   <div class="readiness-grid" aria-labelledby="readiness-services-heading">
@@ -127,6 +133,11 @@
     <p id="readiness-detail-telemetry">No recent exports observed</p>
     <ul id="readiness-telemetry-hosts" aria-label="Per-host last observed export" class="readiness-telemetry-list"></ul>
   </div>
+    </div>
+  </details>
+  <details class="readiness-detail-section" id="readiness-detail-certificates">
+    <summary>Certificates and TLS evidence <span class="readiness-summary-note">Expiry, hostname and trust observations</span></summary>
+    <div class="readiness-detail-body">
   <h3 id="certificate-heading">TLS certificate observations</h3>
   <p class="detail">TLS certificate expiry and trust checks. Device trust and renewal success are not verified.</p>
   <p id="readiness-certificates-checked" role="status">Certificates not yet checked</p>
@@ -148,6 +159,11 @@
       <p id="readiness-cert-detail-telemetry-receiver">Separate telemetry certificate</p>
     </article>
   </div>
+    </div>
+  </details>
+  <details class="readiness-detail-section" id="readiness-detail-backups">
+    <summary>Backup, recovery and maintenance <span class="readiness-summary-note">Checksum evidence and read-only commands</span></summary>
+    <div class="readiness-detail-body">
   <h3>Backup &amp; recovery</h3>
   <p class="detail">Encrypted backup status and recovery readiness.</p>
   <div class="readiness-grid" aria-label="Backup verification boundaries">
@@ -171,6 +187,8 @@
     <p><strong>Host recovery inventory (read-only)</strong> <code>sudo python3 scripts/plan-host-backup.py --plan</code></p>
   </div>
   <p class="detail">Run these commands locally in the Production repository. They do not verify all remote-client, certificate-renewal or restore scenarios. No HomeAway button runs shell commands or performs installation.</p>
+    </div>
+  </details>
 </section>
 <footer><span>Private network · Verified sign-in required</span><span>Commands are allowlisted and audited · Your iOS Shortcut remains independent</span></footer>
 </main></div><dialog id="admin-action-dialog" aria-labelledby="admin-action-title"><form method="dialog"><h2 id="admin-action-title">Confirm action</h2><p id="admin-action-message"></p><label id="admin-action-input-label" hidden>Enter confirmation <input id="admin-action-input" autocomplete="off"></label><div class="admin-dialog-actions"><button id="admin-action-cancel" type="button">Cancel</button><button id="admin-action-submit" type="submit">Continue</button></div></form></dialog></body></html>
