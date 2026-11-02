@@ -11,6 +11,22 @@ let authChecked = false;
 const VIEWS = new Set(['hosts', 'computer-admin', 'accounts', 'recent-activity', 'setup-readiness']);
 const main = document.querySelector('main');
 let currentView = 'hosts';
+let historyLoaded = false;
+let historyPending = false;
+const VIEW_CONTEXT = Object.freeze({
+  hosts: ['POWER CONTROLS', 'Wake, reachability, and Windows power requests'],
+  'computer-admin': ['COMPUTERS', 'Inventory, enrollment drafts, and SSH trust'],
+  accounts: ['USERS & PERMISSIONS', 'HomeAway roles and account invitations'],
+  'recent-activity': ['ACTIVITY', 'Audited power requests and outcomes'],
+  'setup-readiness': ['OPERATIONS & DIAGNOSTICS', 'Bounded checks for Pi services, certificates, and backups']
+});
+function renderViewContext(target) {
+  const [label, description] = VIEW_CONTEXT[target] || VIEW_CONTEXT.hosts;
+  $('control-view-breadcrumb').textContent = 'MANAGE / ' + label;
+  $('control-view-description').textContent = description;
+  $('control-view-role').textContent = identity?.capabilities?.role
+    ? 'Access: ' + identity.capabilities.role : 'Checking access…';
+}
 function updateCurrentSection(focus = false) {
   const requested = location.hash.slice(1);
   let target = VIEWS.has(requested) ? requested : 'hosts';
@@ -19,8 +35,10 @@ function updateCurrentSection(focus = false) {
   if (target === 'accounts' && !capabilities?.manageUsers) target = 'hosts';
   if (target === 'recent-activity' && !capabilities?.history) target = 'hosts';
   if (target === 'setup-readiness' && capabilities?.role !== 'admins') target = 'hosts';
+  const previousView = currentView;
   currentView = target;
   main.dataset.activeView = target;
+  renderViewContext(target);
   document.body.classList.add('control-views-ready');
   for (const link of document.querySelectorAll('.section-nav a[href^="#"]')) {
     if (!link.hidden && link.getAttribute('href') === '#' + target)
@@ -35,6 +53,9 @@ function updateCurrentSection(focus = false) {
   window.HomeAwayNavigation?.sync();
   if (target === 'setup-readiness' && capabilities?.role === 'admins')
     if (typeof HomeAwayReadiness !== 'undefined') HomeAwayReadiness.show();
+  // Navigation refreshes activity on entry; this is not background polling.
+  if (authChecked && target === 'recent-activity' && capabilities?.history &&
+      (!historyLoaded || previousView !== target)) void loadHistory();
   if (focus) {
     const section = $(target);
     if (section) {
@@ -79,6 +100,10 @@ async function loadIdentity() {
     hosts.replaceChildren(node('p', 'detail',
       'Computer controls are unavailable until authorization is restored.'));
     $('identity').textContent = 'Authorization unavailable';
+    $('control-view-role').textContent = 'Access unavailable';
+    historyLoaded = false;
+    $('events').textContent = 'Sign in to view activity.';
+    $('history-updated').textContent = 'Activity authorization unavailable';
     throw error;
   }
 }
@@ -161,24 +186,65 @@ async function doAction(item, action) {
   }
 }
 async function loadHistory() {
+  if (historyPending) return;
+  historyPending = true;
+  const updated = $('history-updated');
+  updated.textContent = 'Checking activity…';
   try {
-    if (!identity) await loadIdentity();
-    if (!identity.capabilities.history) {
-      $('events').textContent = 'Activity is available to administrators.';
+    // Recheck permissions rather than leaking cached history after revocation.
+    const verified = await loadIdentityForHistory();
+    if (!verified.capabilities.history) {
+      historyLoaded = false;
+      $('events').textContent = 'Activity is not available for this role.';
+      updated.textContent = 'Access not granted';
       return;
     }
-    const response = await fetch('/control/api/history', {cache:'no-store'});
+    const response = await fetch('/control/api/history', {
+      cache: 'no-store', credentials: 'same-origin'
+    });
     if (!response.ok) throw new Error('History unavailable');
     const data = await response.json();
+    if (!Array.isArray(data.events)) throw new Error('Unexpected history response');
+    // A role may be revoked during the request; fail closed on the next check.
     const rows = data.events.map(e => node('div', 'event',
       new Date(e.time).toLocaleString() + ' · ' + e.actor + ' · ' + e.host + ' · ' + e.action + ' · ' +
       (e.ok ? 'Requested' : 'Failed / unknown')));
     $('events').replaceChildren(...(rows.length ? rows : [node('p', '', 'No commands yet.')]));
-  } catch (error) { $('events').textContent = error.message; }
+    historyLoaded = true;
+    updated.textContent = 'Updated ' + new Date().toLocaleTimeString();
+  } catch (_) {
+    historyLoaded = false;
+    $('events').textContent = 'Activity could not be refreshed. Retry after checking your session.';
+    updated.textContent = 'Activity unavailable';
+  } finally {
+    historyPending = false;
+  }
+}
+async function loadIdentityForHistory() {
+  // Keep the permission check small and scoped to the requested history.
+  const response = await fetch('/control/api/me', {
+    cache: 'no-store', credentials: 'same-origin'
+  });
+  if (!response.ok) throw new Error('Activity authorization unavailable');
+  const verified = await response.json();
+  if (!verified?.capabilities?.role) throw new Error('Activity authorization unavailable');
+  if (!verified.capabilities.history) {
+    // Force navigation and cached controls to reflect revoked privileges.
+    identity = verified;
+    authChecked = true;
+    updateSectionNavigation(verified.capabilities);
+    $('identity').textContent = verified.user + ' · ' + verified.capabilities.role;
+  }
+  return verified;
 }
 window.addEventListener('hashchange', () => updateCurrentSection(true));
 updateCurrentSection();
 $('refresh').addEventListener('click', refresh);
 $('refresh-history').addEventListener('click', loadHistory);
-document.addEventListener('visibilitychange', () => { if (!document.hidden) { void refresh(); void loadHistory(); } });
-void refresh(); void loadHistory();
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    void refresh();
+    if (currentView === 'recent-activity') void loadHistory();
+  }
+});
+void refresh();
