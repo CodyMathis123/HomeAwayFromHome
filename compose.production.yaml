@@ -18,7 +18,7 @@ services:
       - ./data/control/backup-status:/backup-status:ro
     environment:
       HOMEAWAY_CONTROL_ORIGIN: "https://home.homeawayfromhome.house"
-      # Legacy 8443 remains an explicitly allowlisted fallback during rollout.
+      # Legacy :8443 remains an explicitly allowlisted fallback during rollout.
       HOMEAWAY_CONTROL_ALT_ORIGIN: "https://home.homeawayfromhome.house:8443"
 
   metrics-diagnostics:

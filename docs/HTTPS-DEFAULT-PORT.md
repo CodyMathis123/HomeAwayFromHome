@@ -67,20 +67,18 @@ Stage 2 should then, as a separate, explicitly validated change:
 
 Don't change router port forwarding or expose :443 to the WAN.
 
-## Stage 2: use portless HTTPS URLs as canonical
+## Stage 2: switch canonical links and Authelia login redirects to portless HTTPS
 
-After confirming all three hostnames answer on private port 443, stage 2
-updates only the canonical URL **references**. The gateway still maps both
-`PI_LAN_IP:443` and `PI_LAN_IP:8443` to its unchanged internal listener.
-No Caddyfile edit or certificate issuance is necessary.
+After verifying all three hostnames work on private port 443, stage 2 keeps
+both ports but updates the generated links, Grafana root URL, account-recovery
+URL (if enabled), and the strict primary/alternate PC-control origins.
 
-The script reads the existing *root-protected* Authelia config and requires
-exactly the two known `:8443` session URLs. It prepares a candidate with
-the same file ownership/mode, validates it inside the existing Authelia
-container, backs up the complete original config root-only, and atomically
-replaces it. It does **not** regenerate any secrets, TOTP registrations,
-LDAP roles or SMTP settings. On unusual config layouts, it stops rather
-than guessing. If the root-only backup exists, it will not overwrite it.
+The existing live Authelia config is under root-protected
+`data/control/authelia/configuration.yml`. The operator-only script updates
+only exactly recognized `session.cookies[].authelia_url` and
+`default_redirection_url` values, validates a candidate inside the running
+Authelia container, keeps a protected original backup, and refuses unfamiliar
+layouts. It does not print, rotate or replace SMTP, LDAP, TOTP or cookie secrets.
 
 ```bash
 cd ~/HomeAwayFromHome
@@ -91,31 +89,27 @@ bash scripts/deploy-https443-final.sh --plan
 bash scripts/deploy-https443-final.sh --apply
 ```
 
-The apply operation only reconciles `pc-control`, `portal`, `grafana`,
-and (when account-recovery routing is live) `lldap`, then restarts
-`authelia` to pick up the already validated redirect configuration.
-There may be a brief authentication interruption. Caddy, VPN, Pi-hole,
-VictoriaMetrics and Windows fan control are untouched.
+The apply operation reconciles only `pc-control`, `portal`, `grafana`
+and optional recovery `lldap`, then restarts `authelia`. Expect a brief
+authentication interruption. Caddy, DNS, Pi-hole, WireGuard and SensorDash
+are untouched. Both port 443 and legacy :8443 continue to work.
 
-Test an actual **fresh browser sign-in with TOTP**, not just loading the
-portal, at the portless URL. Check admin and operator actions with a safe
-Wake/status operation, Grafana navigation, and account-invite/reset URLs
-if used. Confirm old `:8443` links still work. The app origin remains
-strictly whitelisted for **both** explicit HTTPS origins.
+**Test in a fresh browser window**, including password + TOTP login at
+`https://home.homeawayfromhome.house/control/`, the user directory,
+harmless Wake/status control, Grafana navigation, and invite/password-reset
+links if configured. Check the old `:8443` pages still open.
 
-**Rollback**, if login or control actions fail:
+If any login or control flow fails, use the deliberate rollback:
 
 ```bash
 cd ~/HomeAwayFromHome
 bash scripts/deploy-https443-final.sh --rollback
 ```
 
-Rollback restores only the original root-protected Authelia configuration
-and reapplies the former generated URLs from the explicit rollback Compose
-overlay, then restarts the same select containers. It does not close
-port 443 or manipulate DNS/VPN. Avoid running a normal `deploy-ui.sh`
-after rollback until the cutover has been re-evaluated: its canonical
-production Compose inputs would otherwise reapply portless settings.
+Rollback uses the root-only preserved Authelia configuration and a
+non-secret Compose override with the previous URL values; it does not
+turn off 443 or change certificates. Do not use normal `deploy-ui.sh`
+while rollback is active, because Production uses the portless defaults.
 
-Once verified across LAN and WireGuard, retire `:8443` separately, not
-as part of this cutover.
+Retiring port 8443 is a **separate** optional cleanup after LAN and WireGuard
+validation. Do not forward port 443 through the router.

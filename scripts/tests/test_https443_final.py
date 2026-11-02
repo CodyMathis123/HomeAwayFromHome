@@ -1,4 +1,4 @@
-"""Pure migrations and deployment boundary checks for canonical private HTTPS 443."""
+"""Pure URL migration and deployment boundary contracts for private HTTPS 443."""
 import importlib.util
 import unittest
 from pathlib import Path

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Move ONLY the existing Authelia cookie redirect URLs to/from HTTPS port 443.
+"""Update only known Authelia session redirect URLs with protected rollback.
 
-Requires root to access the existing private Authelia configuration. The
-candidate is validated inside the *running* Authelia container before any
-replacement. Credentials, TOTP, session secrets, LDAP and SMTP settings are
-never printed or modified. The root-only backup is never automatically removed.
+This tool must be run by root. It never displays the private Authelia
+configuration, tokens, SMTP credentials, LDAP settings or session secrets.
+A candidate is validated in the running Authelia container before replacing
+the current configuration; :8443 is retained as fallback on the gateway.
 """
 from __future__ import annotations
 
@@ -107,7 +107,7 @@ def validate_candidate() -> None:
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False, timeout=90,
     )
     if result.returncode != 0:
-        raise RuntimeError("Authelia rejected the private candidate; active configuration unchanged")
+        raise RuntimeError("Authelia candidate rejected; active configuration unchanged")
 
 
 def run(mode: str) -> str:
@@ -117,7 +117,7 @@ def run(mode: str) -> str:
         if state == "legacy":
             if BACKUP.exists() or CANDIDATE.exists():
                 raise RuntimeError("Existing backup or candidate requires review")
-            return "PLAN: known legacy redirect values; private backup and validated portless candidate will be prepared"
+            return "PLAN: known legacy redirect values; protected backup and validated portless candidate will be prepared"
         return "PLAN: Authelia already uses portless redirect URLs"
     if mode == "apply":
         if state == "portless":
@@ -135,8 +135,6 @@ def run(mode: str) -> str:
         if original_state != "legacy" or original_rewritten != original:
             raise RuntimeError("Backup does not contain known legacy redirect URLs")
         target = original
-    # Candidate must be readable by the same unprivileged UID/GID as current
-    # configuration. Do not chmod an existing file or weaken directory secrets.
     exclusive_file(CANDIDATE, target, metadata.st_uid, metadata.st_gid,
                    stat.S_IMODE(metadata.st_mode))
     try:
@@ -163,8 +161,7 @@ def main() -> None:
     mode = "plan" if args.plan else "apply" if args.apply else "rollback"
     try:
         print(run(mode))
-    except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired) as exc:
-        # Never echo exception bodies from file contents or subprocess stderr.
+    except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired):
         parser.exit(1, "ERROR: Authelia redirect migration could not be validated; no secrets printed.\n")
 
 

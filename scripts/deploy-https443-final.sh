@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Operator-triggered portless URL migration. No router, DNS or TLS changes.
-# Keeps :8443 as a working fallback and never alters PWM/VPN/Pi-hole.
+# Keeps :8443 as fallback and never changes hardware PWM, VPN or Pi-hole.
 set -euo pipefail
 fail(){ echo "ERROR: $*" >&2; exit 1; }
 [[ $# == 1 && ( $1 == --plan || $1 == --apply || $1 == --rollback ) ]] ||
   fail "Usage: bash scripts/deploy-https443-final.sh --plan|--apply|--rollback"
 mode="$1"
-[[ "$EUID" -ne 0 ]] || fail "Run as your normal user; the script calls sudo"
+[[ "$EUID" -ne 0 ]] || fail "Run as normal user; the script calls sudo"
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 [[ -f .env ]] || fail "Existing .env required"
 [[ "$(git symbolic-ref --quiet --short HEAD)" == Production ]] ||
@@ -39,7 +39,7 @@ fi
 compose=("${base[@]}" --profile control --profile accounts --profile metrics)
 "${compose[@]}" config -q || fail "Existing overlays could not be validated"
 # Only print static public URL metadata. The Compose environment can contain
-# SMTP credentials and must never be dumped to terminal/logs.
+# SMTP credentials and must never be dumped to terminal or logs.
 "${compose[@]}" config --format json | python3 -c '
 import json,ipaddress,sys
 c=json.load(sys.stdin); services=c["services"]
@@ -59,12 +59,12 @@ portal=services["portal"]["environment"]
 assert portal["HOMEAWAY_CONTROL_URL"]==(old if legacy else portless)+"/control/"
 metrics="https://metrics.homeawayfromhome.house"
 assert services["grafana"]["environment"]["GF_SERVER_ROOT_URL"]==(metrics+":8443" if legacy else metrics)
-print("PASS: strict LAN-only dual port, control CSRF and canonical destination bindings")
+print("PASS: strict LAN-only dual ports, control CSRF and canonical destination bindings")
 ' "$mode" || fail "Resolved portless URL configuration failed"
 if [[ "$mode" == --plan ]]; then
   sudo python3 scripts/update-authelia-canonical-urls.py --plan ||
     fail "Authelia private configuration preflight failed"
-  echo "PLAN: update Authelia redirect URLs; recreate pc-control/portal/grafana"
+  echo "PLAN: update Authelia redirect URLs; reconcile pc-control/portal/grafana"
   if $recovery; then echo "PLAN: also update LLDAP password recovery URL"; fi
   echo "PLAN ONLY: Caddy, DNS, VPN and Pi-hole unchanged"
   exit 0
@@ -79,7 +79,7 @@ else
     fail "Authelia backup restore failed; no containers reconciled"
 fi
 "${compose[@]}" up -d --no-deps --build "${services[@]}" ||
-  fail "Failed to reconcile new URL environments. Use --rollback and inspect logs"
+  fail "Failed to reconcile URLs. Use --rollback and inspect logs"
 "${compose[@]}" restart authelia ||
   fail "Failed to restart Authelia; use --rollback and inspect logs"
 for service in authelia "${services[@]}"; do
@@ -87,4 +87,4 @@ for service in authelia "${services[@]}"; do
     fail "$service not running. Use --rollback if this was the cutover"
 done
 echo "PASS: canonical URLs switched. Caddy remains on both ports."
-echo "Verify browser login, TOTP, Grafana, PC actions and account recovery."
+echo "Verify fresh browser login, TOTP, Grafana, PC actions and account recovery."
