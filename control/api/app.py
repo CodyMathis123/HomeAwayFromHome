@@ -84,7 +84,7 @@ def broker_request(actor: str, operation: str, payload: dict) -> dict:
         # Distinguish expected admin-side validation conflicts without leaking
         # directory internals or echoing user-controlled fields.
         if exc.code == 409:
-            msg = ("Username or email is already in use" if operation == "create"
+            msg = ("Username or email is already in use" if operation in ("create", "create-invite")
                    else "Account record changed; refresh users and try again")
             raise BrokerError(409, msg) from exc
         if exc.code == 400 and operation == "create":
