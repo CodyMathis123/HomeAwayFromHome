@@ -33,10 +33,11 @@ or repairs permissions:
 sudo python3 scripts/audit-production.py
 ```
 
-It requires the canonical `control/gateway/Caddyfile.production` to be
-world-readable, checks that the Cloudflare token is **root-owned mode 0400 or
-0600**, and confirms that the running gateway actually mounts the canonical
-Caddyfile. These checks prevent the two startup failures observed during the
+It detects either the canonical `control/gateway/Caddyfile.production` **or**
+the active account-recovery `control/gateway/Caddyfile.account-recovery` mount,
+checks that **the mounted config** is readable by non-root Caddy, verifies the
+Cloudflare token is **root-owned mode 0400 or 0600**, and rejects an unexpected
+gateway Caddyfile. It also checks the account-broker Dockerfile. These checks prevent the two startup failures observed during the
 HTTPS cutover: Caddy reading a mode-0600 Caddyfile, and an unprivileged Python
 container reading a mode-0600 `app.py`. The API Dockerfile also uses
 `COPY --chmod=0644` so the built image is independent of checkout modes.
@@ -45,6 +46,74 @@ The audit lists host inventory and SSH-trust paths that remain outside
 `scripts/backup.sh`. A presence check is **not** a usable backup or restore
 verification. Never `chmod 644` a private key or token to repair a startup
 failure; investigate intended owner/group and container file permissions.
+
+## Current account email, file modes, and Compose overlays
+
+The live production stack has optional account-recovery and Authelia SMTP
+overlays already enabled. Both LLDAP invitation mail and a real Authelia
+factor-removal notification were received via Resend (Nov 1, 2026). The
+filesystem notifier is now inactive, but `notification.txt` and the
+original notifier YAML remain on disk as historical and rollback material.
+
+Use **these exact overlays in this order** when validating the complete
+active project or recreating identity containers:
+
+```bash
+files=(
+  -f compose.yaml
+  -f compose.control.yaml
+  -f compose.accounts.yaml
+  -f compose.computers.yaml
+  -f compose.production.yaml
+  -f compose.account-recovery.yaml
+  -f compose.authelia-smtp.yaml
+)
+profiles=(--profile control --profile accounts --profile metrics)
+sudo docker compose "${files[@]}" "${profiles[@]}" config -q
+```
+
+Use targeted `up -d --no-deps` with those overlays for approved
+service changes. Do not replace this with the historical DNS-01 staging
+overlays or an unqualified `docker compose up`. Changes to gateway
+config require **Caddy-only** validation and recreation, with no DNS/VPN
+service changes.
+
+The private Caddy source file mounted at
+`/etc/caddy/Caddyfile` must be readable by the unprivileged gateway.
+Prepare the correct current variant, without touching credentials:
+
+```bash
+python3 scripts/prepare-gateway-permissions.py --plan --config account-recovery
+python3 scripts/prepare-gateway-permissions.py --apply --config account-recovery
+sudo python3 scripts/audit-production.py
+```
+
+All Python application Dockerfiles now use `COPY --chmod=0644` for
+files executed/read by UID 65534; checkout file modes should not propagate
+to an unreadable container image. This covers `pc-control`,
+`account-broker`, `portal`, `telemetry-ingest`, `pihole-exporter`,
+and `metrics-diagnostics`. **Never** use 0644 on SMTP, ACME, JWT, API
+tokens, passwords or host pairing keys.
+
+Network boundaries to retain:
+
+- Caddy uses the **infra** egress gateway for Cloudflare DNS-01 (its
+  account-directory bridge is internal). The recovery overlay pins the
+  default via `gw_priority: 100`.
+- LLDAP uses **account-ui** egress for Resend SMTP; bind its raw admin
+  listener only to `127.0.0.1:17170`, and expose browser pages only
+  behind the private Caddy route.
+- Authelia's Resend connection uses **authelia-mail-egress** with an
+  explicit gateway priority, without joining infra or publishing a port.
+- Broker/API retain private account-directory and pc-control network
+  isolation; never give browser services the Docker socket.
+
+`bash scripts/deploy-ui.sh --plan` now recognizes both gateway Caddyfile
+variants and preserves the Authelia SMTP overlay when already running.
+It updates only the selected `portal` and/or `pc-control` service.
+Authelia logs may retain an old `AUTHELIA_CONFIG` warning until that
+container is next intentionally recreated using current Compose; the
+unsupported environment variable is removed from repository config.
 
 ## Backup and restore
 
