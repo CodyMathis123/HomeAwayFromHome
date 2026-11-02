@@ -1,6 +1,7 @@
 """Private control API; accessible ONLY behind Caddy + Authelia on the control bridge."""
 from __future__ import annotations
 import json
+import ipaddress
 import os
 import re
 import socket
@@ -413,8 +414,9 @@ SAFE_FILES = {"/control/": ("index.html", "text/html; charset=utf-8"),
               "/control/styles.css": ("styles.css", "text/css; charset=utf-8")}
 
 
-def inventory() -> list[dict]:
-    # Strict schema reused by host-side service; avoid exporting IP/MAC/SSH details.
+def inventory(include_address: bool = False) -> list[dict]:
+    # Only administrators may request a validated configured IP for display.
+    # Keep MAC, SSH settings and other network details out of status responses.
     from_inventory = json.loads(INVENTORY.read_text(encoding="utf-8"))["hosts"]
     if len(from_inventory) > 64:
         raise ValueError("Too many hosts")
@@ -425,7 +427,17 @@ def inventory() -> list[dict]:
         if not isinstance(identifier, str) or not HOST_RE.fullmatch(identifier) or identifier in ids:
             raise ValueError("Invalid inventory identifier")
         ids.add(identifier)
-        hosts.append({"id": identifier, "name": str(host["name"])[:80]})
+        item = {"id": identifier, "name": str(host["name"])[:80]}
+        if include_address:
+            # Inventory is host-managed; only echo a legitimate private IP.
+            # Bad/missing addresses must not break reachability or leak arbitrary text.
+            try:
+                configured = ipaddress.ip_address(host.get("address", ""))
+                if configured.is_private:
+                    item["address"] = str(configured)
+            except (ValueError, TypeError):
+                pass
+        hosts.append(item)
     return hosts
 
 
@@ -627,7 +639,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(exc.status, {"error": str(exc)})
         if path == "/control/api/hosts":
             try:
-                hosts = inventory()
+                hosts = inventory(include_address=role == "admins")
                 with ThreadPoolExecutor(max_workers=8) as pool:
                     results = list(pool.map(lambda x: check_status(x, actor), hosts))
                 return self._json(200, {"hosts": results})
