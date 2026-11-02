@@ -13,6 +13,7 @@ const main = document.querySelector('main');
 let currentView = 'hosts';
 let historyLoaded = false;
 let historyPending = false;
+let hostRefreshPending = false;
 const VIEW_CONTEXT = Object.freeze({
   hosts: ['POWER CONTROLS', 'Wake, reachability, and Windows power requests'],
   'computer-admin': ['COMPUTERS', 'Inventory, enrollment drafts, and SSH trust'],
@@ -53,6 +54,20 @@ function updateCurrentSection(focus = false) {
   window.HomeAwayNavigation?.sync();
   if (target === 'setup-readiness' && capabilities?.role === 'admins')
     if (typeof HomeAwayReadiness !== 'undefined') HomeAwayReadiness.show();
+  // Refresh only the destination view on deliberate navigation; re-check
+  // administrator capabilities before reading a privileged directory.
+  if (focus && authChecked && previousView !== target) {
+    if (target === 'hosts') void refresh();
+    if (target === 'accounts' || target === 'computer-admin') {
+      void loadIdentity().then(() => {
+        if (currentView !== target) return;
+        if (target === 'accounts' && identity?.capabilities?.manageUsers &&
+            typeof HomeAwayAccounts !== 'undefined') void HomeAwayAccounts.refresh();
+        if (target === 'computer-admin' && identity?.capabilities?.manageComputers &&
+            typeof HomeAwayComputers !== 'undefined') void HomeAwayComputers.refresh();
+      }).catch(() => { /* loadIdentity removes inaccessible admin views. */ });
+    }
+  }
   // Navigation refreshes activity on entry; this is not background polling.
   if (authChecked && target === 'recent-activity' && capabilities?.history &&
       (!historyLoaded || previousView !== target)) void loadHistory();
@@ -142,11 +157,16 @@ function card(item) {
   return article;
 }
 async function refresh() {
+  if (hostRefreshPending) return;
+  hostRefreshPending = true;
   const button = $('refresh');
   button.disabled = true;
-  status.textContent = 'Checking SSH reachability…';
+  if (currentView === 'hosts') status.textContent = 'Checking SSH reachability…';
   try {
     await loadIdentity();
+    // The identity still refreshes for security, but querying every Windows
+    // SSH endpoint is unnecessary while Users or Diagnostics is visible.
+    if (currentView !== 'hosts') return;
     const response = await fetch('/control/api/hosts', {cache: 'no-store', credentials: 'same-origin'});
     if (!response.ok) throw new Error('Could not read computer status');
     const data = await response.json();
@@ -158,7 +178,7 @@ async function refresh() {
   } catch (error) {
     hosts.dataset.stale = 'true';
     status.textContent = 'Status unavailable — ' + error.message + '. Previously shown results may be stale.';
-  } finally { button.disabled = false; }
+  } finally { button.disabled = false; hostRefreshPending = false; }
 }
 async function doAction(item, action) {
   if (pending.has(item.id) || !identity?.capabilities?.actions?.includes(action)) return;
@@ -242,9 +262,10 @@ updateCurrentSection();
 $('refresh').addEventListener('click', refresh);
 $('refresh-history').addEventListener('click', loadHistory);
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) {
-    void refresh();
-    if (currentView === 'recent-activity') void loadHistory();
-  }
+  if (document.hidden) return;
+  if (currentView === 'hosts') void refresh();
+  else if (currentView === 'recent-activity') void loadHistory();
+  // Admin directories refresh on navigation or explicit user request, not
+  // on every tab visibility change or while a long form is being edited.
 });
 void refresh();
