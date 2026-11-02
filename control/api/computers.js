@@ -16,6 +16,8 @@ const HomeAwayComputers = (() => {
   let accessEpoch = 0;
   let auditBusy = false;
   let cachedInventory = null;
+  // Only the currently opened directory needs an initial API read.
+  const isActive = () => document.querySelector?.('main')?.dataset.activeView === 'computer-admin';
   function renderInventory() {
     if (!cachedInventory) return;
     const data = cachedInventory;
@@ -353,7 +355,7 @@ const HomeAwayComputers = (() => {
     authorized=true;
     section.hidden=false;
     if (started) {
-      if (regained) void refresh();
+      if (regained && isActive()) void refresh();
       return;
     }
     started=true;
@@ -383,7 +385,7 @@ const HomeAwayComputers = (() => {
           'Draft created. It is NOT active; Windows setup and SSH verification come next.'))
         form.reset();
     });
-    void refresh();
+    if (isActive()) void refresh();
   }
   return {start,refresh};
 })();
