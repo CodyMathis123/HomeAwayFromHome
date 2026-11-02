@@ -52,6 +52,9 @@ class WebPortRetirementTests(unittest.TestCase):
         self.assertNotIn("force-recreate wg-easy",script)
         self.assertNotIn("tls_insecure_skip_verify",script)
         self.assertNotIn("sudo docker system prune",script)
+        self.assertIn('[[ "$dns" == 302 ]]',script)
+        self.assertIn("https://auth.homeawayfromhome.house/",script)
+        self.assertNotIn('"$dns" == 403',script)
 
     def test_repo_contracts_enforce_gateway_only_web(self):
         contracts=(ROOT/"scripts/check_contracts.py").read_text()
