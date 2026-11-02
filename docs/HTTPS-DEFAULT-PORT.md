@@ -66,3 +66,56 @@ Stage 2 should then, as a separate, explicitly validated change:
    the legacy `:8443` binding.
 
 Don't change router port forwarding or expose :443 to the WAN.
+
+## Stage 2: use portless HTTPS URLs as canonical
+
+After confirming all three hostnames answer on private port 443, stage 2
+updates only the canonical URL **references**. The gateway still maps both
+`PI_LAN_IP:443` and `PI_LAN_IP:8443` to its unchanged internal listener.
+No Caddyfile edit or certificate issuance is necessary.
+
+The script reads the existing *root-protected* Authelia config and requires
+exactly the two known `:8443` session URLs. It prepares a candidate with
+the same file ownership/mode, validates it inside the existing Authelia
+container, backs up the complete original config root-only, and atomically
+replaces it. It does **not** regenerate any secrets, TOTP registrations,
+LDAP roles or SMTP settings. On unusual config layouts, it stops rather
+than guessing. If the root-only backup exists, it will not overwrite it.
+
+```bash
+cd ~/HomeAwayFromHome
+git fetch origin
+git switch Production
+git merge --ff-only origin/Production
+bash scripts/deploy-https443-final.sh --plan
+bash scripts/deploy-https443-final.sh --apply
+```
+
+The apply operation only reconciles `pc-control`, `portal`, `grafana`,
+and (when account-recovery routing is live) `lldap`, then restarts
+`authelia` to pick up the already validated redirect configuration.
+There may be a brief authentication interruption. Caddy, VPN, Pi-hole,
+VictoriaMetrics and Windows fan control are untouched.
+
+Test an actual **fresh browser sign-in with TOTP**, not just loading the
+portal, at the portless URL. Check admin and operator actions with a safe
+Wake/status operation, Grafana navigation, and account-invite/reset URLs
+if used. Confirm old `:8443` links still work. The app origin remains
+strictly whitelisted for **both** explicit HTTPS origins.
+
+**Rollback**, if login or control actions fail:
+
+```bash
+cd ~/HomeAwayFromHome
+bash scripts/deploy-https443-final.sh --rollback
+```
+
+Rollback restores only the original root-protected Authelia configuration
+and reapplies the former generated URLs from the explicit rollback Compose
+overlay, then restarts the same select containers. It does not close
+port 443 or manipulate DNS/VPN. Avoid running a normal `deploy-ui.sh`
+after rollback until the cutover has been re-evaluated: its canonical
+production Compose inputs would otherwise reapply portless settings.
+
+Once verified across LAN and WireGuard, retire `:8443` separately, not
+as part of this cutover.

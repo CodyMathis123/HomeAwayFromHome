@@ -17,10 +17,9 @@ services:
     volumes:
       - ./data/control/backup-status:/backup-status:ro
     environment:
-      HOMEAWAY_CONTROL_ORIGIN: "https://home.homeawayfromhome.house:8443"
-      # Migration only: preserve 8443 as the primary origin and allow the
-      # exact portless production hostname for authenticated CSRF-protected POSTs.
-      HOMEAWAY_CONTROL_ALT_ORIGIN: "https://home.homeawayfromhome.house"
+      HOMEAWAY_CONTROL_ORIGIN: "https://home.homeawayfromhome.house"
+      # Legacy 8443 remains an explicitly allowlisted fallback during rollout.
+      HOMEAWAY_CONTROL_ALT_ORIGIN: "https://home.homeawayfromhome.house:8443"
 
   metrics-diagnostics:
     environment:
@@ -32,12 +31,12 @@ services:
 
   portal:
     environment:
-      HOMEAWAY_CONTROL_URL: "https://home.homeawayfromhome.house:8443/control/"
-      HOMEAWAY_METRICS_ORIGIN: "https://metrics.homeawayfromhome.house:8443"
+      HOMEAWAY_CONTROL_URL: "https://home.homeawayfromhome.house/control/"
+      HOMEAWAY_METRICS_ORIGIN: "https://metrics.homeawayfromhome.house"
 
   grafana:
     environment:
-      GF_SERVER_ROOT_URL: "https://metrics.homeawayfromhome.house:8443"
+      GF_SERVER_ROOT_URL: "https://metrics.homeawayfromhome.house"
 
 secrets:
   cloudflare_dns01_token:

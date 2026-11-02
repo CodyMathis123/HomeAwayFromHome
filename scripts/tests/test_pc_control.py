@@ -164,6 +164,28 @@ class EndpointTests(unittest.TestCase):
                     self.assertEqual(code, 403, disallowed)
                 self.assertEqual(send.call_count, 2)
 
+    def test_canonical_443_with_8443_fallback_enforces_csrf_origin(self):
+        headers = {"X-HomeAway-User":"homeowner","X-HomeAway-Groups":"admins",
+                   "X-HomeAway-Request":"1","Sec-Fetch-Site":"same-origin"}
+        current = "https://home.homeawayfromhome.house"
+        previous = "https://home.homeawayfromhome.house:8443"
+        with patch.dict(os.environ, {"HOMEAWAY_CONTROL_ORIGIN":current,
+                                     "HOMEAWAY_CONTROL_ALT_ORIGIN":previous}), \
+             patch.object(api, "apply_action", return_value={
+                 "ok":True,"state":"requested","detail":"Wake sent"}) as action:
+            for origin in (current,previous):
+                code,_ = self.request("POST","/control/api/actions",
+                                      {"host":"gaming","action":"wake","confirm":""},
+                                      {**headers,"Origin":origin})
+                self.assertEqual(code,200,origin)
+            for origin in ("http://home.homeawayfromhome.house",
+                           "https://home.homeawayfromhome.house:444"):
+                code,_ = self.request("POST","/control/api/actions",
+                                      {"host":"gaming","action":"wake","confirm":""},
+                                      {**headers,"Origin":origin})
+                self.assertEqual(code,403,origin)
+            self.assertEqual(action.call_count,2)
+
     def test_roles_and_malformed_claims(self):
         self.assertEqual(api.verified_role("admins,operators"), "admins")
         self.assertEqual(api.verified_role(" operators, viewers "), "operators")

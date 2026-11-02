@@ -15,12 +15,12 @@ class Private443Preview(unittest.TestCase):
         control = c.split("\n  pc-control:",1)[1].split("\n  metrics-diagnostics:",1)[0]
         self.assertNotIn("\n    ports:",control)
 
-    def test_origin_and_links_remain_legacy_until_follow_up(self):
+    def test_origin_and_links_use_portless_canonical_with_legacy_fallback(self):
         prod=(ROOT / "compose.production.yaml").read_text()
-        self.assertIn('HOMEAWAY_CONTROL_ORIGIN: "https://home.homeawayfromhome.house:8443"',prod)
-        self.assertIn('HOMEAWAY_CONTROL_ALT_ORIGIN: "https://home.homeawayfromhome.house"',prod)
-        self.assertIn('HOMEAWAY_METRICS_ORIGIN: "https://metrics.homeawayfromhome.house:8443"',prod)
-        self.assertIn('GF_SERVER_ROOT_URL: "https://metrics.homeawayfromhome.house:8443"',prod)
+        self.assertIn('HOMEAWAY_CONTROL_ORIGIN: "https://home.homeawayfromhome.house"',prod)
+        self.assertIn('HOMEAWAY_CONTROL_ALT_ORIGIN: "https://home.homeawayfromhome.house:8443"',prod)
+        self.assertIn('HOMEAWAY_METRICS_ORIGIN: "https://metrics.homeawayfromhome.house"',prod)
+        self.assertIn('GF_SERVER_ROOT_URL: "https://metrics.homeawayfromhome.house"',prod)
         app=(ROOT / "control/api/app.py").read_text()
         self.assertIn('"https://home.homeawayfromhome.house"',app)
         self.assertIn('if trusted_origins and alternate_origin in permitted_origins',app)
