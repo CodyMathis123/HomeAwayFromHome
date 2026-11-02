@@ -290,8 +290,9 @@ const HomeAwayComputers = (() => {
     try {
       const data=await api('');
       if (!authorized || accessEpoch !== epoch) return false;
-      if (!Array.isArray(data.active) || !Array.isArray(data.drafts) ||
-          !Array.isArray(data.retired)) throw new Error('Invalid inventory response');
+      if (!Array.isArray(data?.active) || !Array.isArray(data?.drafts) ||
+          (data.retired !== undefined && !Array.isArray(data.retired)))
+        throw new Error('Invalid inventory response');
       cachedInventory=data;
       renderInventory();
       delete updated.dataset.stale;
