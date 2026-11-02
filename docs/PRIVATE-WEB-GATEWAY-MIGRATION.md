@@ -9,8 +9,9 @@ Grafana and telemetry. No new DNS record, TLS certificate, or WAN port.
 
 Pi-hole v6 explicitly supports the reverse-proxy prefix /dns. Caddy strips
 that prefix before forwarding, so Pi-hole /dns/api/* does not collide with
-HomeAway's own /api/* endpoints. Authelia authenticates the Pi-hole route;
-Pi-hole retains its independent administrator password.
+HomeAway's own /api/* endpoints. Authelia authenticates the original /dns/* URL before Caddy strips the
+prefix for Pi-hole. A dedicated admins + two_factor policy authorizes this
+route; Pi-hole retains its independent administrator password.
 
 From LAN-side SSH to the Pi:
 
@@ -46,6 +47,38 @@ restore its prior root prefix, recreating only Pi-hole:
 
 The old Pi-hole address http://PI_LAN_IP:8080/admin/ is deliberately retained
 during the phase A trial.
+
+## Repair a 403 on /dns/admin/ (November 2026)
+
+If Authelia logs a forbidden /admin/ request instead of /dns/admin/,
+the gateway is stripping the prefix before forward-auth. The canonical
+gateway and account-recovery variants now authenticate before rewriting.
+
+After merging the fix to Production, from the Pi run:
+
+    cd ~/HomeAwayFromHome
+    git fetch origin
+    git switch Production
+    git merge --ff-only origin/Production
+    sudo python3 scripts/fix-dns-admin-auth.py --plan
+    sudo python3 scripts/fix-dns-admin-auth.py --apply
+    sudo docker restart homeawayfromhome-gateway-1
+    bash scripts/deploy-gateway-web.sh --status
+
+This repair does **not** recreate Pi-hole, open LAN-facing listeners, or change
+port 53. The Authelia restart temporarily interrupts sign-in, and restarting
+Caddy briefly interrupts HTTPS. The migration validates a private candidate
+configuration before applying it and retains a private backup at
+`data/control/authelia/configuration.before-dns-admin.yml`.
+Never paste that file into tickets or chat: it contains secrets.
+
+The status check deliberately requires an anonymous /dns/admin/ request to
+redirect (302) to the canonical Authelia login. A 403 is not considered
+healthy. After the status check, sign in with an admins-group account, complete
+TOTP, and verify the Pi-hole login, assets, and /dns/api/* calls in a browser.
+Anonymous or non-admin users must not be granted Pi-hole access. A
+successful anonymous redirect is only a gateway smoke test, not proof of
+complete authenticated browser behavior.
 
 ## Phase B: retire direct web listeners only after acceptance
 

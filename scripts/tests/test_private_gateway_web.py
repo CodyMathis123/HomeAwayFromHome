@@ -1,5 +1,6 @@
 """Stage-1 HTTPS gateway readiness before any direct web ports are retired."""
 import os
+import runpy
 from pathlib import Path
 import unittest
 from unittest.mock import patch
@@ -15,7 +16,7 @@ class PrivateWebGatewayTests(unittest.TestCase):
                 s=(ROOT/"control/gateway"/f"Caddyfile.{flavor}").read_text()
                 home=s.split("home.homeawayfromhome.house:8443 {",1)[1].split(
                     "metrics.homeawayfromhome.house:8443 {",1)[0]
-                dns=home.split("handle_path /dns/* {",1)[1].split(
+                dns=home.split("handle /dns/* {",1)[1].split(
                     "\n  handle {\n    reverse_proxy portal:8080",1)[0]
                 self.assertIn("@dnsRoot path /dns",home)
                 self.assertIn("redir @dnsRoot /dns/admin/ 308",home)
@@ -23,11 +24,15 @@ class PrivateWebGatewayTests(unittest.TestCase):
                 self.assertIn("forward_auth authelia:9091",dns)
                 self.assertIn("uri /api/authz/forward-auth",dns)
                 self.assertIn("reverse_proxy pihole:80",dns)
+                self.assertIn("uri strip_prefix /dns",dns)
+                self.assertLess(dns.index("forward_auth"),dns.index("uri strip_prefix /dns"))
+                self.assertLess(dns.index("uri strip_prefix /dns"),dns.index("reverse_proxy pihole"))
+                self.assertNotIn("handle_path /dns/*",home)
                 self.assertLess(dns.index("forward_auth"),dns.index("reverse_proxy pihole"))
                 self.assertIn("request_header -Remote-User",dns)
                 self.assertIn("request_header -X-HomeAway-Groups",dns)
                 self.assertNotIn("tls_insecure_skip_verify",dns)
-                self.assertLess(home.index("handle_path /dns/*"),
+                self.assertLess(home.index("handle /dns/*"),
                                 home.index("reverse_proxy portal:8080"))
                 self.assertIn("forward_auth authelia:9091",home.split("handle @control",1)[1])
                 self.assertIn("handle /ingest",s)
@@ -92,6 +97,45 @@ class PrivateWebGatewayTests(unittest.TestCase):
         self.assertNotIn("force-recreate wg-easy",script)
         self.assertNotIn("sudo docker system prune",script)
         self.assertNotIn("tls_insecure_skip_verify",script)
+        self.assertIn('[[ "$dns" == 302 ]]',script)
+        self.assertIn("https://auth.homeawayfromhome.house/",script)
+        self.assertNotIn('"$dns" == 403',script)
+
+    def test_dns_auth_migration_render_is_idempotent_and_limited(self):
+        migration=runpy.run_path(str(ROOT/"scripts/fix-dns-admin-auth.py"))
+        render=migration["updated"]
+        initial=("access_control:\n"
+                 "  default_policy: deny\n"
+                 "  rules:\n"
+                 "    - domain: homeaway.home.arpa\n"
+                 "      resources:\n"
+                 "        - '^/control(?:/.*)?$'\n"
+                 "      policy: two_factor\n"
+                 "session:\n"
+                 "  secret: dummy\n")
+        changed,updated=render(initial)
+        self.assertTrue(changed)
+        self.assertIn("group:admins",updated)
+        self.assertIn("'^/dns(?:/.*)?$'",updated)
+        self.assertEqual(updated.replace(migration["RULE"],""),initial)
+        changed_again,same=render(updated)
+        self.assertFalse(changed_again)
+        self.assertEqual(same,updated)
+        with self.assertRaises(ValueError):
+            render(initial.replace("default_policy: deny","default_policy: bypass"))
+        with self.assertRaises(ValueError):
+            render(initial.replace("session:", "    - domain: home.homeawayfromhome.house\n"
+                                   "      resources:\n"
+                                   "        - '^/dns/.*$'\n"
+                                   "session:"))
+
+    def test_dns_admin_auth_migration_scoped_and_protected(self):
+        script=(ROOT/"scripts/fix-dns-admin-auth.py").read_text()
+        for token in ("group:admins", "two_factor", "/dns(?:/.*)?$",
+                      "configuration.before-dns-admin.yml",
+                      "config", "validate", "--plan", "--apply"):
+            self.assertIn(token,script)
+        self.assertNotIn("default_policy: bypass",script)
 
 if __name__=="__main__":
     unittest.main()

@@ -55,12 +55,12 @@ home.homeawayfromhome.house:8443 {
 
   # Default read-only portal is served via the private HTTPS gateway.
   # Pi-hole v6 supports a reverse-proxy prefix. The /dns/ prefix is
-  # stripped before forwarding, keeping /api/* away from HomeAway's own API.
+  # stripped AFTER authorization, keeping /api/* away from HomeAway's own API.
   # All Pi-hole administrative paths require an Authelia session and still
   # require Pi-hole's independent password.
   @dnsRoot path /dns
   redir @dnsRoot /dns/admin/ 308
-  handle_path /dns/* {
+  handle /dns/* {
     route {
       # A browser must never supply trusted identity information to an upstream.
       request_header -Remote-User
@@ -74,6 +74,8 @@ home.homeawayfromhome.house:8443 {
       forward_auth authelia:9091 {
         uri /api/authz/forward-auth
       }
+      # Authenticate using the original /dns/* URL; strip only for Pi-hole.
+      uri strip_prefix /dns
       reverse_proxy pihole:80 {
         header_up -Remote-User
         header_up -Remote-Groups
