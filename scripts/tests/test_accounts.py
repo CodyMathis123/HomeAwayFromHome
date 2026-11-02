@@ -45,6 +45,10 @@ class Directory:
         self.people[id]={"id":id,"displayName":display,"email":email,"groups":[]}
         self.writes.append(("create",id))
 
+    def send_invitation(self,id):
+        if self.fail:raise broker.BrokerFailure(503,"Offline")
+        self.writes.append(("invite",id))
+
     def membership(self,id,group_id,enabled):
         if self.fail:raise broker.BrokerFailure(503,"Offline")
         role=next(k for k,v in self.groups.items() if v==group_id)
@@ -93,6 +97,39 @@ class BrokerTests(unittest.TestCase):
             with self.assertRaises(broker.BrokerFailure) as cm:
                 self.invoke("homeowner","create",id=id,name="Other",email=email)
             self.assertIn(cm.exception.status,(400,409))
+
+    def test_create_and_invite_pending_account(self):
+        r=self.invoke("homeowner","create-invite",id="newmember",
+                      name="New Member",email="newmember@home.invalid")
+        self.assertTrue(r["invitationRequested"])
+        self.assertIsNone(r["user"]["role"])
+        self.assertEqual(self.directory.writes,
+                         [("create","newmember"),("invite","newmember")])
+
+    def test_invite_pending_and_no_role_grants(self):
+        rev=broker.fingerprint(self.directory.user("pending"))
+        r=self.invoke("homeowner","invite",id="pending",revision=rev)
+        self.assertTrue(r["requested"])
+        self.assertEqual(self.directory.writes,[("invite","pending")])
+        for actor,id in (("viewer","pending"),("homeowner","operator"),
+                         ("homeowner","homeowner")):
+            with self.assertRaises(broker.BrokerFailure):
+                self.invoke(actor,"invite",id=id,
+                            revision=broker.fingerprint(self.directory.user(id)))
+        with self.assertRaises(broker.BrokerFailure) as cm:
+            self.invoke("homeowner","invite",id="pending",revision="0"*24)
+        self.assertEqual(cm.exception.status,409)
+        self.assertEqual(self.directory.writes,[("invite","pending")])
+
+    def test_failed_invitation_does_not_erase_created_user(self):
+        def failed(_): raise broker.BrokerFailure(503,"SMTP unavailable")
+        with patch.object(self.directory,"send_invitation",side_effect=failed):
+            r=self.invoke("homeowner","create-invite",id="newmember",
+                          name="New Member",email="newmember@home.invalid")
+        self.assertFalse(r["invitationRequested"])
+        self.assertIn("invitationError",r)
+        self.assertIsNotNone(self.directory.user("newmember"))
+        self.assertIsNone(self.api.resolve("newmember")["role"])
 
     def test_role_demote_revoke_and_revision(self):
         target=self.directory.user("operator")
