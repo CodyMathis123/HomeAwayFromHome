@@ -466,6 +466,32 @@ class DashboardContracts(unittest.TestCase):
         self.assertFalse(any(p["fieldConfig"]["defaults"]["custom"]["spanNulls"]
                              for p in d["panels"] if p["type"] == "timeseries"))
 
+    def test_summary_period_comparisons_and_data_presence_are_gap_safe(self):
+        dashboard = json.loads((PANELS / "reporting-summary.json").read_text(encoding="utf-8"))
+        panels = {panel["id"]: panel for panel in dashboard["panels"]}
+        for panel_id in (30, 31, 32, 33):
+            panel = panels[panel_id]
+            self.assertEqual(panel["type"], "stat")
+            expression = panel["targets"][0]["expr"]
+            self.assertIn("[$__range] offset $__range", expression)
+            self.assertIn("[$__range]", expression)
+            self.assertIn("on(host,sensor)", expression)
+            self.assertNotIn("or vector(0)", expression)
+            self.assertEqual(panel["targets"][0]["legendFormat"], panel["title"])
+        self.assertIn('device_type=~"Gpu(Amd|Nvidia|Intel)?"',
+                      panels[31]["targets"][0]["expr"])
+        for panel_id in (34, 35):
+            self.assertIn("[24h]", panels[panel_id]["targets"][0]["expr"])
+            self.assertFalse(panels[panel_id]["fieldConfig"]["defaults"]["custom"]["spanNulls"])
+        data_presence = panels[36]
+        self.assertEqual(len(data_presence["targets"]), 2)
+        self.assertTrue(all("count_over_time(" in target["expr"] and "[1h]" in target["expr"]
+                            for target in data_presence["targets"]))
+        self.assertNotIn("avg(", "\\n".join(t["expr"] for t in data_presence["targets"]))
+        self.assertIn("sensordash_spool_value", panels[37]["targets"][0]["expr"])
+        self.assertNotIn("vm_data_size_bytes", panels[37]["targets"][0]["expr"])
+        self.assertIn("equal duration", dashboard["description"].lower())
+
     def test_reporting_summary_uses_metadata_and_preserves_gaps(self):
         d = json.loads((PANELS / "reporting-summary.json").read_text(encoding="utf-8"))
         self.assertEqual(d["uid"], "homeaway-sensordash-summary")
