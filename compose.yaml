@@ -26,7 +26,8 @@ services:
     ports:
       - "${PI_LAN_IP:?Set PI_LAN_IP in .env}:53:53/tcp"
       - "${PI_LAN_IP:?Set PI_LAN_IP in .env}:53:53/udp"
-      - "${PI_LAN_IP:?Set PI_LAN_IP in .env}:8080:80/tcp"
+      # Pi-hole's web UI is private through the Caddy /dns/ route.
+      # DNS :53 remains published for LAN and VPN clients.
     volumes:
       - ./data/pihole:/etc/pihole
     networks:
@@ -78,8 +79,7 @@ services:
       WG_ADMIN_HOST: wg-easy
       PI_LAN_IP: ${PI_LAN_IP:?Set PI_LAN_IP in .env}
       GRAFANA_PUBLIC_EMBED_TOKEN: ${GRAFANA_PUBLIC_EMBED_TOKEN:-}
-    ports:
-      - "${PI_LAN_IP:?Set PI_LAN_IP in .env}:8088:8080/tcp"
+    # Read-only portal is served only through Caddy on private HTTPS 443.
     networks:
       - infra
 
@@ -120,8 +120,7 @@ services:
       GF_SERVER_ROOT_URL: "http://${PI_LAN_IP:?Set PI_LAN_IP}:3000"
     secrets:
       - grafana_admin_password
-    ports:
-      - "${PI_LAN_IP:?Set PI_LAN_IP}:3000:3000/tcp"
+    # Grafana is exposed only via metrics.homeawayfromhome.house on Caddy.
     volumes:
       - ./data/grafana:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro

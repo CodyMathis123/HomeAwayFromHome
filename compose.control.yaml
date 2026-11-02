@@ -1,13 +1,12 @@
 # Optional HomeAway control stack. Always combine with compose.yaml.
-# No router-facing ports. Private LAN HTTPS :443 and legacy :8443 are both
-# forwarded to the existing Caddy listener :8443 during the migration.
+# Only private LAN/VPN HTTPS 443 is host-published. The existing Caddy
+# listener continues using internal 8443; the old LAN :8443 is retired.
 services:
   gateway:
     profiles: [control]
     image: caddy:2.11.7-alpine
     restart: unless-stopped
     ports:
-      - "${PI_LAN_IP:?Set PI_LAN_IP in .env}:8443:8443/tcp"
       - "${PI_LAN_IP:?Set PI_LAN_IP in .env}:443:8443/tcp"
     environment:
       HOMEAWAY_DOMAIN: ${HOMEAWAY_DOMAIN:?Set HOMEAWAY_DOMAIN in .env}

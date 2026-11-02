@@ -49,7 +49,40 @@ during the phase A trial.
 
 ## Phase B: retire direct web listeners only after acceptance
 
-A separately reviewed rollout can remove:
+The separately reviewed **Stage B** rollout removes only those four listeners
+after the real-browser checks above pass. Verify that SensorDash's Last delivery
+is still updating and SSH to the Pi works over the LAN; do not deploy through
+a session dependent on Pi-hosted DNS or WireGuard.
+
+    cd ~/HomeAwayFromHome
+    git fetch origin
+    git switch Production
+    git merge --ff-only origin/Production
+    bash scripts/deploy-private-web-ports.sh --plan
+
+The plan validates the live Pi-hole /dns prefix, canonical HTTPS responses,
+private DNS/VPN/SSH-loopback port requirements, and both private and rollback
+Compose configurations. It makes no changes. **Only after confirming the
+actual Pi-hole UI/API, HomeAway, Grafana embeds and role-gated PC controls
+work in a browser**, apply:
+
+    bash scripts/deploy-private-web-ports.sh --apply &&
+    bash scripts/deploy-private-web-ports.sh --status
+
+Only portal, Grafana, Pi-hole and Caddy are recreated. Pi-hole DNS pauses
+briefly during its restart but its existing port 53 binding and persistent
+data remain unchanged. The port cutover checks Caddy on HTTPS 443 and the
+absence of old host web bindings, plus unauthenticated ingest rejection.
+On failure it attempts to restore the old ports automatically. For manual
+rollback (no other services touched):
+
+    bash scripts/deploy-private-web-ports.sh --rollback
+
+After a successful cutover, confirm fresh SensorDash delivery, new Grafana
+samples, Pi-hole query resolution, VPN connectivity, login/TOTP and PC
+status. The old direct admin addresses should no longer accept connections.
+
+It removes:
 
 | Current host port | Private gateway replacement |
 | --- | --- |
