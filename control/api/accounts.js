@@ -169,6 +169,12 @@ const HomeAwayAccounts = (() => {
     $('accounts-refresh').addEventListener('click',refresh);
     $('accounts-search').addEventListener('input',renderDirectory);
     $('accounts-filter').addEventListener('change',renderDirectory);
+    $('accounts-clear').addEventListener('click', () => {
+      $('accounts-search').value = '';
+      $('accounts-filter').value = 'all';
+      renderDirectory();
+      $('accounts-search').focus();
+    });
     // Canonical directory usernames are lowercase. Normalize as the user types
     // so native pattern validation doesn't block mixed-case names silently.
     const usernameInput=$('accounts-add').elements.namedItem('username');
@@ -208,6 +214,9 @@ const HomeAwayAccounts = (() => {
         }
         if (!refreshed) message('Account created but list refresh failed. Refresh before retrying.', 'warning');
         form.reset();
+        // Keep the directory in view after a successful creation; admins may
+        // assign a role next without scrolling past the form.
+        if (refreshed) $('accounts-create-panel').open = false;
       } catch(err) {
         message('Create failed: ' + err.message +
                 '. Check the user list before retrying.','error');
