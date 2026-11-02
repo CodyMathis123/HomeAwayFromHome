@@ -99,7 +99,11 @@ def shared_embed_url() -> str | None:
         return None
     if not ip.is_private:
         return None
-    return f"http://{ip}:3000/public-dashboards/{token}?theme=dark"
+    # Prefer the approved private HTTPS gateway. The direct IP fallback is
+    # retained only for development instances without a configured gateway.
+    origin = metrics_origin()
+    return f"{origin}/public-dashboards/{token}?theme=dark" if origin else (
+        f"http://{ip}:3000/public-dashboards/{token}?theme=dark")
 
 
 
@@ -107,10 +111,10 @@ def control_url() -> str | None:
     """An explicitly configured private HTTPS entry point, never an arbitrary URL."""
     value = os.getenv("HOMEAWAY_CONTROL_URL", "").strip()
     parsed = urlsplit(value)
-    if (parsed.scheme != "https" or parsed.port != 8443 or
+    if (parsed.scheme != "https" or parsed.port not in (None, 8443) or
+            parsed.hostname != "home.homeawayfromhome.house" or
             parsed.username is not None or parsed.password is not None or
-            parsed.query or parsed.fragment or parsed.path != "/control/" or
-            not re.fullmatch(r"[a-zA-Z0-9.-]+", parsed.hostname or "")):
+            parsed.query or parsed.fragment or parsed.path != "/control/"):
         return None
     return value
 
@@ -118,10 +122,10 @@ def control_url() -> str | None:
 def metrics_origin() -> str | None:
     value = os.getenv("HOMEAWAY_METRICS_ORIGIN", "").strip()
     parsed = urlsplit(value)
-    if (parsed.scheme != "https" or parsed.port != 8443 or
+    if (parsed.scheme != "https" or parsed.port not in (None, 8443) or
+            parsed.hostname != "metrics.homeawayfromhome.house" or
             parsed.username is not None or parsed.password is not None or
-            parsed.path or parsed.query or parsed.fragment or
-            not re.fullmatch(r"[a-zA-Z0-9.-]+", parsed.hostname or "")):
+            parsed.path or parsed.query or parsed.fragment):
         return None
     return value
 

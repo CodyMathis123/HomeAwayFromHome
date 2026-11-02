@@ -1,0 +1,6 @@
+# Temporary rollback for Pi-hole's v6 proxy prefix during the staged gateway migration.
+# The old LAN :8080 listener stays published until the separately reviewed cutover.
+services:
+  pihole:
+    environment:
+      FTLCONF_webserver_paths_prefix: ""

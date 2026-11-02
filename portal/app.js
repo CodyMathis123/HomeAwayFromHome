@@ -9,9 +9,8 @@ window.HomeAwayOverview = (() => {
     if (initialized || !root?.querySelector('#refresh')) return;
     initialized = true;
     const byId = id => root.querySelector('#' + id);
-    const host = window.location.hostname;
-    byId('link-dns').href = `http://${host}:8080/admin/`;
-    byId('link-monitor').href = `http://${host}:3000/`;
+    byId('link-dns').href = '/dns/admin/';
+    byId('link-monitor').href = 'https://metrics.homeawayfromhome.house/';
     let pending = false;
     async function refresh() {
       // The overview may be cached but detached while Architecture is displayed.
@@ -69,11 +68,10 @@ window.HomeAwayOverview = (() => {
           return;
         }
         const url = new URL(config.url);
-        // Defense in depth: never load an arbitrary origin or admin path.
-        // HomeAway may be opened by a local DNS name while Grafana uses the Pi's LAN IP.
-        // The server has already validated and constructed that private LAN origin.
-        if (!((url.protocol === 'http:' && url.port === '3000') ||
-              (url.protocol === 'https:' && url.port === '8443')) ||
+        // Never embed an arbitrary origin. Use only the private metrics gateway.
+        if (url.protocol !== 'https:' ||
+            url.hostname !== 'metrics.homeawayfromhome.house' ||
+            (url.port !== '' && url.port !== '8443') ||
             !url.pathname.startsWith('/public-dashboards/') ||
             !/^[a-fA-F0-9]{32,128}$/.test(url.pathname.slice('/public-dashboards/'.length))) {
           throw new Error('Embedded URL must use this Pi host and a shared-dashboard link');
@@ -121,7 +119,9 @@ window.HomeAwayOverview = (() => {
         const data = await response.json();
         if (!data.enabled || !data.url) return;
         const parsed = new URL(data.url);
-        if (parsed.protocol !== 'https:' || parsed.port !== '8443' ||
+        if (parsed.protocol !== 'https:' ||
+            parsed.hostname !== 'home.homeawayfromhome.house' ||
+            (parsed.port !== '' && parsed.port !== '8443') ||
             parsed.pathname !== '/control/' || parsed.search || parsed.hash) return;
         const link = byId('link-pc-control');
         link.href = (location.protocol === 'https:' && location.host === parsed.host)
