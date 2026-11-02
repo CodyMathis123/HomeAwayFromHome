@@ -6,7 +6,7 @@ password-reset emails**, rather than building a custom password or token system.
 
 ## Status / scope
 
-**Prepared, not enabled on the Pi.** The recovery overlay does not run unless
+**Optional; enabled only where the recovery overlay was explicitly deployed.** The recovery overlay does not run unless
 explicitly appended to the existing Compose stack. No existing users or roles
 are modified, and password resets alone do not grant HomeAway access. Existing
 password + TOTP / security-key authentication remains unchanged.
@@ -116,13 +116,49 @@ sudo docker compose "${base[@]}" --profile control --profile accounts --profile 
 This returns LLDAP UI to SSH-loopback access only and restores the original
 gateway routes. It does not remove accounts, passwords, roles or the SMTP file.
 
+## Admin invitations (HomeAway user management)
+
+The protected **Users and permissions** section now supports:
+
+- **Create pending user** with **Email password-setup invitation** selected by default.
+- **Send setup invitation** for any existing pending user (retry or resend).
+- No automatic HomeAway role grant. Assign a viewer/operator/admin role
+  separately, after verifying the recipient and the password setup flow.
+
+Invitations use LLDAP's native `POST /auth/reset/step1/<username>` endpoint
+on its private Docker network. LLDAP sends to the account's *stored email*
+using the already configured Resend SMTP credentials. HomeAway does **not**
+create password tokens, set passwords, or store invite links.
+
+An email accepted by LLDAP is not guaranteed delivered. If SMTP fails after
+account creation, the UI reports **account created, invitation not confirmed**,
+and offers the resend action; do not create a duplicate account.
+
+**Deployment:** The UI lives in the `pc-control` image, and invitation
+dispatch lives in the `account-broker` image. After merging, first pull
+Production on the Pi and rebuild/recreate those two services only using
+your existing reviewed production Compose file/profile stack.
+Keep the working optional account recovery overlay active.
+Do not restart DNS, VPN, LLDAP, Authelia, or Caddy for this UI change.
+
+**Acceptance:** Create a disposable pending user with a real test mailbox.
+Confirm mail arrives; the recipient uses LAN/VPN to open the link and sets
+a password; confirm no HomeAway access until role assignment. Send invitation
+again to a pending account and confirm admin audit logs record the action,
+but never email contents or reset tokens.
+
+**Limit:** The current directory schema does not expose whether a password
+was already set; `Send setup invitation` requests a password reset, even for
+a pending account that may already have a password. Never use it to reset
+another person's password without appropriate consent.
+
 ## Known acceptance limits
 
 - Provider sending, HTML/path prefix handling, and real reset-token redemption
   are **not validated** on the actual Pi until a sender and a second test
   account exist.
-- No HomeAway-admin "Send invite" API yet; administrators create a pending
-  user, then the user requests a password reset email through LLDAP.
+- HomeAway-admin invitation requests are supported; independent delivery and
+  token redemption still require the Pi/recipient acceptance test.
 - Password reset does not establish identity ownership; provision accounts
   only with trusted email addresses.
 - Full account/factor recovery, including lost TOTP + passkey, is not enabled.
