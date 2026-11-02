@@ -186,7 +186,7 @@ class AccountBroker:
                 return {"users":sorted((view(u) for u in users),
                                        key=lambda u:u["id"])}
 
-            if operation=="create":
+            if operation in ("create","create-invite"):
                 if set(payload)!={"id","name","email"}:
                     raise BrokerFailure(400,"Invalid account fields")
                 uid,name,email=payload["id"],payload["name"],payload["email"]
@@ -205,7 +205,21 @@ class AccountBroker:
                 if not created or role_of(created):
                     raise BrokerFailure(503,"Unexpected directory account state")
                 self.audit(actor,uid,"create-pending","committed")
-                return {"user":view(created),"passwordReady":False}
+                response={"user":view(created),"passwordReady":False,
+                          "invitationRequested":False}
+                if operation=="create-invite":
+                    self.audit(actor,uid,"send-invitation","requested")
+                    try:
+                        self.directory.send_invitation(uid)
+                    except BrokerFailure:
+                        # Account creation committed. Do not report it as a
+                        # failed create; offer a retry through the invite action.
+                        self.audit(actor,uid,"send-invitation","failed")
+                        response["invitationError"]="User created, but email was not confirmed. Use Send invitation to retry."
+                    else:
+                        self.audit(actor,uid,"send-invitation","accepted")
+                        response["invitationRequested"]=True
+                return response
 
             if operation=="invite":
                 if set(payload)!={"id","revision"}:
