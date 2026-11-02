@@ -67,8 +67,16 @@ verify_route(){
   [[ "$api" == 200 ]] || { echo "Portal API returned $api, expected 200" >&2; return 1; }
   dns="$(curl -sS --max-time 10 --resolve "home.homeawayfromhome.house:443:$ip" \
     -o /dev/null -w '%{http_code}' https://home.homeawayfromhome.house/dns/admin/)" || return 1
-  [[ "$dns" == 302 || "$dns" == 401 || "$dns" == 403 ]] ||
-    { echo "Unauthenticated Pi-hole admin returned $dns; expected Authelia denial/redirect" >&2; return 1; }
+  # A denied /dns/* rule returns 403, which previously passed this check.
+  # Anonymous access must instead redirect to Authelia's canonical login.
+  [[ "$dns" == 302 ]] ||
+    { echo "Unauthenticated Pi-hole admin returned $dns; expected Authelia login redirect (302)" >&2; return 1; }
+  local location
+  location="$(curl -sS --max-time 10 --resolve "home.homeawayfromhome.house:443:$ip" \
+    -D - -o /dev/null https://home.homeawayfromhome.house/dns/admin/ \
+    | tr -d '\\r' | grep -i '^location:' | head -1)" || return 1
+  [[ "$location" == *"https://auth.homeawayfromhome.house/"* ]] ||
+    { echo "Pi-hole admin did not redirect to canonical Authelia login" >&2; return 1; }
   metrics="$(curl -sS --max-time 10 --resolve "metrics.homeawayfromhome.house:443:$ip" \
     -o /dev/null -w '%{http_code}' https://metrics.homeawayfromhome.house/login)" || return 1
   [[ "$metrics" == 200 || "$metrics" == 302 ]] ||
