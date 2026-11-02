@@ -53,15 +53,12 @@ class CanonicalIngestRouteTests(unittest.TestCase):
         self.assertNotIn('docker compose down',script)
         self.assertNotIn('tls_insecure_skip_verify',script)
 
+
     def test_offline_token_is_valid_shape_and_plan_checks_config(self):
         script=(ROOT/'scripts/deploy-telemetry-route.sh').read_text()
-        token=re.search(r'^offline_cf_token="([^"]+)"
-    unittest.main()
-,script,re.MULTILINE)
+        token=re.search(r'^offline_cf_token="([^"]+)"$',script,re.MULTILINE)
         self.assertIsNotNone(token,"Offline dummy token must be fixed, never secret-derived")
-        self.assertRegex(token.group(1),r'^[A-Za-z0-9_-]{35,50}
-    unittest.main()
-)
+        self.assertRegex(token.group(1),r'^[A-Za-z0-9_-]{35,50}$')
         self.assertNotIn('offline-validation-only',script)
         self.assertIn('CF_API_TOKEN="$offline_cf_token"',script)
         self.assertIn('--network none',script)
