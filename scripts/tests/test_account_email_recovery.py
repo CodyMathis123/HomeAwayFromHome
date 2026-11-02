@@ -36,7 +36,7 @@ class AccountEmailRecoveryContracts(unittest.TestCase):
 
     def test_operator_docs_require_manual_activation_and_rollback(self):
         guide=(ROOT/"docs/ACCOUNT-EMAIL-RECOVERY.md").read_text()
-        self.assertIn("not enabled on the Pi",guide.lower())
+        self.assertIn("not enabled on the pi",guide.lower())
         self.assertIn("Forgot password",guide)
         self.assertIn("Roll back",guide)
         self.assertIn("factor",guide.lower())
