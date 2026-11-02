@@ -79,7 +79,8 @@ class PrivateWebGatewayTests(unittest.TestCase):
             self.assertNotIn("http://' + location.hostname + ':8080",s)
             self.assertNotIn("http://' + location.hostname + ':3000",s)
             self.assertNotIn(":8080/admin/",s)
-        self.assertIn("(parsed.port !== '' && parsed.port !== '8443')",app)
+        self.assertIn("parsed.port !== ''",app)
+        self.assertNotIn("parsed.port !== '' && parsed.port !== '8443'",app)
 
     def test_staged_deployment_does_not_retire_fallback_ports(self):
         script=(ROOT/"scripts/deploy-gateway-web.sh").read_text()
