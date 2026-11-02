@@ -59,8 +59,10 @@ home.homeawayfromhome.house:8443 {
   @directoryRoot path /directory
   redir @directoryRoot /directory/ 308
 
-  # LLDAP uses LLDAP_HTTP_URL's path prefix for its own routes. Preserve it.
-  handle /directory/* {
+  # LLDAP emits browser-facing URLs under /directory/, but serves its
+  # application assets and API handlers relative to / internally.
+  # Strip the public prefix before forwarding requests.
+  handle_path /directory/* {
     header Cache-Control "no-store"
     header X-Robots-Tag "noindex, nofollow"
     reverse_proxy lldap:17170
