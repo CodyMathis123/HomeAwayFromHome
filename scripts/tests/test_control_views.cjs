@@ -84,6 +84,10 @@ function simulate(initialHash, firstCapabilities) {
         : {ok: false, status: 401};
     if (url === '/control/api/hosts')
       return {ok: true, json: async () => ({hosts: []})};
+    if (url === '/control/api/history') {
+      calls.push('api:history');
+      return {ok: true, json: async () => ({events: []})};
+    }
     throw Error('Unexpected API call: ' + url);
   };
   const window = {
@@ -133,6 +137,8 @@ const viewers = {role: 'viewers', actions: [], manageUsers: false, manageCompute
   assert.equal(admin.location.hash, '#accounts');
   await admin.settle();
   assert.equal(admin.main.dataset.activeView, 'accounts');
+  assert.equal(admin.element('control-view-breadcrumb').textContent, 'MANAGE / USERS & PERMISSIONS');
+  assert.equal(admin.element('control-view-role').textContent, 'Access: admins');
   assert.equal(admin.element('accounts').hidden, false);
   assert.equal(admin.element('nav-activity').hidden, false);
   assert.equal(admin.element('nav-accounts').attrs['aria-current'], 'location');
@@ -141,6 +147,10 @@ const viewers = {role: 'viewers', actions: [], manageUsers: false, manageCompute
   assert.ok(admin.calls.includes('focus:computer-admin'));
   admin.navigate('#recent-activity');
   assert.equal(admin.main.dataset.activeView, 'recent-activity');
+  await admin.settle();
+  assert.ok(admin.calls.includes('api:history'));
+  assert.match(admin.element('history-updated').textContent, /^Updated /);
+  assert.equal(admin.element('control-view-breadcrumb').textContent, 'MANAGE / ACTIVITY');
   admin.navigate('#setup-readiness');
   assert.equal(admin.main.dataset.activeView, 'setup-readiness');
   assert.equal(admin.element('setup-readiness').hidden, false);
@@ -178,6 +188,8 @@ const viewers = {role: 'viewers', actions: [], manageUsers: false, manageCompute
   assert.equal(viewer.main.dataset.activeView, 'hosts');
   assert.equal(viewer.location.hash, '#hosts');
   assert.equal(viewer.element('nav-activity').hidden, true);
+  assert.equal(viewer.calls.includes('api:history'), false);
+  assert.equal(viewer.element('control-view-breadcrumb').textContent, 'MANAGE / POWER CONTROLS');
   viewer.navigate('#setup-readiness');
   assert.equal(viewer.main.dataset.activeView, 'hosts');
   assert.equal(viewer.location.hash, '#hosts');
@@ -196,6 +208,8 @@ const viewers = {role: 'viewers', actions: [], manageUsers: false, manageCompute
   assert.equal(expired.element('nav-accounts').hidden, true);
   assert.ok(expired.element('hosts').children.length > 0);
   assert.equal(expired.element('identity').textContent, 'Authorization unavailable');
+  assert.equal(expired.element('control-view-role').textContent, 'Access unavailable');
+  assert.equal(expired.element('history-updated').textContent, 'Activity authorization unavailable');
 
   console.log('Control views: deep links, history fragments, capability revocation and denial passed');
 })().catch(error => { console.error(error); process.exitCode = 1; });
