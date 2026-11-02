@@ -30,7 +30,16 @@ const HomeAwayComputers = (() => {
     $('computer-admin-retired').replaceChildren(...retired.map(item => retiredCard(item,data.revision)));
     if (!retired.length) $('computer-admin-retired').textContent='No matching disabled or archived computers.';
     const total = (data.active || []).length + (data.drafts || []).length + (data.retired || []).length;
-    $('computer-admin-count').textContent = (active.length + drafts.length + retired.length) + ' of ' + total + ' computers';
+    const shown = active.length + drafts.length + retired.length;
+    $('computer-admin-count').textContent = shown + ' of ' + total + ' computers';
+    $('computer-admin-active-count').textContent = '(' + active.length + ')';
+    $('computer-admin-drafts-count').textContent = '(' + drafts.length + ')';
+    $('computer-admin-retired-count').textContent = '(' + retired.length + ')';
+    // Hide unrelated groups when a lifecycle filter is selected. Do not
+    // confuse a deliberately excluded group with an empty inventory.
+    $('computer-admin-active-group').hidden = !['all','active'].includes(state);
+    $('computer-admin-drafts-group').hidden = !['all','draft'].includes(state);
+    $('computer-admin-retired-group').hidden = !['all','disabled','archived'].includes(state);
   }
   // Browser state is UX only. The host writer verifies SSH again on activate.
   const recentlyVerified = new Set();
@@ -307,6 +316,12 @@ const HomeAwayComputers = (() => {
     $('computer-admin-refresh').addEventListener('click',()=>{ void refresh(); });
     $('computer-admin-search').addEventListener('input',renderInventory);
     $('computer-admin-filter').addEventListener('change',renderInventory);
+    $('computer-admin-clear').addEventListener('click', () => {
+      $('computer-admin-search').value = '';
+      $('computer-admin-filter').value = 'all';
+      renderInventory();
+      $('computer-admin-search').focus();
+    });
     $('computer-admin-audit')?.addEventListener('toggle',event=>{
       if (event.currentTarget.open) void refreshAudit();
     });
