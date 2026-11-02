@@ -13,6 +13,8 @@ class AccountEmailRecoveryContracts(unittest.TestCase):
         self.assertIn("format: raw",recovery)
         self.assertIn("lldap-smtp.env",recovery)
         self.assertIn("account-directory",recovery)
+        self.assertIn("gw_priority: 100",recovery)
+        self.assertIn("infra:",recovery)
         self.assertIn("Caddyfile.account-recovery",recovery)
         self.assertNotIn("ports:",recovery)
         self.assertNotIn("privileged:",recovery)
