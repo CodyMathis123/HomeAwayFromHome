@@ -23,6 +23,13 @@
   <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">⌂</span><span>Home<span class="brand-accent">Away</span><small>COMPUTERS &amp; ACCESS</small></span></a>
   <span class="environment"><span class="led" aria-hidden="true"></span> PRIVATE CONTROL · <span id="identity">Checking permissions…</span></span>
 </header>
+<div class="control-view-context" aria-label="Current management section">
+  <div>
+    <p id="control-view-breadcrumb" class="control-view-breadcrumb">MANAGE / POWER CONTROLS</p>
+    <p id="control-view-description" class="control-view-description">Computer power actions and reachability</p>
+  </div>
+  <span id="control-view-role" class="control-view-role" aria-label="Current access role">Checking access…</span>
+</div>
 <section class="hero" data-view-section="hosts"><p class="eyebrow">YOUR COMPUTERS</p><h1>Power and presence.</h1>
 <div class="intro">Wake your computers or request Windows power actions. The PC must be configured for SSH and Wake-on-LAN. Status checks SSH reachability only; power requests are not confirmation that Windows completed the action.</div>
 <button id="refresh" type="button">Refresh status</button><span id="updated" role="status">Loading computers…</span>
@@ -72,7 +79,7 @@
   <div id="accounts-users" class="account-list"></div>
 </section>
 <section id="recent-activity" class="history" data-view-section="recent-activity" tabindex="-1"><div class="heading"><h2>Recent activity</h2><button id="refresh-history" type="button">Refresh log</button></div>
-<div id="events" class="events">No commands yet.</div></section>
+<p id="history-updated" class="detail" role="status" aria-live="polite">Activity not checked yet</p><div id="events" class="events">No commands yet.</div></section>
 <section id="setup-readiness" class="history readiness-page" data-view-section="setup-readiness" tabindex="-1" hidden aria-labelledby="readiness-title">
   <div class="heading">
     <h2 id="readiness-title">Operations &amp; diagnostics</h2>
