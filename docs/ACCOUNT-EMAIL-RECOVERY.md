@@ -56,6 +56,18 @@ root-readable only, but treat access to Docker as privileged and do not run
 `docker inspect` or `docker compose config` into public logs. The encrypted
 HomeAway backups include this secrets directory.
 
+### SMTP connection check (does not send mail)
+
+Before touching LLDAP or Caddy, run the optional local smoke test:
+
+```bash
+sudo python3 scripts/test-resend-smtp.py
+```
+
+This authenticates over TLS without sending a message. It never prints the
+stored key or provider response. A passing result confirms outbound SMTP
+connectivity and credentials, **not** the full reset-email workflow.
+
 ### Validate without service changes
 
 ```bash
