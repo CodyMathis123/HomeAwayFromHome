@@ -404,10 +404,6 @@ def main() -> None:
     peak_panels = json.loads(
         (root / "grafana/dashboards/overview.json").read_text()
     )["panels"]
-    peak_template = json.loads(
-        (root / "grafana/dashboards/overview.json").read_text()
-    )["templating"]["list"]
-    peak_variables = {v["name"]: v for v in peak_template}
     for panel_id, sensor, display_name, peak in (
         (5, "cpu_peak", "CCD1 Tdie", 63.7),
         (6, "gpu_peak", "VRAM Hotspot", 68.0),
@@ -421,17 +417,6 @@ def main() -> None:
         series = results[0]
         assert series["metric"]["sensor"] == sensor, series
         assert series["metric"]["name"] == display_name, series
-        name = "peakCpuSource" if panel_id == 5 else "peakGpuSource"
-        source_query = peak_variables[name]["query"]["query"]
-        assert source_query.startswith("query_result("), source_query
-        source_expr = source_query[len("query_result("):-1]
-        source_expr = (source_expr.replace('host=~"$host"', 'host="CI"')
-                       .replace("$__range", "6m"))
-        source = query(source_expr)
-        assert len(source) == 1, (name, source_expr, source)
-        assert source[0]["metric"]["sensor"] == sensor, (name, source)
-        assert source[0]["metric"]["name"] == display_name, (name, source)
-        assert abs(float(source[0]["value"][1]) - peak) < 0.001, source
         numbers = [float(v) for _, v in series["values"]]
         assert len(numbers) > 2, series
         assert abs(max(numbers) - peak) < 0.001, (panel_id, numbers)
@@ -441,43 +426,79 @@ def main() -> None:
         assert query_range(expr.replace('host="CI"', 'host="NO-SUCH-HOST"'),
                            end - 360, end) == []
 
-    # Hardware Telemetry's global latest/peak Stat cards keep the original
-    # numeric calculations. Their hidden subtitle variables must identify
-    # the SAME winning physical sensor, and honor host + sensor selection.
+    # Hardware temperature Stat uses one result for both the value AND
+    # the alias-aware display name. Previously independent hidden variables
+    # could outlive a panel refresh and attribute the wrong sensor.
     hardware_dashboard = json.loads(
         (root / "grafana/dashboards/sensordash.json").read_text()
     )
     hardware_panels = {p["id"]: p for p in hardware_dashboard["panels"]}
-    hardware_variables = {v["name"]: v for v in hardware_dashboard["templating"]["list"]}
-    for panel_id, variable_name in (
-        (111, "hardwareLatestTempSource"),
-        (112, "hardwarePeakTempSource"),
-    ):
-        panel_expr = hardware_panels[panel_id]["targets"][0]["expr"]
-        variable_expr = hardware_variables[variable_name]["query"]["query"]
-        assert variable_expr.startswith("query_result("), variable_expr
-        variable_expr = variable_expr[len("query_result("):-1]
-        def configured(expression: str, sensor: str = ".*") -> str:
-            return (expression.replace('host=~"$host"', 'host="CI"')
-                    .replace('sensor=~"$sensor"', 'sensor=~"' + sensor + '"')
-                    .replace("$__range", "6m"))
-        for sensor_filter in (".*", "gpu_peak"):
-            numeric = query(configured(panel_expr, sensor_filter))
-            decorated = query(configured(variable_expr, sensor_filter))
-            assert len(numeric) == len(decorated) == 1, (
-                panel_id, sensor_filter, numeric, decorated)
-            assert abs(float(numeric[0]["value"][1])
-                       - float(decorated[0]["value"][1])) < 0.001, (
-                           panel_id, numeric, decorated)
-            assert decorated[0]["metric"].get("sensor"), decorated
-            assert decorated[0]["metric"].get("name"), decorated
-            if sensor_filter == "gpu_peak":
-                assert decorated[0]["metric"]["sensor"] == "gpu_peak", decorated
-                assert decorated[0]["metric"]["name"] == "VRAM Hotspot", decorated
-        assert query(configured(variable_expr).replace('host="CI"', 'host="NO-SUCH-HOST"')) == []
-    print("PASS: Hardware Telemetry latest/peak subtitle attribution, aliases, "
-          "sensor filters, and unchanged stat values")
+    raw = 'sensordash_reading_value{host=~"$host",sensor=~"$sensor",kind="Temperature"}'
+    info = ('sensordash_sensor_info_value{host=~"$host",'
+            'name!~"(?i).*(warning|critical).*"} == 1')
+    original = {
+        111: f"max({raw} * on(host,sensor) group_left(name,device,device_type) ({info}))",
+        112: f"max(max_over_time({raw}[$__range]) * "
+             f"on(host,sensor) group_left(name,device,device_type) ({info}))"
+    }
 
+    def configured(expression: str, sensor: str = ".*") -> str:
+        return (expression.replace('host=~"$host"', 'host="CI"')
+                .replace('sensor=~"$sensor"', 'sensor=~"' + sensor + '"')
+                .replace("$__range", "6m"))
+
+    for panel_id in (111, 112):
+        query_expr = hardware_panels[panel_id]["targets"][0]["expr"]
+        assert "topk(1," in query_expr
+        for sensor_filter in (".*", "gpu_peak", "cpu_peak"):
+            result = query(configured(query_expr, sensor_filter))
+            reference = query(configured(original[panel_id], sensor_filter))
+            assert len(result) == len(reference) == 1, (
+                panel_id, sensor_filter, result, reference)
+            assert abs(float(result[0]["value"][1]) -
+                       float(reference[0]["value"][1])) < 0.001, (
+                panel_id, result, reference)
+            assert result[0]["metric"].get("sensor"), result
+            assert result[0]["metric"].get("name"), result
+            if sensor_filter == "gpu_peak":
+                assert result[0]["metric"]["sensor"] == "gpu_peak", result
+                assert result[0]["metric"]["name"] == "VRAM Hotspot", result
+            if sensor_filter == "cpu_peak":
+                assert result[0]["metric"]["sensor"] == "cpu_peak", result
+                assert result[0]["metric"]["name"] == "CCD1 Tdie", result
+        assert query(configured(query_expr).replace('host="CI"', 'host="NO-SUCH-HOST"')) == []
+
+    # Ingest a *new, higher reading* for another CPU sensor to simulate a
+    # winner change between two consecutive Grafana refreshes. There can be
+    # no stale name: only one query supplies both fields on each refresh.
+    new_ms = int(time.time() * 1000)
+    with urllib.request.urlopen(urllib.request.Request(
+        BASE + "/api/v2/write?precision=ms",
+        data=(f"sensordash_reading,host=CI,sensor=cpu_other,kind=Temperature "
+              f"value=75 {new_ms}\n").encode("ascii"),
+        headers={"Content-Type": "text/plain"}, method="POST",
+    ), timeout=10) as response:
+        assert 200 <= response.status < 300
+    for _ in range(25):
+        latest = query(configured(hardware_panels[111]["targets"][0]["expr"]))
+        peak = query(configured(hardware_panels[112]["targets"][0]["expr"]))
+        if (len(latest) == len(peak) == 1
+                and latest[0]["metric"].get("sensor") == "cpu_other"
+                and peak[0]["metric"].get("sensor") == "cpu_other"
+                and abs(float(latest[0]["value"][1]) - 75) < 0.001
+                and abs(float(peak[0]["value"][1]) - 75) < 0.001):
+            break
+        time.sleep(0.5)
+    else:
+        raise AssertionError(("New winner did not update name/value atomically",
+                              latest, peak))
+    for result in (latest, peak):
+        assert result[0]["metric"]["name"] == "Package", result
+    assert query(configured(original[111]))[0]["value"][1] == latest[0]["value"][1]
+    assert query(configured(original[112]))[0]["value"][1] == peak[0]["value"][1]
+
+    print("PASS: atomic sensor names and temperatures, aliases, filters, "
+          "winner changes, numerical equivalence and empty data")
     print("PASS: peak ranges, single physical sensor, user alias priority, "
           "underscores and history sparklines")
 
