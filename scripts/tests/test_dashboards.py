@@ -6,6 +6,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 PANELS = ROOT / "grafana" / "dashboards"
 
+def all_dash_panels(dashboard):
+    """Include panels nested under Grafana's native collapsed rows."""
+    for panel in all_dash_panels(dashboard):
+        yield panel
+        yield from panel.get("panels", [])
+
+
+
 
 class DashboardContracts(unittest.TestCase):
     def test_both_dashboards_are_provisioned(self):
@@ -17,16 +25,16 @@ class DashboardContracts(unittest.TestCase):
         for name, d in dashboards.items():
             self.assertFalse(d["editable"], name)
             self.assertIn("read-only", d["tags"], name)
-            self.assertEqual(len({p["id"] for p in d["panels"]}), len(d["panels"]), name)
+            self.assertEqual(len({p["id"] for p in all_dash_panels(d)}), len(d["panels"]), name)
             self.assertTrue(all(p["datasource"]["uid"] == "homeaway-vm"
-                                for p in d["panels"]), name)
+                                for p in all_dash_panels(d)), name)
 
     def test_stat_tooltips_use_readable_series_names_not_promql(self):
         # Grafana's Stat hover uses the Prometheus legend as the field name.
         # Without legendFormat, it displays the entire raw PromQL expression.
         for path in PANELS.glob("*.json"):
             dashboard = json.loads(path.read_text(encoding="utf-8"))
-            for panel in dashboard["panels"]:
+            for panel in all_dash_panels(dashboard):
                 if panel["type"] != "stat":
                     continue
                 self.assertEqual(len(panel["targets"]), 1, (path.name, panel["id"]))
@@ -42,7 +50,7 @@ class DashboardContracts(unittest.TestCase):
 
     def test_cooling_panels_use_binding_metadata_not_copied_raw_series(self):
         d = json.loads((PANELS / "cooling-systems.json").read_text(encoding="utf-8"))
-        panels = {p["id"]: p for p in d["panels"]}
+        panels = {p["id"]: p for p in all_dash_panels(d)}
         inventory_query = panels[1]["targets"][0]["expr"]
         self.assertIn("sensordash_cooling_binding_value", inventory_query)
         self.assertIn("== 1", inventory_query)
@@ -64,7 +72,7 @@ class DashboardContracts(unittest.TestCase):
 
     def test_cooling_metadata_and_legends_are_readable(self):
         d = json.loads((PANELS / "cooling-systems.json").read_text(encoding="utf-8"))
-        inventory = next(p for p in d["panels"] if p["id"] == 1)
+        inventory = next(p for p in all_dash_panels(d) if p["id"] == 1)
         self.assertEqual(inventory["title"], "Sensor assignments · reference")
         query = inventory["targets"][0]["expr"]
         for required in ("sensordash_cooling_binding_value",
@@ -82,7 +90,7 @@ class DashboardContracts(unittest.TestCase):
     def test_electrical_dashboard_never_conflates_ratings_with_measurements(self):
         d = json.loads((PANELS / "electrical.json").read_text(encoding="utf-8"))
         self.assertIn("Ratings are estimates", d["description"])
-        panels = {p["id"]: p for p in d["panels"]}
+        panels = {p["id"]: p for p in all_dash_panels(d)}
         self.assertIn("sensordash_component_info_value", panels[1]["targets"][0]["expr"])
         for id in (2, 3, 4, 5):
             query = panels[id]["targets"][0]["expr"]
@@ -97,7 +105,7 @@ class DashboardContracts(unittest.TestCase):
 
     def test_electrical_dashboard_labels_and_inventory_are_readable(self):
         d = json.loads((PANELS / "electrical.json").read_text(encoding="utf-8"))
-        panels = {p["id"]: p for p in d["panels"]}
+        panels = {p["id"]: p for p in all_dash_panels(d)}
         inventory = panels[1]
         self.assertEqual(inventory["title"], "Cooling component inventory")
         self.assertEqual(len(inventory["targets"]), 1)
@@ -122,7 +130,7 @@ class DashboardContracts(unittest.TestCase):
         d = json.loads((PANELS / "dns-vpn.json").read_text(encoding="utf-8"))
         self.assertFalse(d["editable"])
         self.assertEqual(d["uid"], "homeaway-dns-vpn")
-        expressions = "\n".join(t["expr"] for p in d["panels"] for t in p["targets"])
+        expressions = "\n".join(t["expr"] for p in all_dash_panels(d) for t in p["targets"])
         for metric in ("homeaway_pihole_queries_window", "homeaway_pihole_blocked_percent",
                        "homeaway_pihole_blocking_enabled", "homeaway_pihole_clients_active",
                        "wireguard_connected_peers", "wireguard_enabled_peers",
@@ -134,11 +142,11 @@ class DashboardContracts(unittest.TestCase):
         self.assertNotIn("top_domains", expressions)
         self.assertNotIn("top_clients", expressions)
         self.assertNotIn("rate(homeaway_pihole_queries_window", expressions)
-        self.assertEqual(len({p["id"] for p in d["panels"]}), len(d["panels"]))
+        self.assertEqual(len({p["id"] for p in all_dash_panels(d)}), len(d["panels"]))
         # The quiet-network rate should not be duplicated as an oversized
         # status tile. Summary counts remain gauges, never counter rates.
         self.assertEqual(d["time"]["from"], "now-1h")
-        panels = {p["id"]: p for p in d["panels"]}
+        panels = {p["id"]: p for p in all_dash_panels(d)}
         self.assertEqual(
             {t["legendFormat"] for t in panels[8]["targets"]},
             {"All queries", "Cached", "Forwarded", "Blocked"},
@@ -153,7 +161,7 @@ class DashboardContracts(unittest.TestCase):
         self.assertIn("wireguard_sent_bytes", panels[15]["targets"][0]["expr"])
         self.assertEqual(
             sum(t["expr"] == "homeaway_pihole_query_frequency"
-                for p in d["panels"] for t in p["targets"]), 1,
+                for p in all_dash_panels(d) for t in p["targets"]), 1,
         )
         for id in (10, 11):
             mappings = panels[id]["fieldConfig"]["defaults"]["mappings"][0]["options"]
@@ -162,7 +170,7 @@ class DashboardContracts(unittest.TestCase):
 
     def test_catalog_is_distinct_from_raw_identity(self):
         d = json.loads((PANELS / "sensordash.json").read_text(encoding="utf-8"))
-        panels = {p["id"]: p for p in d["panels"]}
+        panels = {p["id"]: p for p in all_dash_panels(d)}
         self.assertIn("sensordash_sensor_info_value", panels[10]["targets"][0]["expr"])
         self.assertIn("label_replace(", panels[10]["targets"][0]["expr"])
         for id in (1, 2, 3, 4):
@@ -193,7 +201,7 @@ class DashboardContracts(unittest.TestCase):
         }
         for filename, ids in targets.items():
             dashboard = json.loads((PANELS / filename).read_text(encoding="utf-8"))
-            panels = {panel["id"]: panel for panel in dashboard["panels"]}
+            panels = {panel["id"]: panel for panel in all_dash_panels(dashboard)}
             for pid in ids:
                 with self.subTest(dashboard=filename, panel=pid):
                     query = panels[pid]["targets"][0]["expr"]
@@ -213,12 +221,12 @@ class DashboardContracts(unittest.TestCase):
             ("storage.json", 10),
         ):
             dashboard = json.loads((PANELS / filename).read_text(encoding="utf-8"))
-            expr = next(p for p in dashboard["panels"] if p["id"] == pid)["targets"][0]["expr"]
+            expr = next(p for p in all_dash_panels(dashboard) if p["id"] == pid)["targets"][0]["expr"]
             self.assertNotIn('alias!="unassigned"', expr)
         # Fixed SSD warning/critical limits are still filtered BEFORE
         # changing display labels for physical-drive temperature charts.
         storage = json.loads((PANELS / "storage.json").read_text(encoding="utf-8"))
-        drive = next(p for p in storage["panels"] if p["id"] == 5)["targets"][0]["expr"]
+        drive = next(p for p in all_dash_panels(storage) if p["id"] == 5)["targets"][0]["expr"]
         self.assertIn('name!~"(?i).*(warning|critical).*"', drive)
 
     def test_all_physical_temperature_views_hide_fixed_nvme_thresholds(self):
@@ -235,7 +243,7 @@ class DashboardContracts(unittest.TestCase):
         }
         for filename, panel_ids in views.items():
             dashboard = json.loads((PANELS / filename).read_text(encoding="utf-8"))
-            panels = {panel["id"]: panel for panel in dashboard["panels"]}
+            panels = {panel["id"]: panel for panel in all_dash_panels(dashboard)}
             for panel_id in panel_ids:
                 with self.subTest(dashboard=filename, panel=panel_id):
                     expr = panels[panel_id]["targets"][0]["expr"]
@@ -293,7 +301,7 @@ class DashboardContracts(unittest.TestCase):
         selector = 'name!~"(?i).*(warning|critical).*"'
         for file, panel_ids in scenarios:
             d = json.loads((PANELS / file).read_text(encoding="utf-8"))
-            panels = {p["id"]: p for p in d["panels"]}
+            panels = {p["id"]: p for p in all_dash_panels(d)}
             for panel_id in panel_ids:
                 query = panels[panel_id]["targets"][0]["expr"]
                 with self.subTest(dashboard=file, panel=panel_id):
@@ -311,7 +319,7 @@ class DashboardContracts(unittest.TestCase):
                               panels[3]["targets"][0]["expr"])
         # Static/diagnostic limits are not deleted from exporter metadata.
         storage = json.loads((PANELS / "storage.json").read_text(encoding="utf-8"))
-        self.assertNotIn(selector, next(p for p in storage["panels"]
+        self.assertNotIn(selector, next(p for p in all_dash_panels(storage)
                                         if p["id"] == 10)["targets"][0]["expr"])
         raw = json.loads((PANELS / "sensordash.json").read_text(encoding="utf-8"))
         self.assertNotIn(selector, next(p for p in raw["panels"]
@@ -341,12 +349,12 @@ class DashboardContracts(unittest.TestCase):
         for d in (storage, events):
             self.assertFalse(d["editable"])
             self.assertEqual(d["time"]["from"], "now-24h")
-            self.assertEqual(len({p["id"] for p in d["panels"]}), len(d["panels"]))
+            self.assertEqual(len({p["id"] for p in all_dash_panels(d)}), len(d["panels"]))
 
     def test_cpu_gpu_cards_use_exported_device_family_instead_of_id_guessing(self):
         import re
         d = json.loads((PANELS / "overview.json").read_text(encoding="utf-8"))
-        panels = {p["id"]: p for p in d["panels"]}
+        panels = {p["id"]: p for p in all_dash_panels(d)}
         for id, family in ((1, "Cpu"), (2, "Gpu"), (5, "Cpu"),
                            (6, "Gpu"), (7, "Cpu"), (8, "Gpu")):
             query = panels[id]["targets"][0]["expr"]
@@ -394,10 +402,14 @@ class DashboardContracts(unittest.TestCase):
         self.assertEqual(d["uid"], "homeaway-overview")
         self.assertIn("read-only", d["tags"])
         self.assertFalse(d["editable"])
-        panels = {p["id"]: p for p in d["panels"]}
-        self.assertGreaterEqual(sum(p["type"] == "stat" for p in d["panels"]), 8)
-        for id in (4, 9, 10):
+        panels = {p["id"]: p for p in all_dash_panels(d)}
+        self.assertGreaterEqual(sum(p["type"] == "stat" for p in all_dash_panels(d)), 8)
+        for id in (4, 10):
             self.assertEqual(panels[id]["fieldConfig"]["defaults"]["unit"], "rotrpm")
+        self.assertEqual(panels[9]["fieldConfig"]["defaults"]["unit"], "s")
+        self.assertIn('timestamp(sensordash_reading_value', panels[9]["targets"][0]["expr"])
+        self.assertIn("[24h]", panels[9]["targets"][0]["expr"])
+        self.assertEqual(panels[9]["title"], "Windows telemetry · sample age")
         for id in (5, 6):
             self.assertIn("max_over_time(", panels[id]["targets"][0]["expr"])
             self.assertIn("[$__range]", panels[id]["targets"][0]["expr"])
@@ -420,7 +432,7 @@ class DashboardContracts(unittest.TestCase):
         self.assertIn("sensordash_sensor_info_value", panels[300]["targets"][0]["expr"])
         self.assertIn("sensordash_reading_value", panels[301]["targets"][0]["expr"])
         self.assertIn("group_left(name,alias,device)", panels[301]["targets"][0]["expr"])
-        for panel in d["panels"]:
+        for panel in all_dash_panels(d):
             if panel["type"] == "timeseries":
                 self.assertFalse(panel["fieldConfig"]["defaults"]["custom"]["spanNulls"])
         self.assertIn('kind="Temperature"', panels[3]["targets"][0]["expr"])
@@ -432,15 +444,15 @@ class DashboardContracts(unittest.TestCase):
         for filename in ("overview.json", "sensordash.json", "cooling-systems.json",
                          "electrical.json", "dns-vpn.json", "storage.json", "events.json", "system-health.json"):
             d = json.loads((PANELS / filename).read_text(encoding="utf-8"))
-            for panel in d["panels"]:
+            for panel in all_dash_panels(d):
                 unit = panel.get("fieldConfig", {}).get("defaults", {}).get("unit")
                 self.assertNotEqual(unit, "rpm", (filename, panel["title"]))
         raw = json.loads((PANELS / "sensordash.json").read_text(encoding="utf-8"))
         cooling = json.loads((PANELS / "cooling-systems.json").read_text(encoding="utf-8"))
         overview = json.loads((PANELS / "overview.json").read_text(encoding="utf-8"))
         for d, ids in ((raw, (2,)), (cooling, (4, 5, 110, 111)),
-                       (overview, (4, 9, 10))):
-            panels = {p["id"]: p for p in d["panels"]}
+                       (overview, (4, 10))):
+            panels = {p["id"]: p for p in all_dash_panels(d)}
             for pid in ids:
                 self.assertEqual(panels[pid]["fieldConfig"]["defaults"]["unit"], "rotrpm")
 
@@ -450,7 +462,7 @@ class DashboardContracts(unittest.TestCase):
         self.assertFalse(d["editable"])
         self.assertIn("read-only", d["tags"])
         self.assertEqual(d["time"]["from"], "now-24h")
-        panels = {p["id"]: p for p in d["panels"]}
+        panels = {p["id"]: p for p in all_dash_panels(d)}
         q = {id: p["targets"][0]["expr"] for id, p in panels.items() if p["targets"]}
         self.assertIn('node_cpu_seconds_total{job="pi-node",mode="idle"}', q[1])
         self.assertIn('node_thermal_zone_temp{job="pi-node"', q[2])
@@ -467,7 +479,7 @@ class DashboardContracts(unittest.TestCase):
         self.assertIn("count_over_time(", q[17])
         self.assertNotIn("rate(sensordash_reading_value", q[17])
         self.assertIn("may simply be asleep", d["panels"][5]["options"]["content"])
-        for p in d["panels"]:
+        for p in all_dash_panels(d):
             if p["type"] == "timeseries":
                 self.assertFalse(p["fieldConfig"]["defaults"]["custom"]["spanNulls"])
             for target in p["targets"]:
@@ -477,29 +489,33 @@ class DashboardContracts(unittest.TestCase):
     def test_gpu_families_and_cooling_role_summary(self):
         for filename in ("overview.json", "reporting-summary.json"):
             d = json.loads((PANELS / filename).read_text(encoding="utf-8"))
-            for panel in d["panels"]:
+            for panel in all_dash_panels(d):
                 for target in panel.get("targets", []):
                     expr = target["expr"]
                     self.assertNotIn('device_type="Gpu"', expr, (filename, panel["id"]))
-            gpu = [p for p in d["panels"] if p["title"].startswith("GPU")]
+            gpu = [p for p in all_dash_panels(d) if p["title"].startswith("GPU")]
             self.assertTrue(gpu)
             self.assertTrue(any('device_type=~"Gpu(Amd|Nvidia|Intel)?"' in t["expr"]
                                 for p in gpu for t in p["targets"]))
         d = json.loads((PANELS / "reporting-summary.json").read_text(encoding="utf-8"))
-        panels = {p["id"]: p for p in d["panels"]}
-        for id, role in ((9, "fan-group"), (10, "pump"), (26, "fan-group"), (27, "pump")):
+        panels = {p["id"]: p for p in all_dash_panels(d)}
+        # Historical RPM traces now live only on Cooling Systems; the
+        # summary retains each distinct role's period peak.
+        for id, role in ((9, "fan-group"), (10, "pump")):
             query = panels[id]["targets"][0]["expr"]
             self.assertIn('role="' + role + '"', query)
             self.assertIn("sensordash_cooling_binding_value", query)
             self.assertIn("on(host,sensor)", query)
             self.assertEqual(panels[id]["fieldConfig"]["defaults"]["unit"], "rotrpm")
         self.assertNotIn("avg(avg_over_time(", panels[10]["targets"][0]["expr"])
+        for redundant in (20, 21, 22, 23, 24, 26, 27):
+            self.assertNotIn(redundant, panels, "Detailed history belongs to dedicated dashboards")
         self.assertFalse(any(p["fieldConfig"]["defaults"]["custom"]["spanNulls"]
-                             for p in d["panels"] if p["type"] == "timeseries"))
+                             for p in all_dash_panels(d) if p["type"] == "timeseries"))
 
     def test_summary_period_comparisons_and_data_presence_are_gap_safe(self):
         dashboard = json.loads((PANELS / "reporting-summary.json").read_text(encoding="utf-8"))
-        panels = {panel["id"]: panel for panel in dashboard["panels"]}
+        panels = {panel["id"]: panel for panel in all_dash_panels(dashboard)}
         for panel_id in (30, 31, 32, 33):
             panel = panels[panel_id]
             self.assertEqual(panel["type"], "stat")
@@ -528,16 +544,79 @@ class DashboardContracts(unittest.TestCase):
         self.assertEqual(d["uid"], "homeaway-sensordash-summary")
         self.assertFalse(d["editable"])
         self.assertEqual(d["time"]["from"], "now-7d")
-        queries = "\\n".join(t["expr"] for p in d["panels"] for t in p["targets"])
+        queries = "\\n".join(t["expr"] for p in all_dash_panels(d) for t in p["targets"])
         self.assertIn('device_type="Cpu"', queries)
         self.assertIn('device_type=~"Gpu(Amd|Nvidia|Intel)?"', queries)
         self.assertIn("count_over_time(", queries)
         self.assertIn("sensordash_spool_value", queries)
         self.assertNotIn("or vector(0)", queries)
         self.assertNotIn("[$__interval]", queries)
-        for p in d["panels"]:
+        for p in all_dash_panels(d):
             if p["type"] == "timeseries":
                 self.assertFalse(p["fieldConfig"]["defaults"]["custom"]["spanNulls"])
+
+    def test_dashboard_consolidation_preserves_real_metrics(self):
+        overview = json.loads((PANELS / "overview.json").read_text(encoding="utf-8"))
+        op = {p["id"]: p for p in all_dash_panels(overview)}
+        self.assertEqual(op[4]["title"], "Radiator fan speed")
+        self.assertEqual(op[9]["title"], "Windows telemetry · sample age")
+        self.assertNotEqual(op[4]["targets"][0]["expr"], op[9]["targets"][0]["expr"])
+        self.assertTrue(op[9]["targets"][0]["instant"])
+        self.assertEqual(op[9]["fieldConfig"]["defaults"]["noValue"], "No samples in 24h")
+        self.assertNotIn("vector(0)", op[9]["targets"][0]["expr"])
+
+        cooling = json.loads((PANELS / "cooling-systems.json").read_text(encoding="utf-8"))
+        cp = {p["id"]: p for p in all_dash_panels(cooling)}
+        row = cp[104]
+        self.assertEqual(row["type"], "row")
+        self.assertTrue(row["collapsed"])
+        self.assertEqual({p["id"] for p in row["panels"]}, {7, 8, 9})
+        self.assertEqual(len([p for p in cooling["panels"] if p["id"] in (7, 8, 9)]), 0)
+        for probe in row["panels"]:
+            self.assertIn("sensordash_reading_value", probe["targets"][0]["expr"])
+            self.assertFalse(probe["fieldConfig"]["defaults"]["custom"]["spanNulls"])
+
+        storage = json.loads((PANELS / "storage.json").read_text(encoding="utf-8"))
+        sp = {p["id"]: p for p in all_dash_panels(storage)}
+        archive = sp[104]
+        self.assertTrue(archive["collapsed"])
+        self.assertEqual({p["id"] for p in archive["panels"]}, set(range(11, 18)))
+        self.assertIn("vm_data_size_bytes", sp[11]["targets"][0]["expr"])
+        self.assertIn("vm_free_disk_space_bytes", sp[12]["targets"][0]["expr"])
+        self.assertIn("sensordash_sensor_info_value", sp[10]["targets"][0]["expr"])
+
+        dns = json.loads((PANELS / "dns-vpn.json").read_text(encoding="utf-8"))
+        dp = {p["id"]: p for p in all_dash_panels(dns)}
+        self.assertNotIn(2, dp)
+        self.assertNotIn(5, dp)
+        self.assertIn("homeaway_pihole_queries_window", dp[8]["targets"][0]["expr"])
+        self.assertIn("homeaway_pihole_cached_window", "\\n".join(
+            t["expr"] for t in dp[8]["targets"]))
+
+        report = json.loads((PANELS / "reporting-summary.json").read_text(encoding="utf-8"))
+        self.assertLessEqual(max(p["gridPos"]["y"]+p["gridPos"]["h"]
+                                  for p in report["panels"]), 64)
+        for panel in all_dash_panels(report):
+            for target in panel.get("targets", []):
+                self.assertNotIn("vector(0)", target["expr"])
+        expected_class = {
+            "overview.json": "everyday",
+            "system-health.json": "everyday",
+            "dns-vpn.json": "everyday",
+            "sensordash.json": "hardware",
+            "cooling-systems.json": "hardware",
+            "storage.json": "hardware",
+            "electrical.json": "analysis",
+            "reporting-summary.json": "analysis",
+            "events.json": "diagnostics",
+            "portal-metrics.json": "embedded",
+        }
+        for filename, category in expected_class.items():
+            dashboard = json.loads((PANELS / filename).read_text(encoding="utf-8"))
+            self.assertIn("homeaway", dashboard["tags"])
+            self.assertIn(category, dashboard["tags"])
+        self.assertEqual(report["refresh"], "5m")
+        self.assertEqual(dns["refresh"], "30s")
 
     def test_dashboard_visual_contract(self):
         # Native panels only; the CSS/theme belongs to Grafana, not a patched
@@ -552,11 +631,11 @@ class DashboardContracts(unittest.TestCase):
             self.assertEqual(nav["tags"], ["homeaway"])
             self.assertTrue(nav["asDropdown"])
             self.assertTrue(nav["keepTime"])
-            headers = [p for p in d["panels"] if p["type"] == "text"]
+            headers = [p for p in all_dash_panels(d) if p["type"] == "text"]
             self.assertGreaterEqual(len(headers), 2, filename)
             self.assertTrue(all(p["options"]["mode"] == "markdown"
                                 and p.get("transparent") is True for p in headers))
-            for p in d["panels"]:
+            for p in all_dash_panels(d):
                 a = p["gridPos"]
                 self.assertGreater(a["h"], 0)
                 self.assertGreater(a["w"], 0)
@@ -582,7 +661,7 @@ class DashboardContracts(unittest.TestCase):
             # rename only graph titles or joined display/catalog fields.
             if filename in ("overview.json", "sensordash.json", "cooling-systems.json", "electrical.json"):
                 self.assertTrue(any("label_replace(" in t["expr"]
-                                    for p in d["panels"] for t in p["targets"]))
+                                    for p in all_dash_panels(d) for t in p["targets"]))
 
 
 
