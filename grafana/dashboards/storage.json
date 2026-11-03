@@ -1207,7 +1207,16 @@
           "mode": "multi",
           "sort": "none"
         }
-      }
+      },
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
     },
     {
       "id": 113,
@@ -1297,7 +1306,16 @@
           "mode": "multi",
           "sort": "none"
         }
-      }
+      },
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
     },
     {
       "id": 114,
@@ -1367,7 +1385,16 @@
           "mode": "multi",
           "sort": "none"
         }
-      }
+      },
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
     },
     {
       "id": 115,
@@ -1467,7 +1494,16 @@
           "mode": "multi",
           "sort": "none"
         }
-      }
+      },
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
     },
     {
       "id": 104,
