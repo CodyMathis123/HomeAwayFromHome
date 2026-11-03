@@ -1,0 +1,17 @@
+[Unit]
+Description=HomeAway Pi SSD SMART and USB health metrics
+After=local-fs.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/bin/python3 -B /usr/local/libexec/homeaway-pi-ssd/collector.py
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectControlGroups=true
+ReadWritePaths=/var/lib/homeaway-ssd-metrics
+TimeoutStartSec=90
+# PrivateDevices must NOT be set: smartctl needs actual /dev/sdX.
