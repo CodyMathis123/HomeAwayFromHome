@@ -10,7 +10,7 @@
   ],
   "description": "Read-only Windows SSD/NVMe observations from SensorDash, Pi root SSD SMART and transport metrics from an optional host collector, plus VictoriaMetrics retention history.",
   "schemaVersion": 40,
-  "version": 6,
+  "version": 7,
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
@@ -1091,7 +1091,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Age of the last host SMART collection attempt. Large/missing means stale or absent.",
+      "description": "Time since the last host collection attempt, based on a precision-preserved Unix timestamp. Expected collection interval is five minutes. Yellow after six minutes, red after ten; no data means exporter/ingestion unavailable.",
       "gridPos": {
         "x": 20,
         "y": 46,
@@ -1105,7 +1105,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}",
+          "expr": "clamp_min(time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}, 0)",
           "instant": true,
           "legendFormat": "Collector sample age"
         }
@@ -1120,9 +1120,18 @@
               {
                 "color": "green",
                 "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 360
+              },
+              {
+                "color": "red",
+                "value": 600
               }
             ]
-          }
+          },
+          "min": 0
         },
         "overrides": []
       },
