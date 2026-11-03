@@ -86,7 +86,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "### YOUR HARDWARE · AT A GLANCE\nThe same monitoring focus as SensorDash Overview · live cards show real exported readings · no remote fan commands"
+        "content": "### YOUR HARDWARE · LATEST OBSERVED\nLatest cards take the hottest available CPU/GPU sensor, not one fixed probe. The latest value can be old when Windows stops reporting; the sparklines show history, not continuous uptime."
       }
     },
     {
@@ -351,7 +351,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "### RECORDED PEAKS & COMPONENT POWER\nPeaks are taken from observed samples in the selected time range; CPU/GPU power readings are displayed separately to avoid overlapping-rail sums"
+        "content": "### TEMPERATURE PEAKS · SELECTED TIME RANGE\nPeak cards show the highest recorded sensor reading in the Grafana time selection **and its source sensor name** beneath the value. Power readings remain separate to avoid overlapping-rail sums."
       }
     },
     {
