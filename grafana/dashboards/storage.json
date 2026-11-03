@@ -789,7 +789,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "homeaway_pi_ssd_collection_success{job=\"pi-node\"}",
+          "expr": "(homeaway_pi_ssd_collection_success{job=\"pi-node\"}) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
           "instant": true,
           "legendFormat": "SMART collection"
         }
@@ -861,7 +861,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "(homeaway_pi_ssd_smart_passed{job=\"pi-node\"}) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1)",
+          "expr": "((homeaway_pi_ssd_smart_passed{job=\"pi-node\"}) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
           "instant": true,
           "legendFormat": "SSD SMART health"
         }
@@ -933,7 +933,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "(homeaway_pi_ssd_temperature_celsius{job=\"pi-node\"}) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1)",
+          "expr": "((homeaway_pi_ssd_temperature_celsius{job=\"pi-node\"}) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
           "instant": true,
           "legendFormat": "SSD temperature"
         }
@@ -990,7 +990,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "(homeaway_pi_ssd_life_normalized{job=\"pi-node\"}) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1)",
+          "expr": "((homeaway_pi_ssd_life_normalized{job=\"pi-node\"}) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
           "instant": true,
           "legendFormat": "SSD life · normalized"
         }
@@ -1047,7 +1047,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "homeaway_pi_root_filesystem_available_bytes{job=\"pi-node\"}",
+          "expr": "(homeaway_pi_root_filesystem_available_bytes{job=\"pi-node\"}) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
           "instant": true,
           "legendFormat": "Pi filesystem free"
         }
@@ -1161,7 +1161,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "homeaway_pi_ssd_lifetime_writes_gib{job=\"pi-node\"} * 1073741824",
+          "expr": "((homeaway_pi_ssd_lifetime_writes_gib{job=\"pi-node\"} * 1073741824) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
           "range": true,
           "legendFormat": "Lifetime writes"
         },
@@ -1171,7 +1171,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "homeaway_pi_ssd_lifetime_reads_gib{job=\"pi-node\"} * 1073741824",
+          "expr": "((homeaway_pi_ssd_lifetime_reads_gib{job=\"pi-node\"} * 1073741824) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
           "range": true,
           "legendFormat": "Lifetime reads"
         }
@@ -1240,7 +1240,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "homeaway_pi_ssd_retired_blocks{job=\"pi-node\"}",
+          "expr": "((homeaway_pi_ssd_retired_blocks{job=\"pi-node\"}) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
           "range": true,
           "legendFormat": "Retired blocks"
         },
@@ -1250,7 +1250,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "homeaway_pi_ssd_program_failures{job=\"pi-node\"}",
+          "expr": "((homeaway_pi_ssd_program_failures{job=\"pi-node\"}) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
           "range": true,
           "legendFormat": "Program failures"
         },
@@ -1260,7 +1260,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "homeaway_pi_ssd_erase_failures{job=\"pi-node\"}",
+          "expr": "((homeaway_pi_ssd_erase_failures{job=\"pi-node\"}) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
           "range": true,
           "legendFormat": "Erase failures"
         },
@@ -1270,7 +1270,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "homeaway_pi_ssd_uncorrectable_errors{job=\"pi-node\"}",
+          "expr": "((homeaway_pi_ssd_uncorrectable_errors{job=\"pi-node\"}) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
           "range": true,
           "legendFormat": "Uncorrectable errors"
         }
@@ -1339,7 +1339,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "homeaway_pi_ssd_power_on_hours{job=\"pi-node\"}",
+          "expr": "((homeaway_pi_ssd_power_on_hours{job=\"pi-node\"}) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
           "range": true,
           "legendFormat": "Power-on hours"
         },
@@ -1349,7 +1349,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "homeaway_pi_ssd_unexpected_power_losses{job=\"pi-node\"}",
+          "expr": "((homeaway_pi_ssd_unexpected_power_losses{job=\"pi-node\"}) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
           "range": true,
           "legendFormat": "Unexpected power losses"
         }
@@ -1418,7 +1418,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "homeaway_pi_ssd_kernel_events_since_boot{job=\"pi-node\",kind=\"io_errors\"}",
+          "expr": "((homeaway_pi_ssd_kernel_events_since_boot{job=\"pi-node\",kind=\"io_errors\"}) and on(job,instance) (homeaway_pi_ssd_kernel_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
           "range": true,
           "legendFormat": "Disk I/O errors"
         },
@@ -1428,7 +1428,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "homeaway_pi_ssd_kernel_events_since_boot{job=\"pi-node\",kind=\"uas_aborts\"}",
+          "expr": "((homeaway_pi_ssd_kernel_events_since_boot{job=\"pi-node\",kind=\"uas_aborts\"}) and on(job,instance) (homeaway_pi_ssd_kernel_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
           "range": true,
           "legendFormat": "UAS aborted commands"
         },
@@ -1438,7 +1438,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "homeaway_pi_ssd_kernel_events_since_boot{job=\"pi-node\",kind=\"usb_resets\"}",
+          "expr": "((homeaway_pi_ssd_kernel_events_since_boot{job=\"pi-node\",kind=\"usb_resets\"}) and on(job,instance) (homeaway_pi_ssd_kernel_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
           "range": true,
           "legendFormat": "USB resets"
         },
@@ -1448,7 +1448,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "homeaway_pi_ssd_kernel_events_since_boot{job=\"pi-node\",kind=\"host_controller_failures\"}",
+          "expr": "((homeaway_pi_ssd_kernel_events_since_boot{job=\"pi-node\",kind=\"host_controller_failures\"}) and on(job,instance) (homeaway_pi_ssd_kernel_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
           "range": true,
           "legendFormat": "Host controller failures"
         },
@@ -1458,7 +1458,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "homeaway_pi_ssd_kernel_events_since_boot{job=\"pi-node\",kind=\"usb_disconnects\"}",
+          "expr": "((homeaway_pi_ssd_kernel_events_since_boot{job=\"pi-node\",kind=\"usb_disconnects\"}) and on(job,instance) (homeaway_pi_ssd_kernel_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
           "range": true,
           "legendFormat": "USB disconnects"
         }
