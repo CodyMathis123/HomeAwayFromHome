@@ -861,7 +861,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "homeaway_pi_ssd_smart_passed{job=\"pi-node\"}",
+          "expr": "(homeaway_pi_ssd_smart_passed{job=\"pi-node\"}) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1)",
           "instant": true,
           "legendFormat": "SSD SMART health"
         }
@@ -933,7 +933,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "homeaway_pi_ssd_temperature_celsius{job=\"pi-node\"}",
+          "expr": "(homeaway_pi_ssd_temperature_celsius{job=\"pi-node\"}) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1)",
           "instant": true,
           "legendFormat": "SSD temperature"
         }
@@ -990,7 +990,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "homeaway_pi_ssd_life_normalized{job=\"pi-node\"}",
+          "expr": "(homeaway_pi_ssd_life_normalized{job=\"pi-node\"}) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1)",
           "instant": true,
           "legendFormat": "SSD life · normalized"
         }
