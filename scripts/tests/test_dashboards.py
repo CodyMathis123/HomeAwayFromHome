@@ -351,7 +351,8 @@ class DashboardContracts(unittest.TestCase):
         for d in (storage, events):
             self.assertFalse(d["editable"])
             self.assertEqual(d["time"]["from"], "now-24h")
-            self.assertEqual(len({p["id"] for p in all_dash_panels(d)}), len(d["panels"]))
+            self.assertEqual(len({p["id"] for p in all_dash_panels(d)}),
+                             len(list(all_dash_panels(d))))
 
     def test_cpu_gpu_cards_use_exported_device_family_instead_of_id_guessing(self):
         import re
