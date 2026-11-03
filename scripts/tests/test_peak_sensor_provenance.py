@@ -18,9 +18,16 @@ class PeakSensorProvenanceTests(unittest.TestCase):
         self.assertTrue(expr.startswith("topk(1, "))
         self.assertIn('device_type="Storage"', expr)
         self.assertIn('name!~"(?i).*(warning|critical).*"', expr)
-        self.assertIn("group_left(name,device,device_type)", expr)
+        self.assertIn("group_left(display,device,name,device_type)", expr)
         self.assertEqual(peak["options"]["textMode"], "value_and_name")
-        self.assertEqual(peak["targets"][0]["legendFormat"], "{{name}}")
+        self.assertEqual(peak["targets"][0]["legendFormat"], "{{display}}")
+        self.assertIn("label_replace(", expr)
+        self.assertIn("label_join(", expr)
+        self.assertIn('alias!="unassigned"', expr)
+        self.assertIn('alias="unassigned"', expr)
+        self.assertFalse(peak["options"]["wideLayout"])
+        self.assertEqual(peak["options"]["justifyMode"], "center")
+        self.assertEqual(peak["fieldConfig"]["defaults"]["custom"]["textSize"]["valueSize"], 46)
         self.assertIn("group_left(name,device,device_type)", expr)
 
     def test_reporting_peaks_keep_identity_but_averages_remain_aggregates(self):
