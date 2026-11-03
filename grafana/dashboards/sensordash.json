@@ -10,7 +10,7 @@
   ],
   "timezone": "browser",
   "schemaVersion": 40,
-  "version": 8,
+  "version": 9,
   "time": {
     "from": "now-1h",
     "to": "now"
@@ -169,7 +169,8 @@
       },
       "options": {
         "showHeader": true,
-        "sortBy": []
+        "sortBy": [],
+        "content": "### HARDWARE OVERVIEW\nLatest temp = highest current/last-available physical reading; Range peak = highest observed reading over the selected Grafana time window. **The winning sensor is shown directly in each Stat card title**, using SensorDash aliases first and cleaned hardware names otherwise. Values can be stale when Windows stops reporting."
       },
       "targets": [
         {
@@ -556,13 +557,13 @@
     },
     {
       "id": 111,
-      "title": "Highest temperature · latest reading",
+      "title": "Latest temp · ${hardwareLatestTempSource}",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Highest temperature among the most recently available reported physical sensor readings matching the selected computer and sensor filter. The sensor responsible is identified by the source subtitle (or its information tooltip in Grafana). A last-available reading may be stale if SensorDash has stopped reporting; it does not prove Windows is online.",
+      "description": "Highest temperature among the most recently available reported physical sensor readings matching the selected computer and sensor filter. The sensor responsible is identified by the visible dynamic panel title. A last-available reading may be stale if SensorDash has stopped reporting; it does not prove Windows is online.",
       "gridPos": {
         "x": 6,
         "y": 3,
@@ -612,20 +613,19 @@
           },
           "expr": "max(sensordash_reading_value{host=~\"$host\",sensor=~\"$sensor\",kind=\"Temperature\"} * on(host,sensor) group_left(name,device,device_type) (sensordash_sensor_info_value{host=~\"$host\",name!~\"(?i).*(warning|critical).*\"} == 1))",
           "instant": true,
-          "legendFormat": "Highest temperature · latest reading"
+          "legendFormat": "Latest temp"
         }
-      ],
-      "subtitle": "${hardwareLatestTempSource}"
+      ]
     },
     {
       "id": 112,
-      "title": "Peak temperature · selected range",
+      "title": "Range peak · ${hardwarePeakTempSource}",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Highest observed physical temperature across the selected Grafana time window, matching the selected computer and sensor filter. The winning sensor is named in the source subtitle (or its information tooltip in Grafana). This is a historical maximum and may come from a different sensor than the latest reading; missing samples are not zero.",
+      "description": "Highest observed physical temperature across the selected Grafana time window, matching the selected computer and sensor filter. The winning sensor is named in the visible dynamic panel title. This is a historical maximum and may come from a different sensor than the latest reading; missing samples are not zero.",
       "gridPos": {
         "x": 12,
         "y": 3,
@@ -675,10 +675,9 @@
           },
           "expr": "max(max_over_time(sensordash_reading_value{host=~\"$host\",sensor=~\"$sensor\",kind=\"Temperature\"}[$__range]) * on(host,sensor) group_left(name,device,device_type) (sensordash_sensor_info_value{host=~\"$host\",name!~\"(?i).*(warning|critical).*\"} == 1))",
           "instant": true,
-          "legendFormat": "Peak temperature · selected range"
+          "legendFormat": "Range peak"
         }
-      ],
-      "subtitle": "${hardwarePeakTempSource}"
+      ]
     },
     {
       "id": 113,
