@@ -497,7 +497,7 @@
           },
           "expr": "time() - max(timestamp(sensordash_reading_value{host=~\"$host\"}[24h]))",
           "instant": true,
-          "legendFormat": "Windows sample age · 24h"
+          "legendFormat": "Latest Windows sample · age (24h)"
         }
       ],
       "fieldConfig": {
