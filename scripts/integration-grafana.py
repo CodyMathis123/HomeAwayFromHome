@@ -55,7 +55,9 @@ def main() -> None:
                 (111, "hardwareLatestTempSource"),
                 (112, "hardwarePeakTempSource"),
             ):
-                assert panels[panel_id]["subtitle"] == "${" + name + "}", panels[panel_id]
+                assert name in panels[panel_id]["title"], panels[panel_id]
+                assert "${" + name + "}" in panels[panel_id]["title"], panels[panel_id]
+                assert "subtitle" not in panels[panel_id], panels[panel_id]
                 assert panels[panel_id]["options"]["textMode"] == "value", panels[panel_id]
                 assert variables[name]["hide"] == 2, variables[name]
                 assert variables[name]["refresh"] == 2, variables[name]
@@ -64,7 +66,8 @@ def main() -> None:
             variables = {v["name"]: v for v in dashboard["templating"]["list"]}
             panels = {p["id"]: p for p in dashboard["panels"]}
             for id, variable in ((5, "peakCpuSource"), (6, "peakGpuSource")):
-                assert panels[id]["subtitle"] == "${" + variable + "}", panels[id]
+                assert "${" + variable + "}" in panels[id]["title"], panels[id]
+                assert "subtitle" not in panels[id], panels[id]
                 assert panels[id]["options"]["textMode"] == "value", panels[id]
                 assert panels[id]["options"]["graphMode"] == "area", panels[id]
                 assert variables[variable]["hide"] == 2, variables[variable]
