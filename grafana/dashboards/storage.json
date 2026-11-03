@@ -1,19 +1,20 @@
 {
   "id": null,
   "uid": "homeaway-storage",
-  "title": "SensorDash · Storage",
+  "title": "SensorDash · Drives & Retention",
   "tags": [
     "homeaway",
     "sensordash",
-    "read-only"
+    "read-only",
+    "hardware"
   ],
-  "description": "Drive monitoring is visualized on the Pi, but hardware collection and recording policy remain in Windows SensorDash. Only real device_type=Storage sensors are included; data gaps remain gaps. Local SQLite bytes are the outbound retry buffer, not the Pi database size.",
+  "description": "Windows drive health and SensorDash retry spool up front; Pi-side VictoriaMetrics capacity, series counts, and long-term history analysis are an expandable advanced section. Read-only.",
   "schemaVersion": 40,
-  "version": 3,
+  "version": 4,
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
-  "refresh": "30s",
+  "refresh": "1m",
   "time": {
     "from": "now-24h",
     "to": "now"
@@ -80,7 +81,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "### STORAGE · LIVE DEVICES\nSSD/NVMe temperatures, drive signals and bounded local telemetry spool. Storage collection remains enabled in the Windows collector."
+        "content": "### WINDOWS STORAGE · SSD/NVMe\nLive temperatures, utilization and drive signals from SensorDash. Missing hardware sensors are left missing; fixed warning/critical temperature specifications are excluded from live heat graphs."
       }
     },
     {
@@ -345,7 +346,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "### STORAGE TEMPERATURES & UTILIZATION\nHistorical series are from physical storage sensors; sensor names come from Windows metadata."
+        "content": "### WINDOWS STORAGE HISTORY\nRecorded physical drive readings. This is not VictoriaMetrics' own Pi disk usage."
       }
     },
     {
@@ -638,7 +639,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "### TELEMETRY STORAGE & CATALOG\nThe Windows SQLite file is an export retry spool. Pi VictoriaMetrics retention and disk size are managed independently."
+        "content": "### WINDOWS TELEMETRY RETRY BUFFER & SENSOR CATALOG\nSQLite on Windows is a bounded outbound retry spool. Long-term samples live in VictoriaMetrics on the Pi; expand the archive section below only when needed."
       }
     },
     {
@@ -746,10 +747,429 @@
       }
     },
     {
-      "id": 103,
-      "title": "",
-      "type": "text",
-      "transparent": true,
+      "id": 104,
+      "type": "row",
+      "title": "Pi telemetry archive · VictoriaMetrics storage and retention evidence",
+      "description": "Expand for the server-side history database, free space, ingestion and sample counts. These are not sizes attributed to individual Windows sensors; no deletion or retention adjustment is performed here.",
+      "collapsed": true,
+      "panels": [
+        {
+          "id": 11,
+          "title": "VictoriaMetrics stored data",
+          "type": "stat",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "description": "Actual on-disk storage reported by VictoriaMetrics, including storage subsystems. Not the size of the Windows SQLite database.",
+          "gridPos": {
+            "x": 0,
+            "y": 44,
+            "w": 6,
+            "h": 5
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "homeaway-vm"
+              },
+              "expr": "sum(vm_data_size_bytes)",
+              "instant": true,
+              "legendFormat": "VictoriaMetrics stored data"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "noValue": "—",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "#6fa7ed"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "orientation": "auto",
+            "textMode": "auto",
+            "colorMode": "value",
+            "graphMode": "none"
+          }
+        },
+        {
+          "id": 12,
+          "title": "Pi volume free",
+          "type": "stat",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "description": "Free bytes on the filesystem containing the VictoriaMetrics data directory. Leave adequate space for compactions.",
+          "gridPos": {
+            "x": 6,
+            "y": 44,
+            "w": 6,
+            "h": 5
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "homeaway-vm"
+              },
+              "expr": "max(vm_free_disk_space_bytes)",
+              "instant": true,
+              "legendFormat": "Pi volume free"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "noValue": "—",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "#62d5ce"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "orientation": "auto",
+            "textMode": "auto",
+            "colorMode": "value",
+            "graphMode": "none"
+          }
+        },
+        {
+          "id": 13,
+          "title": "Sensor series active",
+          "type": "stat",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "description": "Number of recently active Windows sensor series for this host, not total historical series ever stored.",
+          "gridPos": {
+            "x": 12,
+            "y": 44,
+            "w": 6,
+            "h": 5
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "homeaway-vm"
+              },
+              "expr": "count(sensordash_reading_value{host=~\"$host\"})",
+              "instant": true,
+              "legendFormat": "Sensor series active"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "noValue": "—",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "#a991e8"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "orientation": "auto",
+            "textMode": "auto",
+            "colorMode": "value",
+            "graphMode": "none"
+          }
+        },
+        {
+          "id": 14,
+          "title": "Samples · selected range",
+          "type": "stat",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "description": "Observed Windows sensor samples in the selected Grafana range, not an estimate of SQLite page usage.",
+          "gridPos": {
+            "x": 18,
+            "y": 44,
+            "w": 6,
+            "h": 5
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "homeaway-vm"
+              },
+              "expr": "sum(count_over_time(sensordash_reading_value{host=~\"$host\"}[$__range]))",
+              "instant": true,
+              "legendFormat": "Samples · selected range"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "noValue": "—",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "#f2bd6d"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "orientation": "auto",
+            "textMode": "auto",
+            "colorMode": "value",
+            "graphMode": "none"
+          }
+        },
+        {
+          "id": 15,
+          "title": "VictoriaMetrics storage allocation",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "description": "VictoriaMetrics internal storage sizes by type; sum may include index/cache categories.",
+          "gridPos": {
+            "x": 0,
+            "y": 49,
+            "w": 12,
+            "h": 9
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "homeaway-vm"
+              },
+              "expr": "vm_data_size_bytes",
+              "range": true,
+              "legendFormat": "{{type}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "fillOpacity": 12,
+                "showPoints": "never",
+                "spanNulls": false
+              },
+              "color": {
+                "mode": "palette-classic-by-name"
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "lastNotNull",
+                "max"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "transformations": [
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "/_/g",
+                "renamePattern": " "
+              }
+            }
+          ]
+        },
+        {
+          "id": 16,
+          "title": "History ingest rate",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "description": "Five-minute overall VictoriaMetrics ingest-rate estimate, including DNS/VPN and SensorDash data.",
+          "gridPos": {
+            "x": 12,
+            "y": 49,
+            "w": 12,
+            "h": 9
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "homeaway-vm"
+              },
+              "expr": "sum(rate(vm_rows_added_to_storage_total[5m]))",
+              "range": true,
+              "legendFormat": "Rows written per second"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "fillOpacity": 12,
+                "showPoints": "never",
+                "spanNulls": false
+              },
+              "color": {
+                "mode": "palette-classic-by-name"
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "lastNotNull",
+                "max"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "transformations": [
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "/_/g",
+                "renamePattern": " "
+              }
+            }
+          ]
+        },
+        {
+          "id": 17,
+          "title": "Top 25 sensor sample counts · selected range",
+          "type": "table",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "description": "Readings stored in VictoriaMetrics for this computer and time range. Sample counts are not per-sensor disk bytes; VictoriaMetrics compresses and shares storage structures.",
+          "gridPos": {
+            "x": 0,
+            "y": 58,
+            "w": 24,
+            "h": 11
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "homeaway-vm"
+              },
+              "expr": "topk(25, (count_over_time(sensordash_reading_value{host=~\"$host\"}[$__range]) unless on(host,sensor) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Storage\",kind=\"Temperature\",name=~\"(?i).*(warning|critical).*\"} == 1))) * on(host,sensor) group_left(name,device) (label_replace(sensordash_sensor_info_value{host=~\"$host\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",alias=\"unassigned\"} == 1))",
+              "instant": true,
+              "format": "table"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
+          "options": {
+            "showHeader": true,
+            "sortBy": []
+          }
+        }
+      ],
       "datasource": {
         "type": "prometheus",
         "uid": "homeaway-vm"
@@ -759,427 +1179,7 @@
         "x": 0,
         "y": 43,
         "w": 24,
-        "h": 3
-      },
-      "options": {
-        "mode": "markdown",
-        "content": "### PI MONITORING ARCHIVE\nVictoriaMetrics is the authoritative long-term history store. Disk utilization below is the Pi's storage volume, **not** the Windows SQLite retry buffer."
-      }
-    },
-    {
-      "id": 11,
-      "title": "VictoriaMetrics stored data",
-      "type": "stat",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "homeaway-vm"
-      },
-      "description": "Actual on-disk storage reported by VictoriaMetrics, including storage subsystems. Not the size of the Windows SQLite database.",
-      "gridPos": {
-        "x": 0,
-        "y": 46,
-        "w": 6,
-        "h": 5
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "homeaway-vm"
-          },
-          "expr": "sum(vm_data_size_bytes)",
-          "instant": true,
-          "legendFormat": "VictoriaMetrics stored data"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "bytes",
-          "noValue": "—",
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "#6fa7ed"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "orientation": "auto",
-        "textMode": "auto",
-        "colorMode": "value",
-        "graphMode": "none"
-      }
-    },
-    {
-      "id": 12,
-      "title": "Pi volume free",
-      "type": "stat",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "homeaway-vm"
-      },
-      "description": "Free bytes on the filesystem containing the VictoriaMetrics data directory. Leave adequate space for compactions.",
-      "gridPos": {
-        "x": 6,
-        "y": 46,
-        "w": 6,
-        "h": 5
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "homeaway-vm"
-          },
-          "expr": "max(vm_free_disk_space_bytes)",
-          "instant": true,
-          "legendFormat": "Pi volume free"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "bytes",
-          "noValue": "—",
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "#62d5ce"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "orientation": "auto",
-        "textMode": "auto",
-        "colorMode": "value",
-        "graphMode": "none"
-      }
-    },
-    {
-      "id": 13,
-      "title": "Sensor series active",
-      "type": "stat",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "homeaway-vm"
-      },
-      "description": "Number of recently active Windows sensor series for this host, not total historical series ever stored.",
-      "gridPos": {
-        "x": 12,
-        "y": 46,
-        "w": 6,
-        "h": 5
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "homeaway-vm"
-          },
-          "expr": "count(sensordash_reading_value{host=~\"$host\"})",
-          "instant": true,
-          "legendFormat": "Sensor series active"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "noValue": "—",
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "#a991e8"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "orientation": "auto",
-        "textMode": "auto",
-        "colorMode": "value",
-        "graphMode": "none"
-      }
-    },
-    {
-      "id": 14,
-      "title": "Samples · selected range",
-      "type": "stat",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "homeaway-vm"
-      },
-      "description": "Observed Windows sensor samples in the selected Grafana range, not an estimate of SQLite page usage.",
-      "gridPos": {
-        "x": 18,
-        "y": 46,
-        "w": 6,
-        "h": 5
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "homeaway-vm"
-          },
-          "expr": "sum(count_over_time(sensordash_reading_value{host=~\"$host\"}[$__range]))",
-          "instant": true,
-          "legendFormat": "Samples · selected range"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "noValue": "—",
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "#f2bd6d"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "orientation": "auto",
-        "textMode": "auto",
-        "colorMode": "value",
-        "graphMode": "none"
-      }
-    },
-    {
-      "id": 15,
-      "title": "VictoriaMetrics storage allocation",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "homeaway-vm"
-      },
-      "description": "VictoriaMetrics internal storage sizes by type; sum may include index/cache categories.",
-      "gridPos": {
-        "x": 0,
-        "y": 51,
-        "w": 12,
-        "h": 9
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "homeaway-vm"
-          },
-          "expr": "vm_data_size_bytes",
-          "range": true,
-          "legendFormat": "{{type}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "bytes",
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "fillOpacity": 12,
-            "showPoints": "never",
-            "spanNulls": false
-          },
-          "color": {
-            "mode": "palette-classic-by-name"
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ]
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "transformations": [
-        {
-          "id": "renameByRegex",
-          "options": {
-            "regex": "/_/g",
-            "renamePattern": " "
-          }
-        }
-      ]
-    },
-    {
-      "id": 16,
-      "title": "History ingest rate",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "homeaway-vm"
-      },
-      "description": "Five-minute overall VictoriaMetrics ingest-rate estimate, including DNS/VPN and SensorDash data.",
-      "gridPos": {
-        "x": 12,
-        "y": 51,
-        "w": 12,
-        "h": 9
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "homeaway-vm"
-          },
-          "expr": "sum(rate(vm_rows_added_to_storage_total[5m]))",
-          "range": true,
-          "legendFormat": "Rows written per second"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "reqps",
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "fillOpacity": 12,
-            "showPoints": "never",
-            "spanNulls": false
-          },
-          "color": {
-            "mode": "palette-classic-by-name"
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ]
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "transformations": [
-        {
-          "id": "renameByRegex",
-          "options": {
-            "regex": "/_/g",
-            "renamePattern": " "
-          }
-        }
-      ]
-    },
-    {
-      "id": 17,
-      "title": "Top 25 sensor sample counts · selected range",
-      "type": "table",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "homeaway-vm"
-      },
-      "description": "Readings stored in VictoriaMetrics for this computer and time range. Sample counts are not per-sensor disk bytes; VictoriaMetrics compresses and shares storage structures.",
-      "gridPos": {
-        "x": 0,
-        "y": 60,
-        "w": 24,
-        "h": 11
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "homeaway-vm"
-          },
-          "expr": "topk(25, (count_over_time(sensordash_reading_value{host=~\"$host\"}[$__range]) unless on(host,sensor) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Storage\",kind=\"Temperature\",name=~\"(?i).*(warning|critical).*\"} == 1))) * on(host,sensor) group_left(name,device) (label_replace(sensordash_sensor_info_value{host=~\"$host\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",alias=\"unassigned\"} == 1))",
-          "instant": true,
-          "format": "table"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "options": {
-        "showHeader": true,
-        "sortBy": []
+        "h": 1
       }
     }
   ]
