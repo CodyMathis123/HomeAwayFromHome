@@ -300,10 +300,13 @@ class DashboardContracts(unittest.TestCase):
                     self.assertIn('kind="Temperature"', expr)
                     self.assertIn(reference, expr)
                     self.assertIn("sensordash_sensor_info_value", expr)
-                    # The two alias branches must BOTH apply the same filter,
-                    # or giving a fixed temperature an alias will resurrect it.
+                    # Both alias branches and (for winner-selecting Stat
+                    # panels) the initial selection metadata must exclude
+                    # fixed NVMe warning/critical specifications.
                     if 'alias!="unassigned"' in expr:
-                        self.assertEqual(expr.count(reference), 2)
+                        expected = (3 if filename == "sensordash.json"
+                                    and panel_id in (111, 112) else 2)
+                        self.assertEqual(expr.count(reference), expected)
                         self.assertLess(
                             expr.index(reference),
                             expr.index('"name", "$1", "alias", "(.+)"'))
