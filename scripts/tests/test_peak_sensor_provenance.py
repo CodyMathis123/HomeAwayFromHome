@@ -21,6 +21,8 @@ class PeakSensorProvenanceTests(unittest.TestCase):
         self.assertIn("group_left(display,device,name,device_type)", expr)
         self.assertEqual(peak["options"]["textMode"], "value_and_name")
         self.assertEqual(peak["targets"][0]["legendFormat"], "{{display}}")
+        self.assertIn('"display", "_+", " "', expr)
+        self.assertIn('"display", "^ +| +$", ""', expr)
         self.assertIn("label_replace(", expr)
         self.assertIn("label_join(", expr)
         self.assertIn('alias!="unassigned"', expr)
