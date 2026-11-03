@@ -63,11 +63,14 @@ def check(config: dict, ip: str) -> None:
     assert host.get("pid", "") != "host"
     assert not host.get("secrets"), "Host metrics exporter must not access credentials"
     volumes = host.get("volumes", [])
-    assert len(volumes) == 2
+    assert len(volumes) == 3
     assert {(v["source"], v["target"], v.get("read_only", False)) for v in volumes} == {
-        ("/proc", "/host/proc", True), ("/sys", "/host/sys", True)
-    }, "Exporter can read only host proc/sys, never root or Docker socket"
+        ("/proc", "/host/proc", True), ("/sys", "/host/sys", True),
+        ("/var/lib/homeaway-ssd-metrics", "/var/lib/homeaway-ssd-metrics", True)
+    }, "Exporter may read only proc/sys and host-produced SMART textfile, never /dev or Docker"
     assert "--collector.disable-defaults" in host["command"]
+    assert "--collector.textfile" in host["command"]
+    assert "--collector.textfile.directory=/var/lib/homeaway-ssd-metrics" in host["command"]
     assert not any("--collector.filesystem" in flag for flag in host["command"])
 
     assert services["pihole-exporter"].get("read_only") is True
