@@ -10,7 +10,7 @@
   ],
   "description": "Read-only Windows SSD/NVMe observations from SensorDash, Pi root SSD SMART and transport metrics from an optional host collector, plus VictoriaMetrics retention history.",
   "schemaVersion": 40,
-  "version": 8,
+  "version": 9,
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
@@ -153,7 +153,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Highest currently reported physical drive temperature, with the originating drive and sensor displayed below the value. Excludes fixed warning/critical temperature specifications. No current sensor readings means no value.",
+      "description": "Current highest physical drive temperature. The concise on-card label identifies the winning sensor; the full host, drive model, and sensor identity remain in the query's series labels (inspect data). Fixed warning/critical temperature specifications are excluded.",
       "gridPos": {
         "x": 6,
         "y": 3,
@@ -169,7 +169,7 @@
           },
           "expr": "topk(1, sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(name,device,device_type) (label_replace(sensordash_sensor_info_value{host=~\"$host\",device_type=\"Storage\",name!~\"(?i).*(warning|critical).*\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Storage\",name!~\"(?i).*(warning|critical).*\",alias=\"unassigned\"} == 1)))",
           "instant": true,
-          "legendFormat": "{{device}} · {{name}}"
+          "legendFormat": "{{name}}"
         }
       ],
       "fieldConfig": {
