@@ -29,7 +29,6 @@ ATTRIBUTES = {
     172: "erase_failures",
     174: "unexpected_power_losses",
     187: "uncorrectable_errors",
-    194: "temperature_celsius",
     196: "reallocation_events",
     241: "lifetime_writes_gib",
     242: "lifetime_reads_gib",
@@ -72,6 +71,13 @@ def parse_smart(data):
             n = raw_number(rows[attr])
             if n is not None:
                 result["homeaway_pi_ssd_" + name] = float(n)
+    # SMART attribute 194 may pack vendor-specific min/max information into
+    # raw.value; use smartctl's decoded temperature instead.
+    temperature = data.get("temperature", {})
+    current = temperature.get("current") if isinstance(temperature, dict) else None
+    if (isinstance(current, (int, float)) and not isinstance(current, bool)
+            and 0 <= current <= 125):
+        result["homeaway_pi_ssd_temperature_celsius"] = float(current)
     if 231 in rows:
         normalized = rows[231].get("value")
         if isinstance(normalized, int) and 0 <= normalized <= 253:
