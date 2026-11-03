@@ -8,9 +8,9 @@
     "read-only",
     "hardware"
   ],
-  "description": "Windows drive health and SensorDash retry spool up front; Pi-side VictoriaMetrics capacity, series counts, and long-term history analysis are an expandable advanced section. Read-only.",
+  "description": "Read-only Windows SSD/NVMe observations from SensorDash, Pi root SSD SMART and transport metrics from an optional host collector, plus VictoriaMetrics retention history.",
   "schemaVersion": 40,
-  "version": 4,
+  "version": 5,
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
@@ -747,6 +747,765 @@
       }
     },
     {
+      "id": 105,
+      "title": "",
+      "type": "text",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 43,
+        "w": 24,
+        "h": 3
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### RASPBERRY PI · ROOT SSD HEALTH\nRoot SSD SMART data is read by a host-side collector every five minutes and scraped by the existing node-exporter. Windows SSD/NVMe readings above remain exclusively from SensorDash. A missing collector is **unknown**, not healthy; self-test logs are deliberately omitted because this SandForce device reports inconsistent history. Normalized life is **not a verified remaining-life percentage**."
+      },
+      "targets": [],
+      "transparent": true
+    },
+    {
+      "id": 106,
+      "title": "SMART collection",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "1 = collector read SMART successfully; 0 = failed; empty = no recent data. Status does not imply drive health.",
+      "gridPos": {
+        "x": 0,
+        "y": 46,
+        "w": 4,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "(homeaway_pi_ssd_collection_success{job=\"pi-node\"}) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
+          "instant": true,
+          "legendFormat": "SMART collection"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "—",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "UNAVAILABLE",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "AVAILABLE",
+                  "color": "green"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 107,
+      "title": "SSD SMART health",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Drive-reported overall SMART assessment; absent if no successful collection.",
+      "gridPos": {
+        "x": 4,
+        "y": 46,
+        "w": 4,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "((homeaway_pi_ssd_smart_passed{job=\"pi-node\"}) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
+          "instant": true,
+          "legendFormat": "SSD SMART health"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "—",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "FAILED",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "PASSED",
+                  "color": "green"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 108,
+      "title": "SSD temperature",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Actual SATA SMART attribute 194 when available, not a drive specification.",
+      "gridPos": {
+        "x": 8,
+        "y": 46,
+        "w": 4,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "((homeaway_pi_ssd_temperature_celsius{job=\"pi-node\"}) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
+          "instant": true,
+          "legendFormat": "SSD temperature"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "noValue": "—",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 109,
+      "title": "SSD life · normalized",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "SandForce SMART attribute 231 normalized value, NOT a validated percent remaining.",
+      "gridPos": {
+        "x": 12,
+        "y": 46,
+        "w": 4,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "((homeaway_pi_ssd_life_normalized{job=\"pi-node\"}) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
+          "instant": true,
+          "legendFormat": "SSD life · normalized"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "—",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 110,
+      "title": "Pi filesystem free",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Available space on the Pi's / filesystem, distinct from VictoriaMetrics internals.",
+      "gridPos": {
+        "x": 16,
+        "y": 46,
+        "w": 4,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "(homeaway_pi_root_filesystem_available_bytes{job=\"pi-node\"}) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
+          "instant": true,
+          "legendFormat": "Pi filesystem free"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "noValue": "—",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 111,
+      "title": "Collector sample age",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Age of the last host SMART collection attempt. Large/missing means stale or absent.",
+      "gridPos": {
+        "x": 20,
+        "y": 46,
+        "w": 4,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}",
+          "instant": true,
+          "legendFormat": "Collector sample age"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "—",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 112,
+      "title": "SSD lifetime reads / writes",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "SandForce raw attributes 241/242 reported in GiB; converted to bytes for Grafana.",
+      "gridPos": {
+        "x": 0,
+        "y": 51,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "((homeaway_pi_ssd_lifetime_writes_gib{job=\"pi-node\"} * 1073741824) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
+          "range": true,
+          "legendFormat": "Lifetime writes"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "((homeaway_pi_ssd_lifetime_reads_gib{job=\"pi-node\"} * 1073741824) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
+          "range": true,
+          "legendFormat": "Lifetime reads"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "noValue": "—",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "color": {
+            "mode": "palette-classic-by-name"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
+    },
+    {
+      "id": 113,
+      "title": "SSD retired blocks and errors",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Lifetime SMART counts. Watch for increases; historical nonzero baselines alone are not new faults.",
+      "gridPos": {
+        "x": 12,
+        "y": 51,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "((homeaway_pi_ssd_retired_blocks{job=\"pi-node\"}) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
+          "range": true,
+          "legendFormat": "Retired blocks"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "((homeaway_pi_ssd_program_failures{job=\"pi-node\"}) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
+          "range": true,
+          "legendFormat": "Program failures"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "((homeaway_pi_ssd_erase_failures{job=\"pi-node\"}) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
+          "range": true,
+          "legendFormat": "Erase failures"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "((homeaway_pi_ssd_uncorrectable_errors{job=\"pi-node\"}) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
+          "range": true,
+          "legendFormat": "Uncorrectable errors"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "—",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "color": {
+            "mode": "palette-classic-by-name"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
+    },
+    {
+      "id": 114,
+      "title": "SSD operating history",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Two distinct cumulative counters with different units (hours and events); read the named legend.",
+      "gridPos": {
+        "x": 0,
+        "y": 60,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "((homeaway_pi_ssd_power_on_hours{job=\"pi-node\"}) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
+          "range": true,
+          "legendFormat": "Power-on hours"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "((homeaway_pi_ssd_unexpected_power_losses{job=\"pi-node\"}) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
+          "range": true,
+          "legendFormat": "Unexpected power losses"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "—",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "color": {
+            "mode": "palette-classic-by-name"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
+    },
+    {
+      "id": 115,
+      "title": "USB and kernel failures · since boot",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Since-boot host journal counts reset on reboot; not monotonic cross-boot counters. Empty if kernel journal unavailable. USB reset/host failures may also be caused by other USB peripherals.",
+      "gridPos": {
+        "x": 12,
+        "y": 60,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "((homeaway_pi_ssd_kernel_events_since_boot{job=\"pi-node\",kind=\"io_errors\"}) and on(job,instance) (homeaway_pi_ssd_kernel_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
+          "range": true,
+          "legendFormat": "Disk I/O errors"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "((homeaway_pi_ssd_kernel_events_since_boot{job=\"pi-node\",kind=\"uas_aborts\"}) and on(job,instance) (homeaway_pi_ssd_kernel_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
+          "range": true,
+          "legendFormat": "UAS aborted commands"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "((homeaway_pi_ssd_kernel_events_since_boot{job=\"pi-node\",kind=\"usb_resets\"}) and on(job,instance) (homeaway_pi_ssd_kernel_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
+          "range": true,
+          "legendFormat": "USB resets"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "((homeaway_pi_ssd_kernel_events_since_boot{job=\"pi-node\",kind=\"host_controller_failures\"}) and on(job,instance) (homeaway_pi_ssd_kernel_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
+          "range": true,
+          "legendFormat": "Host controller failures"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "((homeaway_pi_ssd_kernel_events_since_boot{job=\"pi-node\",kind=\"usb_disconnects\"}) and on(job,instance) (homeaway_pi_ssd_kernel_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
+          "range": true,
+          "legendFormat": "USB disconnects"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "—",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "color": {
+            "mode": "palette-classic-by-name"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
+    },
+    {
       "id": 104,
       "type": "row",
       "title": "Pi telemetry archive · VictoriaMetrics storage and retention evidence",
@@ -764,7 +1523,7 @@
           "description": "Actual on-disk storage reported by VictoriaMetrics, including storage subsystems. Not the size of the Windows SQLite database.",
           "gridPos": {
             "x": 0,
-            "y": 44,
+            "y": 70,
             "w": 6,
             "h": 5
           },
@@ -825,7 +1584,7 @@
           "description": "Free bytes on the filesystem containing the VictoriaMetrics data directory. Leave adequate space for compactions.",
           "gridPos": {
             "x": 6,
-            "y": 44,
+            "y": 70,
             "w": 6,
             "h": 5
           },
@@ -886,7 +1645,7 @@
           "description": "Number of recently active Windows sensor series for this host, not total historical series ever stored.",
           "gridPos": {
             "x": 12,
-            "y": 44,
+            "y": 70,
             "w": 6,
             "h": 5
           },
@@ -947,7 +1706,7 @@
           "description": "Observed Windows sensor samples in the selected Grafana range, not an estimate of SQLite page usage.",
           "gridPos": {
             "x": 18,
-            "y": 44,
+            "y": 70,
             "w": 6,
             "h": 5
           },
@@ -1008,7 +1767,7 @@
           "description": "VictoriaMetrics internal storage sizes by type; sum may include index/cache categories.",
           "gridPos": {
             "x": 0,
-            "y": 49,
+            "y": 75,
             "w": 12,
             "h": 9
           },
@@ -1076,7 +1835,7 @@
           "description": "Five-minute overall VictoriaMetrics ingest-rate estimate, including DNS/VPN and SensorDash data.",
           "gridPos": {
             "x": 12,
-            "y": 49,
+            "y": 75,
             "w": 12,
             "h": 9
           },
@@ -1144,7 +1903,7 @@
           "description": "Readings stored in VictoriaMetrics for this computer and time range. Sample counts are not per-sensor disk bytes; VictoriaMetrics compresses and shares storage structures.",
           "gridPos": {
             "x": 0,
-            "y": 58,
+            "y": 84,
             "w": 24,
             "h": 11
           },
@@ -1177,7 +1936,7 @@
       "targets": [],
       "gridPos": {
         "x": 0,
-        "y": 43,
+        "y": 69,
         "w": 24,
         "h": 1
       }
