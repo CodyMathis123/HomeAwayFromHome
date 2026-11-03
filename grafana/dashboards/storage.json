@@ -10,7 +10,7 @@
   ],
   "description": "Read-only Windows SSD/NVMe observations from SensorDash, Pi root SSD SMART and transport metrics from an optional host collector, plus VictoriaMetrics retention history.",
   "schemaVersion": 40,
-  "version": 5,
+  "version": 6,
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
@@ -762,7 +762,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "### RASPBERRY PI · ROOT SSD HEALTH\nRoot SSD SMART data is read by a host-side collector every five minutes and scraped by the existing node-exporter. Windows SSD/NVMe readings above remain exclusively from SensorDash. A missing collector is **unknown**, not healthy; self-test logs are deliberately omitted because this SandForce device reports inconsistent history. Normalized life is **not a verified remaining-life percentage**."
+        "content": "### RASPBERRY PI · ROOT SSD HEALTH\nHost-side SMART collection runs every five minutes via node-exporter; Windows SSD/NVMe readings above remain exclusively SensorDash data. Missing or stale SMART readings mean **unknown**, not healthy. The SandForce SSD's normalized life field is intentionally not shown as a remaining-life percentage. Lifetime fault counts are historical baselines; changes over time matter more than nonzero starting values. SSD write totals have approximately 1 GiB resolution."
       },
       "targets": [],
       "transparent": true
@@ -970,13 +970,13 @@
     },
     {
       "id": 109,
-      "title": "SSD life · normalized",
+      "title": "SSD writes · past 24h",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "SandForce SMART attribute 231 normalized value, NOT a validated percent remaining.",
+      "description": "Difference between highest and lowest reported lifetime writes over 24 hours. This is an observed change, not an extrapolated daily rate; the firmware reports whole GiB, so smaller writes may show as zero. Requires recent successful SMART collection.",
       "gridPos": {
         "x": 12,
         "y": 46,
@@ -990,14 +990,14 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "((homeaway_pi_ssd_life_normalized{job=\"pi-node\"}) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
+          "expr": "((clamp_min(max_over_time(homeaway_pi_ssd_lifetime_writes_gib{job=\"pi-node\"}[24h]) - min_over_time(homeaway_pi_ssd_lifetime_writes_gib{job=\"pi-node\"}[24h]), 0) * 1073741824) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
           "instant": true,
-          "legendFormat": "SSD life · normalized"
+          "legendFormat": "Observed writes · 24h"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
+          "unit": "bytes",
           "noValue": "—",
           "thresholds": {
             "mode": "absolute",
@@ -1007,7 +1007,8 @@
                 "value": null
               }
             ]
-          }
+          },
+          "decimals": 1
         },
         "overrides": []
       },
@@ -1147,7 +1148,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "SandForce raw attributes 241/242 reported in GiB; converted to bytes for Grafana.",
+      "description": "Cumulative lifetime firmware reads and writes; not reads or writes generated within the selected time range. Firmware resolution is approximately 1 GiB.",
       "gridPos": {
         "x": 0,
         "y": 51,
@@ -1220,13 +1221,13 @@
     },
     {
       "id": 113,
-      "title": "SSD retired blocks and errors",
+      "title": "SSD SMART fault counters · lifetime",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Lifetime SMART counts. Watch for increases; historical nonzero baselines alone are not new faults.",
+      "description": "Firmware lifetime totals, not errors occurring in the displayed window. Watch for increments above the initial baselines (3 retired blocks, 1 program failure, 0 erase failures, 0 uncorrectable errors).",
       "gridPos": {
         "x": 12,
         "y": 51,
@@ -1319,13 +1320,13 @@
     },
     {
       "id": 114,
-      "title": "SSD operating history",
+      "title": "SSD temperature · history",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Two distinct cumulative counters with different units (hours and events); read the named legend.",
+      "description": "Decoded temperature.current from smartctl. Values prior to the SandForce parsing fix may be incorrect; select a range starting after the fix or wait for those historical samples to age out.",
       "gridPos": {
         "x": 0,
         "y": 60,
@@ -1339,24 +1340,14 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "((homeaway_pi_ssd_power_on_hours{job=\"pi-node\"}) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
+          "expr": "((homeaway_pi_ssd_temperature_celsius{job=\"pi-node\"} >= 0) and (homeaway_pi_ssd_temperature_celsius{job=\"pi-node\"} <= 125)) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
           "range": true,
-          "legendFormat": "Power-on hours"
-        },
-        {
-          "refId": "B",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "homeaway-vm"
-          },
-          "expr": "((homeaway_pi_ssd_unexpected_power_losses{job=\"pi-node\"}) and on(job,instance) (homeaway_pi_ssd_collection_success{job=\"pi-node\"} == 1)) and on(job,instance) ((time() - homeaway_pi_ssd_last_attempt_timestamp_seconds{job=\"pi-node\"}) < 900)",
-          "range": true,
-          "legendFormat": "Unexpected power losses"
+          "legendFormat": "SSD temperature"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
+          "unit": "celsius",
           "noValue": "—",
           "custom": {
             "drawStyle": "line",
@@ -1404,7 +1395,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Since-boot host journal counts reset on reboot; not monotonic cross-boot counters. Empty if kernel journal unavailable. USB reset/host failures may also be caused by other USB peripherals.",
+      "description": "Counts are scanned from kernel logs for the current boot, not global lifetime totals, and may include USB peripherals other than the root SSD. Counts reset on reboot.",
       "gridPos": {
         "x": 12,
         "y": 60,
