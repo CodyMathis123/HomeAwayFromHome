@@ -11,7 +11,7 @@
   ],
   "description": "SensorDash read-only overview: distinct latest hottest CPU/GPU readings with aggregate history, plus peak values with an individually selected winning physical sensor, alias-first labels, and sparkline; cooling/energy/sensor inventory.",
   "schemaVersion": 40,
-  "version": 12,
+  "version": 13,
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
@@ -114,7 +114,7 @@
           },
           "expr": "max(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Cpu\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\"} == 1))",
           "range": true,
-          "legendFormat": "CPU · latest temperature"
+          "legendFormat": "CPU · highest reported temperature"
         }
       ],
       "fieldConfig": {
@@ -175,7 +175,7 @@
           },
           "expr": "max(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\"} == 1))",
           "range": true,
-          "legendFormat": "GPU · latest temperature"
+          "legendFormat": "GPU · highest reported temperature"
         }
       ],
       "fieldConfig": {
