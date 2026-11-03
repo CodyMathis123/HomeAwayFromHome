@@ -348,7 +348,7 @@ def main() -> None:
     ):
         panels = json.loads((root / "grafana/dashboards" / dashboard).read_text())["panels"]
         for panel_id in panel_ids:
-            expr = next(p["targets"][0]["expr"] for p in panels if p["id"] == panel_id)
+            expr = next(p["targets"][0]["expr"] for p in peak_panels if p["id"] == panel_id)
             expr = expr.replace('host=~"$host"', 'host="CI"').replace('host=~".+"', 'host="CI"')
             expr = expr.replace('sensor=~"$sensor"', 'sensor=~".*"')
             expr = expr.replace('system=~"$system"', 'system="loop"')
@@ -401,6 +401,9 @@ def main() -> None:
         time.sleep(0.5)
     assert ready, "Peak fixture and names must ingest"
 
+    peak_panels = json.loads(
+        (root / "grafana/dashboards/overview.json").read_text()
+    )["panels"]
     for panel_id, sensor, display_name, peak in (
         (5, "cpu_peak", "CCD1 Tdie", 63.7),
         (6, "gpu_peak", "VRAM Hotspot", 68.0),
