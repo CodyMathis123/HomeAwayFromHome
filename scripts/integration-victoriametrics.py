@@ -404,6 +404,10 @@ def main() -> None:
     peak_panels = json.loads(
         (root / "grafana/dashboards/overview.json").read_text()
     )["panels"]
+    peak_template = json.loads(
+        (root / "grafana/dashboards/overview.json").read_text()
+    )["templating"]["list"]
+    peak_variables = {v["name"]: v for v in peak_template}
     for panel_id, sensor, display_name, peak in (
         (5, "cpu_peak", "CCD1 Tdie", 63.7),
         (6, "gpu_peak", "VRAM Hotspot", 68.0),
@@ -417,6 +421,17 @@ def main() -> None:
         series = results[0]
         assert series["metric"]["sensor"] == sensor, series
         assert series["metric"]["name"] == display_name, series
+        name = "peakCpuSource" if panel_id == 5 else "peakGpuSource"
+        source_query = peak_variables[name]["query"]["query"]
+        assert source_query.startswith("query_result("), source_query
+        source_expr = source_query[len("query_result("):-1]
+        source_expr = (source_expr.replace('host=~"$host"', 'host="CI"')
+                       .replace("$__range", "6m"))
+        source = query(source_expr)
+        assert len(source) == 1, (name, source_expr, source)
+        assert source[0]["metric"]["sensor"] == sensor, (name, source)
+        assert source[0]["metric"]["name"] == display_name, (name, source)
+        assert abs(float(source[0]["value"][1]) - peak) < 0.001, source
         numbers = [float(v) for _, v in series["values"]]
         assert len(numbers) > 2, series
         assert abs(max(numbers) - peak) < 0.001, (panel_id, numbers)

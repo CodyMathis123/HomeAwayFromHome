@@ -377,7 +377,7 @@ class DashboardContracts(unittest.TestCase):
         overview = json.loads((PANELS / "overview.json").read_text(encoding="utf-8"))
         panels = {p["id"]: p for p in overview["panels"]}
         self.assertIn("Latest cards take the hottest available", panels[100]["options"]["content"])
-        self.assertIn("specific sensor", panels[101]["options"]["content"])
+        self.assertIn("source sensor is shown under each card title", panels[101]["options"]["content"])
         for latest_id, peak_id, family in ((1, 5, "CPU"), (2, 6, "GPU")):
             latest = panels[latest_id]
             peak = panels[peak_id]
@@ -394,8 +394,9 @@ class DashboardContracts(unittest.TestCase):
             self.assertNotIn("instant", peak["targets"][0])
             self.assertEqual(peak["options"]["graphMode"], "area")
             self.assertEqual(peak["options"]["reduceOptions"]["calcs"], ["max"])
-            self.assertEqual(peak["options"]["textMode"], "value_and_name")
-            self.assertEqual(peak["options"]["orientation"], "vertical")
+            self.assertEqual(peak["options"]["textMode"], "value")
+            self.assertEqual(peak["options"]["orientation"], "auto")
+            self.assertEqual(peak["subtitle"], "${peak" + family.title() + "Source}")
             self.assertIs(peak["options"]["wideLayout"], False)
             self.assertEqual(peak["options"]["justifyMode"], "center")
             self.assertEqual(peak["fieldConfig"]["defaults"]["custom"]["textSize"]["titleSize"], 13)
@@ -416,6 +417,46 @@ class DashboardContracts(unittest.TestCase):
             self.assertIn('"name", "^ +| +$", ""', query)
             self.assertIn("sensor", peak["description"])
             self.assertNotIn("vector(0)", query)
+
+    def test_peak_title_subtitles_follow_source_variables(self):
+        dashboard = json.loads((PANELS / "overview.json").read_text(encoding="utf-8"))
+        variables = {v["name"]: v for v in dashboard["templating"]["list"]}
+        self.assertEqual(dashboard["templating"]["list"][0]["name"], "host")
+        self.assertEqual(set(variables), {"host", "peakCpuSource", "peakGpuSource"})
+        panels = {panel["id"]: panel for panel in dashboard["panels"]}
+        for id, name, family in ((5, "peakCpuSource", "Cpu"),
+                                 (6, "peakGpuSource", "Gpu")):
+            variable = variables[name]
+            panel = panels[id]
+            self.assertEqual(panel["subtitle"], "${" + name + "}")
+            self.assertEqual(panel["options"]["textMode"], "value")
+            self.assertEqual(panel["options"]["graphMode"], "area")
+            self.assertEqual(panel["options"]["justifyMode"], "center")
+            self.assertEqual(panel["targets"][0]["legendFormat"], "{{name}}")
+            self.assertEqual(variable["type"], "query")
+            self.assertEqual(variable["datasource"]["uid"], "homeaway-vm")
+            self.assertEqual(variable["hide"], 2)
+            self.assertEqual(variable["refresh"], 2)
+            self.assertFalse(variable["multi"])
+            self.assertFalse(variable["includeAll"])
+            self.assertTrue(variable["skipUrlSync"])
+            self.assertEqual(variable["regex"], '/name="([^"]+)"/')
+            query = variable["query"]["query"]
+            self.assertTrue(query.startswith("query_result("))
+            self.assertIn("topk(1, max_over_time(", query)
+            self.assertIn("[$__range] @ end()", query)
+            self.assertIn("group_left(name)", query)
+            self.assertIn("last_over_time(sensordash_sensor_info_value", query)
+            self.assertIn('alias!="unassigned"', query)
+            self.assertIn('alias="unassigned"', query)
+            self.assertIn('"name", "_+", " "', query)
+            self.assertIn('"name", "^ +| +$", ""', query)
+            self.assertIn(('device_type="Cpu"' if family == "Cpu"
+                           else 'device_type=~"Gpu(Amd|Nvidia|Intel)?"'), query)
+            self.assertNotIn("sensor=~", query)
+        # Other panels and the underlying time-series queries are unchanged.
+        self.assertEqual(panels[5]["targets"][0]["range"], True)
+        self.assertEqual(panels[6]["targets"][0]["range"], True)
 
     def test_peak_series_has_single_selected_sensor_and_never_mutates_catalog(self):
         overview = json.loads((PANELS / "overview.json").read_text(encoding="utf-8"))

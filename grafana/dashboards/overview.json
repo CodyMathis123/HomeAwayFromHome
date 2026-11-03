@@ -11,7 +11,7 @@
   ],
   "description": "SensorDash read-only overview: distinct latest hottest CPU/GPU readings with aggregate history, plus peak values with an individually selected winning physical sensor, alias-first labels, and sparkline; cooling/energy/sensor inventory.",
   "schemaVersion": 40,
-  "version": 6,
+  "version": 7,
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
@@ -60,6 +60,58 @@
         "current": {
           "text": "All",
           "value": "$__all"
+        },
+        "options": []
+      },
+      {
+        "name": "peakCpuSource",
+        "label": "peakCpuSource",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "homeaway-vm"
+        },
+        "query": {
+          "query": "query_result(label_transform(label_transform((topk(1, max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range] @ end()) * on(host,sensor) group_left() (last_over_time(sensordash_sensor_info_value{host=~\"$host\",device_type=\"Cpu\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\"}[$__range] @ end()) == 1)) * on(host,sensor) group_left(name) (label_replace((last_over_time(sensordash_sensor_info_value{host=~\"$host\",device_type=\"Cpu\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\",alias!=\"unassigned\"}[$__range] @ end()) == 1), \"name\", \"$1\", \"alias\", \"(.+)\") or (last_over_time(sensordash_sensor_info_value{host=~\"$host\",device_type=\"Cpu\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\",alias=\"unassigned\"}[$__range] @ end()) == 1))), \"name\", \"_+\", \" \"), \"name\", \"^ +| +$\", \"\"))",
+          "refId": "peakCpuSource"
+        },
+        "regex": "/name=\"([^\"]+)\"/",
+        "hide": 2,
+        "refresh": 2,
+        "sort": 0,
+        "multi": false,
+        "includeAll": false,
+        "skipUrlSync": true,
+        "current": {
+          "selected": false,
+          "text": "—",
+          "value": "—"
+        },
+        "options": []
+      },
+      {
+        "name": "peakGpuSource",
+        "label": "peakGpuSource",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "homeaway-vm"
+        },
+        "query": {
+          "query": "query_result(label_transform(label_transform((topk(1, max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range] @ end()) * on(host,sensor) group_left() (last_over_time(sensordash_sensor_info_value{host=~\"$host\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\"}[$__range] @ end()) == 1)) * on(host,sensor) group_left(name) (label_replace((last_over_time(sensordash_sensor_info_value{host=~\"$host\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\",alias!=\"unassigned\"}[$__range] @ end()) == 1), \"name\", \"$1\", \"alias\", \"(.+)\") or (last_over_time(sensordash_sensor_info_value{host=~\"$host\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\",alias=\"unassigned\"}[$__range] @ end()) == 1))), \"name\", \"_+\", \" \"), \"name\", \"^ +| +$\", \"\"))",
+          "refId": "peakGpuSource"
+        },
+        "regex": "/name=\"([^\"]+)\"/",
+        "hide": 2,
+        "refresh": 2,
+        "sort": 0,
+        "multi": false,
+        "includeAll": false,
+        "skipUrlSync": true,
+        "current": {
+          "selected": false,
+          "text": "—",
+          "value": "—"
         },
         "options": []
       }
@@ -352,7 +404,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "### TEMPERATURE PEAKS · SELECTED TIME RANGE\nLarge values are the maximum **recorded** temperature over the chosen Grafana time window. Each background sparkline follows **only the specific sensor that hit that peak**, not the hottest sensor at each moment. Sensor labels use SensorDash aliases when present (otherwise the hardware name)."
+        "content": "### TEMPERATURE PEAKS · SELECTED TIME RANGE\nPeak numbers remain centered over each winning sensor’s temperature history. **The source sensor is shown under each card title**, using your SensorDash alias when available (otherwise its hardware name). The sensor name is recalculated on dashboard load and time-range changes."
       }
     },
     {
@@ -363,7 +415,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Peak CPU temperature from observed samples in the selected Grafana range. The sparkline traces only the single physical sensor responsible for the selected period's peak (picked once at the end of the range), using interval maxima to retain brief spikes; the displayed maximum comes from that sensor's history, not its latest reading. The small label prefers the SensorDash alias and otherwise uses the original sensor name, with underscores normalized only in display. Missing samples remain missing. A sensor identity can change if you select another time range.",
+      "description": "SensorDash name appears in the title subtitle and follows the source sensor that recorded the highest CPU temperature in the selected time range. The alias is preferred over the original hardware name, with underscores cleaned for display. The central value is the peak and the background sparkline follows only this winning sensor. Header names update on dashboard load, host or time-range changes; Grafana refreshes source-name variables less frequently than it refreshes the chart. A new live peak between variable refreshes can temporarily produce a mismatched subtitle.",
       "gridPos": {
         "x": 0,
         "y": 11,
@@ -416,13 +468,14 @@
           ],
           "fields": ""
         },
-        "orientation": "vertical",
-        "textMode": "value_and_name",
+        "orientation": "auto",
+        "textMode": "value",
         "colorMode": "value",
         "graphMode": "area",
         "wideLayout": false,
         "justifyMode": "center"
-      }
+      },
+      "subtitle": "${peakCpuSource}"
     },
     {
       "id": 6,
@@ -432,7 +485,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Peak GPU temperature from observed samples in the selected Grafana range. The sparkline traces only the single physical sensor responsible for the selected period's peak (picked once at the end of the range), using interval maxima to retain brief spikes; the displayed maximum comes from that sensor's history, not its latest reading. The small label prefers the SensorDash alias and otherwise uses the original sensor name, with underscores normalized only in display. Missing samples remain missing. A sensor identity can change if you select another time range.",
+      "description": "SensorDash name appears in the title subtitle and follows the source sensor that recorded the highest GPU temperature in the selected time range. The alias is preferred over the original hardware name, with underscores cleaned for display. The central value is the peak and the background sparkline follows only this winning sensor. Header names update on dashboard load, host or time-range changes; Grafana refreshes source-name variables less frequently than it refreshes the chart. A new live peak between variable refreshes can temporarily produce a mismatched subtitle.",
       "gridPos": {
         "x": 6,
         "y": 11,
@@ -485,13 +538,14 @@
           ],
           "fields": ""
         },
-        "orientation": "vertical",
-        "textMode": "value_and_name",
+        "orientation": "auto",
+        "textMode": "value",
         "colorMode": "value",
         "graphMode": "area",
         "wideLayout": false,
         "justifyMode": "center"
-      }
+      },
+      "subtitle": "${peakGpuSource}"
     },
     {
       "id": 7,
