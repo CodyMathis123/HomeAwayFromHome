@@ -6,11 +6,12 @@
     "homeaway",
     "read-only",
     "pi",
-    "monitoring"
+    "monitoring",
+    "everyday"
   ],
-  "description": "Pi 4 host metrics from a minimal internal Node Exporter; VictoriaMetrics data-store health; DNS/VPN scrape availability; and actual Windows sensor-sample freshness. No control or remote administration.",
+  "description": "Pi 4 host metrics from a minimal internal Node Exporter; VictoriaMetrics data-store health; DNS/VPN scrape availability; and actual Windows sensor-sample freshness. No control or remote administration. Pi resource and scrape health; the Windows sample-age tile is only observed reporting freshness, not proof of an actual cooling or Windows fault.",
   "schemaVersion": 40,
-  "version": 2,
+  "version": 3,
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
@@ -474,13 +475,13 @@
     },
     {
       "id": 7,
-      "title": "Windows sample age · 24h",
+      "title": "Latest Windows sample · age (24h)",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Time since most recent recorded SensorDash observation within 24 hours. No data after 24 hours; cannot distinguish sleeping Windows from disconnected exporter.",
+      "description": "Seconds since the newest reported SensorDash raw sample inside the last 24 hours. Missing after 24h is not zero; sleep, exporter failure and network loss are indistinguishable without other checks.",
       "gridPos": {
         "x": 12,
         "y": 11,
@@ -502,7 +503,7 @@
       "fieldConfig": {
         "defaults": {
           "unit": "s",
-          "noValue": "—",
+          "noValue": "No samples in 24h",
           "color": {
             "mode": "fixed",
             "fixedColor": "#f2bd6d"
