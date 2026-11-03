@@ -20,7 +20,8 @@ class PeakSensorProvenanceTests(unittest.TestCase):
         self.assertIn('name!~"(?i).*(warning|critical).*"', expr)
         self.assertIn("group_left(name,device,device_type)", expr)
         self.assertEqual(peak["options"]["textMode"], "value_and_name")
-        self.assertEqual(peak["targets"][0]["legendFormat"], "{{device}} · {{name}}")
+        self.assertEqual(peak["targets"][0]["legendFormat"], "{{name}}")
+        self.assertIn("group_left(name,device,device_type)", expr)
 
     def test_reporting_peaks_keep_identity_but_averages_remain_aggregates(self):
         panels = {p["id"]: p for p in dashboard("reporting-summary.json")["panels"]}
