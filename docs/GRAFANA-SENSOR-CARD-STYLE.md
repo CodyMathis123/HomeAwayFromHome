@@ -35,11 +35,18 @@ python3 -m unittest discover -s scripts/tests -p 'test_peak_sensor_provenance.py
 python3 -m unittest discover -s scripts/tests -p 'test_grafana_stat_audit.py'
 ```
 
-The audit scans every JSON dashboard on disk. It reports unlabeled maximum
-candidates for human review; some deliberately use a generic aggregated
-live sparkline rather than a single winning physical sensor. Treat these as
-review candidates, not an instruction to silently rewrite every panel.
+The audit scans every JSON dashboard on disk. It distinguishes real
+unattributed maximum cards from intentionally changing maximum sparklines,
+derived freshness metrics, and period-to-period comparisons. The 12 known
+Overview and compact portal live-sparkline exceptions are enumerated in the
+audit script; review that allowlist whenever the design or panel IDs change.
+These charts show a **moving sensor-family maximum** over time, not a fixed
+source sensor, so forcing one name onto the sparkline would be misleading.
 
-The initial cross-dashboard pass standardized the six Reporting Summary
-selected-range peak cards and retained the existing normalized historical
-peak cards in Overview and the storage peak card in Drives & Retention.
+The cross-dashboard pass standardized the six Reporting Summary selected-range
+peak cards, three Cooling Systems RPM/PWM cards, and retained the existing
+normalized historical peaks in Overview, the storage peak in Drives &
+Retention, and the two SensorDash hardware peak cards. Current-value moving
+maximum sparklines remain unchanged until we can show a separate current
+winner without obscuring history. The four derived freshness/comparison
+cards remain aggregate by design.
