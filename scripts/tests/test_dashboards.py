@@ -196,12 +196,12 @@ class DashboardContracts(unittest.TestCase):
         panels = {p["id"]: p for p in dashboard["panels"]}
         variables = {v["name"]: v for v in dashboard["templating"]["list"]}
         self.assertEqual(set(variables), {"host", "sensor"})
-        self.assertIn("Latest temperature", panels[100]["options"]["content"])
-        self.assertIn("Peak temperature", panels[100]["options"]["content"])
+        self.assertIn("Highest reported temperature", panels[100]["options"]["content"])
+        self.assertIn("Historical peak temperature", panels[100]["options"]["content"])
         self.assertIn("update together", panels[100]["options"]["content"])
         for panel_id, title in (
-            (111, "Latest temperature"),
-            (112, "Peak temperature · selected range"),
+            (111, "Highest reported temperature"),
+            (112, "Historical peak temperature · selected range"),
         ):
             panel = panels[panel_id]
             self.assertEqual(panel["title"], title)
@@ -236,6 +236,8 @@ class DashboardContracts(unittest.TestCase):
                 self.assertNotIn("[$__range]", q)
         self.assertEqual(dashboard["templating"]["list"][0]["name"], "host")
         self.assertEqual(dashboard["templating"]["list"][1]["name"], "sensor")
+        self.assertIn("can be stale", panels[100]["options"]["content"])
+        self.assertIn("selected Grafana time range", panels[100]["options"]["content"])
 
     def test_user_alias_is_display_name_with_raw_fallback(self):
         # The exporter always emits alias=unassigned when no user alias exists.
@@ -427,13 +429,13 @@ class DashboardContracts(unittest.TestCase):
     def test_overview_latest_and_peak_temperatures_have_clear_provenance(self):
         overview = json.loads((PANELS / "overview.json").read_text(encoding="utf-8"))
         panels = {p["id"]: p for p in overview["panels"]}
-        self.assertIn("Latest cards take the hottest available", panels[100]["options"]["content"])
+        self.assertIn("latest-available", panels[100]["options"]["content"])
         self.assertIn("update together", panels[101]["options"]["content"])
         for latest_id, peak_id, family in ((1, 5, "CPU"), (2, 6, "GPU")):
             latest = panels[latest_id]
             peak = panels[peak_id]
-            self.assertEqual(latest["title"], family + " · latest temperature")
-            self.assertEqual(peak["title"], family + " · peak (selected range)")
+            self.assertEqual(latest["title"], family + " · highest reported temperature")
+            self.assertEqual(peak["title"], family + " · historical peak (selected range)")
             self.assertTrue(latest["targets"][0]["range"])
             self.assertNotIn("instant", latest["targets"][0])
             self.assertEqual(latest["options"]["graphMode"], "area")
@@ -475,8 +477,8 @@ class DashboardContracts(unittest.TestCase):
         self.assertEqual(set(variables), {"host"})
         self.assertEqual(dashboard["templating"]["list"][0]["name"], "host")
         panels = {panel["id"]: panel for panel in dashboard["panels"]}
-        for id, label in ((5, "CPU · peak (selected range)"),
-                          (6, "GPU · peak (selected range)")):
+        for id, label in ((5, "CPU · historical peak (selected range)"),
+                          (6, "GPU · historical peak (selected range)")):
             panel = panels[id]
             self.assertEqual(panel["title"], label)
             self.assertNotIn("subtitle", panel)
