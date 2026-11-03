@@ -189,19 +189,20 @@ class DashboardContracts(unittest.TestCase):
             self.assertIn("on(host,sensor) group_left(name,alias,device)", query)
             self.assertEqual(panels[id]["targets"][0]["legendFormat"], "{{name}}")
 
-    def test_hardware_temperature_stat_subtitles_identify_the_winning_sensor(self):
+    def test_hardware_temperature_titles_identify_the_winning_sensor(self):
         dashboard = json.loads((PANELS / "sensordash.json").read_text(encoding="utf-8"))
         panels = {p["id"]: p for p in dashboard["panels"]}
         variables = {v["name"]: v for v in dashboard["templating"]["list"]}
         self.assertIn("Latest", panels[100]["options"]["content"])
         self.assertIn("peak", panels[100]["options"]["content"])
         for panel_id, variable_name, title in (
-            (111, "hardwareLatestTempSource", "Highest temperature · latest reading"),
-            (112, "hardwarePeakTempSource", "Peak temperature · selected range"),
+            (111, "hardwareLatestTempSource", "Latest temp"),
+            (112, "hardwarePeakTempSource", "Range peak"),
         ):
             panel = panels[panel_id]
-            self.assertEqual(panel["title"], title)
-            self.assertEqual(panel["subtitle"], "${" + variable_name + "}")
+            self.assertEqual(panel["title"], title + " · ${" + variable_name + "}")
+            self.assertNotIn("subtitle", panel)
+            self.assertEqual(panel["targets"][0]["legendFormat"], panel["title"])
             self.assertEqual(panel["options"]["textMode"], "value")
             self.assertEqual(panel["options"]["justifyMode"], "center")
             self.assertEqual(panel["options"]["graphMode"], "none")
@@ -427,12 +428,12 @@ class DashboardContracts(unittest.TestCase):
         overview = json.loads((PANELS / "overview.json").read_text(encoding="utf-8"))
         panels = {p["id"]: p for p in overview["panels"]}
         self.assertIn("Latest cards take the hottest available", panels[100]["options"]["content"])
-        self.assertIn("source sensor is shown under each card title", panels[101]["options"]["content"])
+        self.assertIn("titles show the sensor", panels[101]["options"]["content"])
         for latest_id, peak_id, family in ((1, 5, "CPU"), (2, 6, "GPU")):
             latest = panels[latest_id]
             peak = panels[peak_id]
             self.assertEqual(latest["title"], family + " · latest temperature")
-            self.assertEqual(peak["title"], family + " · peak (selected range)")
+            self.assertEqual(peak["title"], family + " peak · ${peak" + family.title() + "Source}")
             self.assertTrue(latest["targets"][0]["range"])
             self.assertNotIn("instant", latest["targets"][0])
             self.assertEqual(latest["options"]["graphMode"], "area")
@@ -446,7 +447,7 @@ class DashboardContracts(unittest.TestCase):
             self.assertEqual(peak["options"]["reduceOptions"]["calcs"], ["max"])
             self.assertEqual(peak["options"]["textMode"], "value")
             self.assertEqual(peak["options"]["orientation"], "auto")
-            self.assertEqual(peak["subtitle"], "${peak" + family.title() + "Source}")
+            self.assertNotIn("subtitle", peak)
             self.assertIs(peak["options"]["wideLayout"], False)
             self.assertEqual(peak["options"]["justifyMode"], "center")
             self.assertEqual(peak["fieldConfig"]["defaults"]["custom"]["textSize"]["titleSize"], 13)
@@ -468,7 +469,7 @@ class DashboardContracts(unittest.TestCase):
             self.assertIn("sensor", peak["description"])
             self.assertNotIn("vector(0)", query)
 
-    def test_peak_title_subtitles_follow_source_variables(self):
+    def test_peak_panel_titles_follow_source_variables(self):
         dashboard = json.loads((PANELS / "overview.json").read_text(encoding="utf-8"))
         variables = {v["name"]: v for v in dashboard["templating"]["list"]}
         self.assertEqual(dashboard["templating"]["list"][0]["name"], "host")
@@ -478,7 +479,8 @@ class DashboardContracts(unittest.TestCase):
                                  (6, "peakGpuSource", "Gpu")):
             variable = variables[name]
             panel = panels[id]
-            self.assertEqual(panel["subtitle"], "${" + name + "}")
+            self.assertEqual(panel["title"], ("CPU peak" if id == 5 else "GPU peak") + " · ${" + name + "}")
+            self.assertNotIn("subtitle", panel)
             self.assertEqual(panel["options"]["textMode"], "value")
             self.assertEqual(panel["options"]["graphMode"], "area")
             self.assertEqual(panel["options"]["justifyMode"], "center")
