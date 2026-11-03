@@ -11,7 +11,7 @@
   ],
   "description": "SensorDash read-only overview: distinct latest hottest CPU/GPU readings with aggregate history, plus peak values with an individually selected winning physical sensor, alias-first labels, and sparkline; cooling/energy/sensor inventory.",
   "schemaVersion": 40,
-  "version": 9,
+  "version": 10,
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
@@ -139,7 +139,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "### YOUR HARDWARE · LATEST OBSERVED\nThese four cards show the most recent available hottest sensor or tachometer value and its history. Temperature readings can become stale if Windows sleeps or stops exporting; the graphed series is not proof of PC uptime."
+        "content": "### YOUR HARDWARE · LATEST OBSERVED\nLatest cards take the hottest available CPU/GPU sensor, not one fixed probe. Their sparklines show recorded history, not continuous uptime; a latest value can be old when Windows stops reporting."
       }
     },
     {
