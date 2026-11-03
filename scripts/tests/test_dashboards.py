@@ -31,7 +31,11 @@ class DashboardContracts(unittest.TestCase):
                     continue
                 self.assertEqual(len(panel["targets"]), 1, (path.name, panel["id"]))
                 target = panel["targets"][0]
-                self.assertEqual(target["legendFormat"], panel["title"],
+                # The two peak cards deliberately expose the winning
+                # physical sensor name instead of repeating the panel title.
+                expected = ("{{name}}" if path.name == "overview.json"
+                            and panel["id"] in (5, 6) else panel["title"])
+                self.assertEqual(target["legendFormat"], expected,
                                  (path.name, panel["id"]))
                 self.assertNotIn("sensordash_", target["legendFormat"])
                 self.assertLessEqual(len(target["legendFormat"]), 80)
