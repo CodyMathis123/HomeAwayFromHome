@@ -42,8 +42,10 @@ class DashboardContracts(unittest.TestCase):
                 target = panel["targets"][0]
                 # The two peak cards deliberately expose the winning
                 # physical sensor name instead of repeating the panel title.
-                expected = ("{{name}}" if path.name == "overview.json"
-                            and panel["id"] in (5, 6) else panel["title"])
+                expected = ("{{name}}" if
+                            (path.name == "overview.json" and panel["id"] in (5, 6))
+                            or (path.name == "sensordash.json" and panel["id"] in (111, 112))
+                            else panel["title"])
                 self.assertEqual(target["legendFormat"], expected,
                                  (path.name, panel["id"]))
                 self.assertNotIn("sensordash_", target["legendFormat"])
@@ -189,37 +191,31 @@ class DashboardContracts(unittest.TestCase):
             self.assertIn("on(host,sensor) group_left(name,alias,device)", query)
             self.assertEqual(panels[id]["targets"][0]["legendFormat"], "{{name}}")
 
-    def test_hardware_temperature_titles_identify_the_winning_sensor(self):
+    def test_hardware_temperature_stat_attribution_is_atomic(self):
         dashboard = json.loads((PANELS / "sensordash.json").read_text(encoding="utf-8"))
         panels = {p["id"]: p for p in dashboard["panels"]}
         variables = {v["name"]: v for v in dashboard["templating"]["list"]}
-        self.assertIn("Latest", panels[100]["options"]["content"])
-        self.assertIn("peak", panels[100]["options"]["content"])
-        for panel_id, variable_name, title in (
-            (111, "hardwareLatestTempSource", "Latest temp"),
-            (112, "hardwarePeakTempSource", "Range peak"),
+        self.assertEqual(set(variables), {"host", "sensor"})
+        self.assertIn("Latest temperature", panels[100]["options"]["content"])
+        self.assertIn("Peak temperature", panels[100]["options"]["content"])
+        self.assertIn("update together", panels[100]["options"]["content"])
+        for panel_id, title in (
+            (111, "Latest temperature"),
+            (112, "Peak temperature · selected range"),
         ):
             panel = panels[panel_id]
-            self.assertEqual(panel["title"], title + " · ${" + variable_name + "}")
+            self.assertEqual(panel["title"], title)
             self.assertNotIn("subtitle", panel)
-            self.assertEqual(panel["targets"][0]["legendFormat"], panel["title"])
-            self.assertEqual(panel["options"]["textMode"], "value")
+            self.assertEqual(panel["targets"][0]["legendFormat"], "{{name}}")
+            self.assertEqual(panel["options"]["textMode"], "value_and_name")
+            self.assertEqual(panel["options"]["orientation"], "vertical")
+            self.assertEqual(panel["options"]["wideLayout"], False)
             self.assertEqual(panel["options"]["justifyMode"], "center")
             self.assertEqual(panel["options"]["graphMode"], "none")
             self.assertTrue(panel["targets"][0]["instant"])
-            self.assertIn('sensor=~"$sensor"', panel["targets"][0]["expr"])
-            self.assertIn('name!~"(?i).*(warning|critical).*"', panel["targets"][0]["expr"])
-            v = variables[variable_name]
-            self.assertEqual(v["type"], "query")
-            self.assertEqual(v["datasource"]["uid"], "homeaway-vm")
-            self.assertEqual(v["hide"], 2)
-            self.assertEqual(v["refresh"], 2)
-            self.assertTrue(v["skipUrlSync"])
-            self.assertFalse(v["includeAll"])
-            self.assertFalse(v["multi"])
-            self.assertEqual(v["regex"], '/name="([^"]+)"/')
-            q = v["query"]["query"]
-            self.assertTrue(q.startswith("query_result("))
+            self.assertEqual(panel["fieldConfig"]["defaults"]["custom"]["textSize"]["titleSize"], 12)
+            self.assertGreater(panel["fieldConfig"]["defaults"]["custom"]["textSize"]["valueSize"], 36)
+            q = panel["targets"][0]["expr"]
             self.assertIn('host=~"$host"', q)
             self.assertIn('sensor=~"$sensor"', q)
             self.assertIn('kind="Temperature"', q)
@@ -231,6 +227,7 @@ class DashboardContracts(unittest.TestCase):
             self.assertIn('"name", "$1", "alias", "(.+)"', q)
             self.assertIn('"name", "_+", " "', q)
             self.assertIn('"name", "^ +| +$", ""', q)
+            self.assertNotIn("query_result(", q)
             self.assertNotIn("vector(0)", q)
             if panel_id == 112:
                 self.assertIn("[$__range]", q)
@@ -303,10 +300,13 @@ class DashboardContracts(unittest.TestCase):
                     self.assertIn('kind="Temperature"', expr)
                     self.assertIn(reference, expr)
                     self.assertIn("sensordash_sensor_info_value", expr)
-                    # The two alias branches must BOTH apply the same filter,
-                    # or giving a fixed temperature an alias will resurrect it.
+                    # Both alias branches and (for winner-selecting Stat
+                    # panels) the initial selection metadata must exclude
+                    # fixed NVMe warning/critical specifications.
                     if 'alias!="unassigned"' in expr:
-                        self.assertEqual(expr.count(reference), 2)
+                        expected = (3 if filename == "sensordash.json"
+                                    and panel_id in (111, 112) else 2)
+                        self.assertEqual(expr.count(reference), expected)
                         self.assertLess(
                             expr.index(reference),
                             expr.index('"name", "$1", "alias", "(.+)"'))
@@ -428,12 +428,12 @@ class DashboardContracts(unittest.TestCase):
         overview = json.loads((PANELS / "overview.json").read_text(encoding="utf-8"))
         panels = {p["id"]: p for p in overview["panels"]}
         self.assertIn("Latest cards take the hottest available", panels[100]["options"]["content"])
-        self.assertIn("titles show the sensor", panels[101]["options"]["content"])
+        self.assertIn("update together", panels[101]["options"]["content"])
         for latest_id, peak_id, family in ((1, 5, "CPU"), (2, 6, "GPU")):
             latest = panels[latest_id]
             peak = panels[peak_id]
             self.assertEqual(latest["title"], family + " · latest temperature")
-            self.assertEqual(peak["title"], family + " peak · ${peak" + family.title() + "Source}")
+            self.assertEqual(peak["title"], family + " · peak (selected range)")
             self.assertTrue(latest["targets"][0]["range"])
             self.assertNotIn("instant", latest["targets"][0])
             self.assertEqual(latest["options"]["graphMode"], "area")
@@ -445,12 +445,12 @@ class DashboardContracts(unittest.TestCase):
             self.assertNotIn("instant", peak["targets"][0])
             self.assertEqual(peak["options"]["graphMode"], "area")
             self.assertEqual(peak["options"]["reduceOptions"]["calcs"], ["max"])
-            self.assertEqual(peak["options"]["textMode"], "value")
-            self.assertEqual(peak["options"]["orientation"], "auto")
+            self.assertEqual(peak["options"]["textMode"], "value_and_name")
+            self.assertEqual(peak["options"]["orientation"], "vertical")
             self.assertNotIn("subtitle", peak)
             self.assertIs(peak["options"]["wideLayout"], False)
             self.assertEqual(peak["options"]["justifyMode"], "center")
-            self.assertEqual(peak["fieldConfig"]["defaults"]["custom"]["textSize"]["titleSize"], 13)
+            self.assertEqual(peak["fieldConfig"]["defaults"]["custom"]["textSize"]["titleSize"], 12)
             self.assertGreater(peak["fieldConfig"]["defaults"]["custom"]["textSize"]["valueSize"], 36)
             self.assertEqual(peak["targets"][0]["legendFormat"], "{{name}}")
             query = peak["targets"][0]["expr"]
@@ -469,46 +469,33 @@ class DashboardContracts(unittest.TestCase):
             self.assertIn("sensor", peak["description"])
             self.assertNotIn("vector(0)", query)
 
-    def test_peak_panel_titles_follow_source_variables(self):
+    def test_peak_stat_uses_one_result_for_name_and_value(self):
         dashboard = json.loads((PANELS / "overview.json").read_text(encoding="utf-8"))
         variables = {v["name"]: v for v in dashboard["templating"]["list"]}
+        self.assertEqual(set(variables), {"host"})
         self.assertEqual(dashboard["templating"]["list"][0]["name"], "host")
-        self.assertEqual(set(variables), {"host", "peakCpuSource", "peakGpuSource"})
         panels = {panel["id"]: panel for panel in dashboard["panels"]}
-        for id, name, family in ((5, "peakCpuSource", "Cpu"),
-                                 (6, "peakGpuSource", "Gpu")):
-            variable = variables[name]
+        for id, label in ((5, "CPU · peak (selected range)"),
+                          (6, "GPU · peak (selected range)")):
             panel = panels[id]
-            self.assertEqual(panel["title"], ("CPU peak" if id == 5 else "GPU peak") + " · ${" + name + "}")
+            self.assertEqual(panel["title"], label)
             self.assertNotIn("subtitle", panel)
-            self.assertEqual(panel["options"]["textMode"], "value")
+            self.assertEqual(panel["options"]["textMode"], "value_and_name")
+            self.assertEqual(panel["options"]["orientation"], "vertical")
+            self.assertIs(panel["options"]["wideLayout"], False)
             self.assertEqual(panel["options"]["graphMode"], "area")
             self.assertEqual(panel["options"]["justifyMode"], "center")
             self.assertEqual(panel["targets"][0]["legendFormat"], "{{name}}")
-            self.assertEqual(variable["type"], "query")
-            self.assertEqual(variable["datasource"]["uid"], "homeaway-vm")
-            self.assertEqual(variable["hide"], 2)
-            self.assertEqual(variable["refresh"], 2)
-            self.assertFalse(variable["multi"])
-            self.assertFalse(variable["includeAll"])
-            self.assertTrue(variable["skipUrlSync"])
-            self.assertEqual(variable["regex"], '/name="([^"]+)"/')
-            query = variable["query"]["query"]
-            self.assertTrue(query.startswith("query_result("))
+            self.assertTrue(panel["targets"][0]["range"])
+            self.assertEqual(panel["options"]["reduceOptions"]["calcs"], ["max"])
+            query = panel["targets"][0]["expr"]
             self.assertIn("topk(1, max_over_time(", query)
             self.assertIn("[$__range] @ end()", query)
             self.assertIn("group_left(name)", query)
-            self.assertIn("last_over_time(sensordash_sensor_info_value", query)
-            self.assertIn('alias!="unassigned"', query)
-            self.assertIn('alias="unassigned"', query)
-            self.assertIn('"name", "_+", " "', query)
-            self.assertIn('"name", "^ +| +$", ""', query)
-            self.assertIn(('device_type="Cpu"' if family == "Cpu"
-                           else 'device_type=~"Gpu(Amd|Nvidia|Intel)?"'), query)
-            self.assertNotIn("sensor=~", query)
-        # Other panels and the underlying time-series queries are unchanged.
-        self.assertEqual(panels[5]["targets"][0]["range"], True)
-        self.assertEqual(panels[6]["targets"][0]["range"], True)
+            self.assertIn("label_transform(label_transform(", query)
+            self.assertNotIn("query_result(", query)
+            self.assertNotIn("vector(0)", query)
+        self.assertIn("update together", panels[101]["options"]["content"])
 
     def test_peak_series_has_single_selected_sensor_and_never_mutates_catalog(self):
         overview = json.loads((PANELS / "overview.json").read_text(encoding="utf-8"))

@@ -48,31 +48,27 @@ def main() -> None:
         assert dashboard["uid"] == uid, uid
         assert dashboard["panels"], uid
         assert dashboard["editable"] is False, uid
-        if uid == "homeaway-sensordash":
-            variables = {v["name"]: v for v in dashboard["templating"]["list"]}
+        if uid in ("homeaway-sensordash", "homeaway-overview"):
+            variables = {v["name"] for v in dashboard["templating"]["list"]}
             panels = {p["id"]: p for p in dashboard["panels"]}
-            for panel_id, name in (
-                (111, "hardwareLatestTempSource"),
-                (112, "hardwarePeakTempSource"),
-            ):
-                assert name in panels[panel_id]["title"], panels[panel_id]
-                assert "${" + name + "}" in panels[panel_id]["title"], panels[panel_id]
-                assert "subtitle" not in panels[panel_id], panels[panel_id]
-                assert panels[panel_id]["options"]["textMode"] == "value", panels[panel_id]
-                assert variables[name]["hide"] == 2, variables[name]
-                assert variables[name]["refresh"] == 2, variables[name]
-                assert variables[name]["query"]["query"].startswith("query_result("), variables[name]
-        if uid == "homeaway-overview":
-            variables = {v["name"]: v for v in dashboard["templating"]["list"]}
-            panels = {p["id"]: p for p in dashboard["panels"]}
-            for id, variable in ((5, "peakCpuSource"), (6, "peakGpuSource")):
-                assert "${" + variable + "}" in panels[id]["title"], panels[id]
-                assert "subtitle" not in panels[id], panels[id]
-                assert panels[id]["options"]["textMode"] == "value", panels[id]
-                assert panels[id]["options"]["graphMode"] == "area", panels[id]
-                assert variables[variable]["hide"] == 2, variables[variable]
-                assert variables[variable]["refresh"] == 2, variables[variable]
-                assert "query_result(" in variables[variable]["query"]["query"]
+            if uid == "homeaway-sensordash":
+                self_ids = (111, 112)
+                assert variables == {"host", "sensor"}, variables
+            else:
+                self_ids = (5, 6)
+                assert variables == {"host"}, variables
+            for panel_id in self_ids:
+                panel = panels[panel_id]
+                assert "${" not in panel["title"], panel
+                assert "subtitle" not in panel, panel
+                assert panel["options"]["textMode"] == "value_and_name", panel
+                assert panel["options"]["wideLayout"] is False, panel
+                assert panel["options"]["justifyMode"] == "center", panel
+                assert panel["targets"][0]["legendFormat"] == "{{name}}", panel
+                assert "group_left(name)" in panel["targets"][0]["expr"], panel
+                assert "label_transform(" in panel["targets"][0]["expr"], panel
+                if uid == "homeaway-overview":
+                    assert panel["options"]["graphMode"] == "area", panel
 
     print("PASS: Grafana boot, authentication and all nine provisioned dashboards")
 
