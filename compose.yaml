@@ -194,12 +194,16 @@ services:
       - "--collector.stat"
       - "--collector.thermal_zone"
       - "--collector.diskstats"
+      - "--collector.textfile"
+      - "--collector.textfile.directory=/var/lib/homeaway-ssd-metrics"
       - "--collector.uname"
       - "--collector.time"
       - "--collector.vmstat"
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
+      # Host-only SMART collector exports numeric metrics here; no /dev or journal in container.
+      - /var/lib/homeaway-ssd-metrics:/var/lib/homeaway-ssd-metrics:ro
     networks:
       - infra
     # Internal-only metrics on :9100; never publish to LAN or WAN.
