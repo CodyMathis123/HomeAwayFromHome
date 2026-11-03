@@ -1424,6 +1424,16 @@
           "expr": "homeaway_pi_ssd_kernel_events_since_boot{job=\"pi-node\",kind=\"host_controller_failures\"}",
           "range": true,
           "legendFormat": "Host controller failures"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "homeaway_pi_ssd_kernel_events_since_boot{job=\"pi-node\",kind=\"usb_disconnects\"}",
+          "range": true,
+          "legendFormat": "USB disconnects"
         }
       ],
       "fieldConfig": {
