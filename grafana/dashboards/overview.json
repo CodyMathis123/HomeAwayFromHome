@@ -11,7 +11,7 @@
   ],
   "description": "SensorDash read-only overview: distinct latest hottest CPU/GPU readings with aggregate history, plus peak values with an individually selected winning physical sensor, alias-first labels, and sparkline; cooling/energy/sensor inventory.",
   "schemaVersion": 40,
-  "version": 11,
+  "version": 13,
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
@@ -87,12 +87,12 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "### YOUR HARDWARE · LATEST OBSERVED\nLatest cards take the hottest available CPU/GPU sensor, not one fixed probe. Their sparklines show recorded history, not continuous uptime; a latest value can be old when Windows stops reporting."
+        "content": "### HIGHEST REPORTED TEMPERATURE · LATEST AVAILABLE\nCPU/GPU cards show the hottest *latest-available* sensor reading, not a peak over the selected history. A value can be stale if Windows sleeps or stops exporting; the sparklines show observed readings, not uninterrupted uptime."
       }
     },
     {
       "id": 1,
-      "title": "CPU · latest temperature",
+      "title": "CPU · highest reported temperature",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
@@ -114,7 +114,7 @@
           },
           "expr": "max(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Cpu\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\"} == 1))",
           "range": true,
-          "legendFormat": "CPU · latest temperature"
+          "legendFormat": "CPU · highest reported temperature"
         }
       ],
       "fieldConfig": {
@@ -153,7 +153,7 @@
     },
     {
       "id": 2,
-      "title": "GPU · latest temperature",
+      "title": "GPU · highest reported temperature",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
@@ -175,7 +175,7 @@
           },
           "expr": "max(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\"} == 1))",
           "range": true,
-          "legendFormat": "GPU · latest temperature"
+          "legendFormat": "GPU · highest reported temperature"
         }
       ],
       "fieldConfig": {
@@ -352,12 +352,12 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "### TEMPERATURE PEAKS · SELECTED TIME RANGE\nEach card shows the highest recorded CPU/GPU temperature in the selected time range, and the **winning sensor name in small text directly above the centered value**. The sensor label and value update together on every panel refresh. The area chart follows that winning sensor only; it does not switch probes mid-chart."
+        "content": "### HISTORICAL PEAK TEMPERATURE · SELECTED TIME RANGE\nCPU/GPU peak cards show the highest temperature recorded during the selected Grafana period. The small source sensor label and large centered number update together; each background graph follows only the sensor that produced that historical peak."
       }
     },
     {
       "id": 5,
-      "title": "CPU · peak (selected range)",
+      "title": "CPU · historical peak (selected range)",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
@@ -426,7 +426,7 @@
     },
     {
       "id": 6,
-      "title": "GPU · peak (selected range)",
+      "title": "GPU · historical peak (selected range)",
       "type": "stat",
       "datasource": {
         "type": "prometheus",

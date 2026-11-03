@@ -10,7 +10,7 @@
   ],
   "timezone": "browser",
   "schemaVersion": 40,
-  "version": 11,
+  "version": 12,
   "time": {
     "from": "now-1h",
     "to": "now"
@@ -505,13 +505,13 @@
     },
     {
       "id": 111,
-      "title": "Latest temperature",
+      "title": "Highest reported temperature",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "The highlighted Stat value is the maximum observed temperature with its winning sensor name derived from this *same* query response; sensor aliases take precedence and raw underscores are normalized for display. Latest available reported reading may be stale when the PC stops reporting.The name and value update atomically on panel refresh and cannot disagree due to hidden dashboard variables.",
+      "description": "Hottest of the latest available temperature readings from the selected sensors and host. This is an across-sensor maximum, not a maximum over the selected historical range. Some latest-available sensor readings can be stale when Windows stops reporting. The name above the value identifies its source and updates with the value.",
       "gridPos": {
         "x": 6,
         "y": 3,
@@ -574,13 +574,13 @@
     },
     {
       "id": 112,
-      "title": "Peak temperature · selected range",
+      "title": "Historical peak temperature · selected range",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "The highlighted Stat value is the maximum observed temperature with its winning sensor name derived from this *same* query response; sensor aliases take precedence and raw underscores are normalized for display. A range maximum can come from a different probe than the latest available temperature. The name and value update atomically on panel refresh and cannot disagree due to hidden dashboard variables.",
+      "description": "Hottest temperature recorded among selected sensors during the Grafana time range. This is a historical maximum, not necessarily the sensor that currently has the highest latest-available reading. The source name appears above the value and updates together with it.",
       "gridPos": {
         "x": 12,
         "y": 3,
@@ -720,7 +720,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "### HARDWARE OVERVIEW\n**Latest temperature** shows the hottest last-available measurement; **Peak temperature** shows the highest observed reading in the selected range. The sensor name is shown in small text **above the large value inside each card**. Both update together because they come from the same measurement query. No data is not zero; an old reading does not prove the PC is online."
+        "content": "### HARDWARE OVERVIEW\n**Highest reported temperature** is the hottest among the latest *available* readings from selected sensors; it can be stale if Windows is asleep or offline. **Historical peak temperature** is the highest recorded reading in the selected Grafana time range. The winning sensor name is the small text above each large temperature. Both name and number update together. Use Overview’s Windows sample age to check reporting freshness."
       }
     },
     {
