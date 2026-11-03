@@ -60,7 +60,8 @@ class PiSsdCollectorTests(unittest.TestCase):
 
     def test_kernel_counts_are_since_boot_not_rates(self):
         lines = ("uas_eh_abort_handler x\nreset SuperSpeed USB device number 2\n"
-                 "I/O error, dev sda, sector 1\nHC died; cleaning up\n")
+                 "I/O error, dev sda, sector 1\nHC died; cleaning up\n"
+                 "usb 2-2: USB disconnect, device number 2\n")
         with patch.object(pi_ssd, "command", return_value=types.SimpleNamespace(
                 returncode=0, stdout=lines)):
             m = pi_ssd.kernel_metrics()
