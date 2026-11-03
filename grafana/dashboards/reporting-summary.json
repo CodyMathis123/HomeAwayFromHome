@@ -11,7 +11,7 @@
   ],
   "description": "Daily, weekly and monthly telemetry summaries. Choose Last 24 hours, Last 7 days or Last 30 days in the Grafana time picker. Values reflect only recorded samples; offline intervals are not imputed. Hardware identity uses SensorDash metadata, not sensor ID patterns. Estimated accessory watts are not metered energy. GPU device families include GpuAmd, GpuNvidia and GpuIntel. Fan RPM statistics use role-bound radiator and pump sensors separately. Period-over-period comparisons use an equal duration and yield no value when either period is absent; rolling 24h peaks are not calendar-day aggregates. Sensor-stream presence is an observation indicator, not a percentage of PC uptime. Detailed temperature/power history and cooling accessory/fan timelines are provided on the dedicated Hardware Telemetry, Cooling and Electricity dashboards rather than duplicated here. Historical analysis refreshes every five minutes rather than polling a 30-day window every 15 seconds.",
   "schemaVersion": 40,
-  "version": 4,
+  "version": 5,
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
@@ -98,7 +98,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "peak of available recorded temperature observations for Cpu; missing/offline periods are excluded. Multiple sensors are aggregated, not interpreted as a single package-specific probe. Highest individual sensor in the selected time range, with the originating sensor identified below the value; not an aggregate of multiple sensors.",
+      "description": "peak of available recorded temperature observations for Cpu; missing/offline periods are excluded. Multiple sensors are aggregated, not interpreted as a single package-specific probe. Highest individual sensor in the selected time range, with the originating sensor identified below the value; not an aggregate of multiple sensors. Highest individual reading in the selected range. Displays the originating SensorDash alias or sensor name, with underscores normalized for display. Missing current sensor catalog can make this card unavailable.",
       "gridPos": {
         "x": 0,
         "y": 3,
@@ -112,9 +112,9 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "topk(1, max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range]) * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device_type=\"Cpu\",name!~\"(?i).*(warning|critical).*\"} == 1))",
+          "expr": "label_transform(label_transform((topk(1, max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range]) * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device_type=\"Cpu\",name!~\"(?i).*(warning|critical).*\"} == 1))) * on(host,sensor) group_left(display) (label_replace(sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",alias!=\"unassigned\"} == 1, \"display\", \"$1\", \"alias\", \"(.+)\") or label_replace(sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",alias=\"unassigned\"} == 1, \"display\", \"$1\", \"name\", \"(.+)\")), \"display\", \"_+\", \" \"), \"display\", \"^ +| +$\", \"\")",
           "range": true,
-          "legendFormat": "{{device}} · {{name}}"
+          "legendFormat": "{{display}}"
         }
       ],
       "fieldConfig": {
@@ -133,6 +133,12 @@
                 "value": null
               }
             ]
+          },
+          "custom": {
+            "textSize": {
+              "titleSize": 12,
+              "valueSize": 46
+            }
           }
         },
         "overrides": []
@@ -148,7 +154,9 @@
         "orientation": "vertical",
         "textMode": "value_and_name",
         "colorMode": "value",
-        "graphMode": "area"
+        "graphMode": "area",
+        "wideLayout": false,
+        "justifyMode": "center"
       }
     },
     {
@@ -159,7 +167,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "peak of available recorded temperature observations for Gpu; missing/offline periods are excluded. Multiple sensors are aggregated, not interpreted as a single package-specific probe. Highest individual sensor in the selected time range, with the originating sensor identified below the value; not an aggregate of multiple sensors.",
+      "description": "peak of available recorded temperature observations for Gpu; missing/offline periods are excluded. Multiple sensors are aggregated, not interpreted as a single package-specific probe. Highest individual sensor in the selected time range, with the originating sensor identified below the value; not an aggregate of multiple sensors. Highest individual reading in the selected range. Displays the originating SensorDash alias or sensor name, with underscores normalized for display. Missing current sensor catalog can make this card unavailable.",
       "gridPos": {
         "x": 6,
         "y": 3,
@@ -173,9 +181,9 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "topk(1, max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range]) * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name!~\"(?i).*(warning|critical).*\"} == 1))",
+          "expr": "label_transform(label_transform((topk(1, max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range]) * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name!~\"(?i).*(warning|critical).*\"} == 1))) * on(host,sensor) group_left(display) (label_replace(sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",alias!=\"unassigned\"} == 1, \"display\", \"$1\", \"alias\", \"(.+)\") or label_replace(sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",alias=\"unassigned\"} == 1, \"display\", \"$1\", \"name\", \"(.+)\")), \"display\", \"_+\", \" \"), \"display\", \"^ +| +$\", \"\")",
           "range": true,
-          "legendFormat": "{{device}} · {{name}}"
+          "legendFormat": "{{display}}"
         }
       ],
       "fieldConfig": {
@@ -194,6 +202,12 @@
                 "value": null
               }
             ]
+          },
+          "custom": {
+            "textSize": {
+              "titleSize": 12,
+              "valueSize": 46
+            }
           }
         },
         "overrides": []
@@ -209,7 +223,9 @@
         "orientation": "vertical",
         "textMode": "value_and_name",
         "colorMode": "value",
-        "graphMode": "area"
+        "graphMode": "area",
+        "wideLayout": false,
+        "justifyMode": "center"
       }
     },
     {
@@ -342,7 +358,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "peak of available recorded power observations for Cpu; missing/offline periods are excluded. Multiple sensors are aggregated, not interpreted as a single package-specific probe. Highest individual sensor in the selected time range, with the originating sensor identified below the value; not an aggregate of multiple sensors.",
+      "description": "peak of available recorded power observations for Cpu; missing/offline periods are excluded. Multiple sensors are aggregated, not interpreted as a single package-specific probe. Highest individual sensor in the selected time range, with the originating sensor identified below the value; not an aggregate of multiple sensors. Highest individual reading in the selected range. Displays the originating SensorDash alias or sensor name, with underscores normalized for display. Missing current sensor catalog can make this card unavailable.",
       "gridPos": {
         "x": 0,
         "y": 8,
@@ -356,9 +372,9 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "topk(1, max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Power\"}[$__range]) * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",kind=\"Power\",device_type=\"Cpu\",name!~\"(?i).*(warning|critical).*\"} == 1))",
+          "expr": "label_transform(label_transform((topk(1, max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Power\"}[$__range]) * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",kind=\"Power\",device_type=\"Cpu\",name!~\"(?i).*(warning|critical).*\"} == 1))) * on(host,sensor) group_left(display) (label_replace(sensordash_sensor_info_value{host=~\"$host\",kind=\"Power\",alias!=\"unassigned\"} == 1, \"display\", \"$1\", \"alias\", \"(.+)\") or label_replace(sensordash_sensor_info_value{host=~\"$host\",kind=\"Power\",alias=\"unassigned\"} == 1, \"display\", \"$1\", \"name\", \"(.+)\")), \"display\", \"_+\", \" \"), \"display\", \"^ +| +$\", \"\")",
           "range": true,
-          "legendFormat": "{{device}} · {{name}}"
+          "legendFormat": "{{display}}"
         }
       ],
       "fieldConfig": {
@@ -377,6 +393,12 @@
                 "value": null
               }
             ]
+          },
+          "custom": {
+            "textSize": {
+              "titleSize": 12,
+              "valueSize": 46
+            }
           }
         },
         "overrides": []
@@ -392,7 +414,9 @@
         "orientation": "vertical",
         "textMode": "value_and_name",
         "colorMode": "value",
-        "graphMode": "area"
+        "graphMode": "area",
+        "wideLayout": false,
+        "justifyMode": "center"
       }
     },
     {
@@ -403,7 +427,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "peak of available recorded power observations for Gpu; missing/offline periods are excluded. Multiple sensors are aggregated, not interpreted as a single package-specific probe. Highest individual sensor in the selected time range, with the originating sensor identified below the value; not an aggregate of multiple sensors.",
+      "description": "peak of available recorded power observations for Gpu; missing/offline periods are excluded. Multiple sensors are aggregated, not interpreted as a single package-specific probe. Highest individual sensor in the selected time range, with the originating sensor identified below the value; not an aggregate of multiple sensors. Highest individual reading in the selected range. Displays the originating SensorDash alias or sensor name, with underscores normalized for display. Missing current sensor catalog can make this card unavailable.",
       "gridPos": {
         "x": 6,
         "y": 8,
@@ -417,9 +441,9 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "topk(1, max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Power\"}[$__range]) * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",kind=\"Power\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name!~\"(?i).*(warning|critical).*\"} == 1))",
+          "expr": "label_transform(label_transform((topk(1, max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Power\"}[$__range]) * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",kind=\"Power\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name!~\"(?i).*(warning|critical).*\"} == 1))) * on(host,sensor) group_left(display) (label_replace(sensordash_sensor_info_value{host=~\"$host\",kind=\"Power\",alias!=\"unassigned\"} == 1, \"display\", \"$1\", \"alias\", \"(.+)\") or label_replace(sensordash_sensor_info_value{host=~\"$host\",kind=\"Power\",alias=\"unassigned\"} == 1, \"display\", \"$1\", \"name\", \"(.+)\")), \"display\", \"_+\", \" \"), \"display\", \"^ +| +$\", \"\")",
           "range": true,
-          "legendFormat": "{{device}} · {{name}}"
+          "legendFormat": "{{display}}"
         }
       ],
       "fieldConfig": {
@@ -438,6 +462,12 @@
                 "value": null
               }
             ]
+          },
+          "custom": {
+            "textSize": {
+              "titleSize": 12,
+              "valueSize": 46
+            }
           }
         },
         "overrides": []
@@ -453,7 +483,9 @@
         "orientation": "vertical",
         "textMode": "value_and_name",
         "colorMode": "value",
-        "graphMode": "area"
+        "graphMode": "area",
+        "wideLayout": false,
+        "justifyMode": "center"
       }
     },
     {
@@ -607,7 +639,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Peak observed radiator fan tachometer reading from SensorDash cooling bindings; NVMe and other unrelated fans are excluded. Does not infer the speed of individual fans on the shared hub. Highest individual sensor in the selected time range, with the originating sensor identified below the value; not an aggregate of multiple sensors.",
+      "description": "Peak observed radiator fan tachometer reading from SensorDash cooling bindings; NVMe and other unrelated fans are excluded. Does not infer the speed of individual fans on the shared hub. Highest individual sensor in the selected time range, with the originating sensor identified below the value; not an aggregate of multiple sensors. Highest individual reading in the selected range. Displays the originating SensorDash alias or sensor name, with underscores normalized for display. Missing current sensor catalog can make this card unavailable.",
       "gridPos": {
         "x": 0,
         "y": 16,
@@ -621,9 +653,9 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "topk(1, max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Fan\"}[$__range]) * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",kind=\"Fan\",role=\"fan-group\"} == 1))",
+          "expr": "label_transform(label_transform((topk(1, max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Fan\"}[$__range]) * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",kind=\"Fan\",role=\"fan-group\"} == 1))) * on(host,sensor) group_left(display) (label_replace(sensordash_sensor_info_value{host=~\"$host\",kind=\"Fan\",alias!=\"unassigned\"} == 1, \"display\", \"$1\", \"alias\", \"(.+)\") or label_replace(sensordash_sensor_info_value{host=~\"$host\",kind=\"Fan\",alias=\"unassigned\"} == 1, \"display\", \"$1\", \"name\", \"(.+)\")), \"display\", \"_+\", \" \"), \"display\", \"^ +| +$\", \"\")",
           "range": true,
-          "legendFormat": "{{host}} · {{sensor}}"
+          "legendFormat": "{{display}}"
         }
       ],
       "fieldConfig": {
@@ -642,6 +674,12 @@
                 "value": null
               }
             ]
+          },
+          "custom": {
+            "textSize": {
+              "titleSize": 12,
+              "valueSize": 46
+            }
           }
         },
         "overrides": []
@@ -657,7 +695,9 @@
         "orientation": "vertical",
         "textMode": "value_and_name",
         "colorMode": "value",
-        "graphMode": "area"
+        "graphMode": "area",
+        "wideLayout": false,
+        "justifyMode": "center"
       }
     },
     {
@@ -668,7 +708,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Peak recorded pump tachometer reading for pump-bound cooling components. The DDC remains fixed-speed/tach-only; this is not a controllable PWM output. Highest individual sensor in the selected time range, with the originating sensor identified below the value; not an aggregate of multiple sensors.",
+      "description": "Peak recorded pump tachometer reading for pump-bound cooling components. The DDC remains fixed-speed/tach-only; this is not a controllable PWM output. Highest individual sensor in the selected time range, with the originating sensor identified below the value; not an aggregate of multiple sensors. Highest individual reading in the selected range. Displays the originating SensorDash alias or sensor name, with underscores normalized for display. Missing current sensor catalog can make this card unavailable.",
       "gridPos": {
         "x": 6,
         "y": 16,
@@ -682,9 +722,9 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "topk(1, max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Fan\"}[$__range]) * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",kind=\"Fan\",role=\"pump\"} == 1))",
+          "expr": "label_transform(label_transform((topk(1, max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Fan\"}[$__range]) * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",kind=\"Fan\",role=\"pump\"} == 1))) * on(host,sensor) group_left(display) (label_replace(sensordash_sensor_info_value{host=~\"$host\",kind=\"Fan\",alias!=\"unassigned\"} == 1, \"display\", \"$1\", \"alias\", \"(.+)\") or label_replace(sensordash_sensor_info_value{host=~\"$host\",kind=\"Fan\",alias=\"unassigned\"} == 1, \"display\", \"$1\", \"name\", \"(.+)\")), \"display\", \"_+\", \" \"), \"display\", \"^ +| +$\", \"\")",
           "range": true,
-          "legendFormat": "{{host}} · {{sensor}}"
+          "legendFormat": "{{display}}"
         }
       ],
       "fieldConfig": {
@@ -703,6 +743,12 @@
                 "value": null
               }
             ]
+          },
+          "custom": {
+            "textSize": {
+              "titleSize": 12,
+              "valueSize": 46
+            }
           }
         },
         "overrides": []
@@ -718,7 +764,9 @@
         "orientation": "vertical",
         "textMode": "value_and_name",
         "colorMode": "value",
-        "graphMode": "area"
+        "graphMode": "area",
+        "wideLayout": false,
+        "justifyMode": "center"
       }
     },
     {

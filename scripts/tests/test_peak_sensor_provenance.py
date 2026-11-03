@@ -35,9 +35,16 @@ class PeakSensorProvenanceTests(unittest.TestCase):
         panels = {p["id"]: p for p in dashboard("reporting-summary.json")["panels"]}
         for panel_id in (1, 2, 5, 6, 9, 10):
             panel = panels[panel_id]
-            self.assertTrue(panel["targets"][0]["expr"].startswith("topk(1, "), panel_id)
+            expr = panel["targets"][0]["expr"]
+            self.assertIn("topk(1, ", expr, panel_id)
+            self.assertIn("label_transform(", expr, panel_id)
+            self.assertIn('"display", "_+", " "', expr, panel_id)
+            self.assertIn('alias!="unassigned"', expr, panel_id)
+            self.assertIn('alias="unassigned"', expr, panel_id)
             self.assertEqual(panel["options"]["textMode"], "value_and_name", panel_id)
-            self.assertIn("{{", panel["targets"][0]["legendFormat"], panel_id)
+            self.assertFalse(panel["options"]["wideLayout"], panel_id)
+            self.assertEqual(panel["options"]["justifyMode"], "center", panel_id)
+            self.assertEqual(panel["targets"][0]["legendFormat"], "{{display}}", panel_id)
         for panel_id in (3, 4, 7, 8, 11, 12):
             self.assertNotIn("topk(1, ", panels[panel_id]["targets"][0]["expr"], panel_id)
 
