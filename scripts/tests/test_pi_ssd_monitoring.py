@@ -84,6 +84,18 @@ class PiSsdCollectorTests(unittest.TestCase):
             self.assertEqual(path.stat().st_mode & 0o777, 0o644)
             self.assertEqual(list(Path(temp).glob(".homeaway-ssd-*")), [])
 
+    def test_prometheus_render_preserves_timestamp_precision(self):
+        # Six-digit :g notation rounded Unix timestamps to 1000s and
+        # made a fresh 5-minute collection look >10 minutes old.
+        sample = 1793740326.0
+        body = pi_ssd.render({
+            "homeaway_pi_ssd_last_attempt_timestamp_seconds": sample,
+            "homeaway_pi_root_filesystem_available_bytes": 98823700000.0,
+        })
+        parsed = dict(line.split(" ", 1) for line in body.strip().splitlines())
+        self.assertEqual(float(parsed["homeaway_pi_ssd_last_attempt_timestamp_seconds"]), sample)
+        self.assertEqual(float(parsed["homeaway_pi_root_filesystem_available_bytes"]), 98823700000.0)
+
     def test_grafana_never_treats_stale_smart_file_as_live(self):
         dashboard = json.loads((ROOT / "grafana/dashboards/storage.json").read_text())
         by_id = {panel["id"]: panel for panel in dashboard["panels"]}
@@ -94,6 +106,17 @@ class PiSsdCollectorTests(unittest.TestCase):
                 self.assertIn("< 900", target["expr"], panel_id)
         self.assertIn("homeaway_pi_ssd_collection_success",
                       by_id[107]["targets"][0]["expr"])
+        # Ambiguous normalized life must not be shown as a percent-like headline.
+        self.assertFalse(any("life_normalized" in target.get("expr", "")
+                             for panel in dashboard["panels"]
+                             for target in panel.get("targets", [])))
+        self.assertEqual(by_id[109]["title"], "SSD writes · past 24h")
+        self.assertIn("max_over_time(", by_id[109]["targets"][0]["expr"])
+        self.assertIn("min_over_time(", by_id[109]["targets"][0]["expr"])
+        # The trend must use decoded temperatures and reject older packed artifacts.
+        self.assertEqual(by_id[114]["title"], "SSD temperature · history")
+        self.assertIn("<= 125", by_id[114]["targets"][0]["expr"])
+        self.assertIn("temperature_celsius", by_id[114]["targets"][0]["expr"])
 
     def test_static_security_and_scrape_contract(self):
         compose = (ROOT / "compose.yaml").read_text()
