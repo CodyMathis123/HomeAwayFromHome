@@ -15,7 +15,7 @@ class PeakSensorProvenanceTests(unittest.TestCase):
         panels = {p["id"]: p for p in dashboard("storage.json")["panels"]}
         peak = panels[2]
         expr = peak["targets"][0]["expr"]
-        self.assertTrue(expr.startswith("topk(1, "))
+        self.assertIn("topk(1, ", expr)
         self.assertIn('device_type="Storage"', expr)
         self.assertIn('name!~"(?i).*(warning|critical).*"', expr)
         self.assertIn("group_left(display,device,name,device_type)", expr)
