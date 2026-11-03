@@ -113,7 +113,7 @@
           },
           "expr": "max(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Cpu\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\"} == 1))",
           "range": true,
-          "legendFormat": "CPU · hottest reported sensor"
+          "legendFormat": "CPU · latest temperature"
         }
       ],
       "fieldConfig": {
@@ -174,7 +174,7 @@
           },
           "expr": "max(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\"} == 1))",
           "range": true,
-          "legendFormat": "GPU · hottest reported sensor"
+          "legendFormat": "GPU · latest temperature"
         }
       ],
       "fieldConfig": {
