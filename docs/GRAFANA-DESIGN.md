@@ -30,11 +30,28 @@ After CI succeeds, check the existing feature-branch Git status, then pull its l
 
     cd ~/HomeAwayFromHome
     git status --short
-    git pull --ff-only origin feature/pi4-home-infrastructure
+    git fetch origin
+    git switch Production
+    git merge --ff-only origin/Production
 
 The Grafana file provider rescans the mounted dashboards roughly every 30 seconds. Refresh Grafana; no Docker container restart or Windows fan-control interruption should be necessary. A time range already chosen in your browser can stay selected until you change it.
 
 Review Hardware, Cooling, Electricity and DNS/VPN. SensorDash still owns fan controls, mappings, calibrated wattages and authoritative raw hardware samples. Empty coolant, flow and ambient panels are expected until real probes are installed and assigned.
+
+## Dashboard cleanup and useful boundaries (November 2026)
+
+The ten provisioned dashboards are **not** ten separate independent sources of truth. The dashboards use the same VictoriaMetrics records, and all Windows fan curves, aliases, enrollment, power-source calibration and collector event settings remain controlled in SensorDash.
+
+- **Everyday:** SensorDash Overview, HomeAway System Health, HomeAway DNS & VPN. The Overview keeps one radiator RPM stat; its former duplicate now shows **Windows telemetry · sample age**, calculated from the last raw sample found within 24 hours. Long sample age may mean sleep/shutdown, network trouble, or exporter trouble—it is **not** a fault diagnosis. With no data for 24 hours, Grafana shows no value, not zero.
+- **Hardware:** Hardware Telemetry, Cooling Systems, Drives & Retention. Cooling uses a **collapsed Optional probes** row for coolant, flow and room temperature, populated only after real probes are assigned in Windows. The drive dashboard defaults to Windows SSD/NVMe observations; the Pi's **VictoriaMetrics archive and history diagnostics** are behind a separate collapsed row. Expanding it never changes retention or deletes history.
+- **Analysis / troubleshooting:** Fan & Pump Electricity, Reporting Summary, SensorDash Events. Reporting Summary preserves genuine range peaks, averages, equal-duration comparisons, rolling daily peaks and data-quality trends, but **raw CPU/GPU charts, cooling tachometer histories and accessory-power timelines now live only on the detailed Hardware, Cooling, and Electricity dashboards**. No raw samples are deleted. Events are diagnostic evidence, not proof the exporter is online.
+- **Embedded:** HomeAway Portal Metrics remains intentionally provisioned to support the read-only portal iframe. Its limited subset of values overlaps with other dashboards by design.
+
+The additional category tags make these views discoverable via Grafana search. Grafana's built-in *Other HomeAway views* dropdown remains one flat navigation list, not nested sections; avoiding an unsupported custom Grafana layout keeps upgrades safe.
+
+**Auto-refresh:** frequently used Overview remains at 15 seconds, detailed Hardware/Cooling/Electrical/DNS dashboards at 30 seconds, Drive and Events at one minute, and historical Reporting Summary at five minutes. Grafana's query and storage retention behavior are otherwise unchanged.
+
+Future coolant-to-ambient delta, flow-rate plausibility and pump alerts should be added **only after** the necessary physical sensors produce stable samples and useful thresholds can be established; do not fabricate measurements or infer pump RPM from PWM duty.
 
 ## SensorDash-inspired unified Overview
 
