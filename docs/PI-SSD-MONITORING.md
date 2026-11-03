@@ -10,7 +10,7 @@ A five-minute systemd timer runs a root-owned host collector. The collector
 identifies the SATA disk backing the Pi root filesystem (not a hard-coded
 device path), queries read-only SMART JSON through smartctl, reads root
 filesystem capacity through statvfs, and counts selected kernel/USB failures
-since the current boot. It atomically writes a sanitized Prometheus textfile.
+since the current boot, including USB disconnect events. It atomically writes a sanitized Prometheus textfile.
 
 Node-exporter runs unprivileged with a read-only bind mount of **only** the
 textfile directory, not /dev, Docker, the host root, or the kernel journal.
