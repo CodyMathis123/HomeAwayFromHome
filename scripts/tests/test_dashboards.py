@@ -377,7 +377,7 @@ class DashboardContracts(unittest.TestCase):
         overview = json.loads((PANELS / "overview.json").read_text(encoding="utf-8"))
         panels = {p["id"]: p for p in overview["panels"]}
         self.assertIn("Latest cards take the hottest available", panels[100]["options"]["content"])
-        self.assertIn("specific sensor", panels[101]["options"]["content"])
+        self.assertIn("source sensor is shown under each card title", panels[101]["options"]["content"])
         for latest_id, peak_id, family in ((1, 5, "CPU"), (2, 6, "GPU")):
             latest = panels[latest_id]
             peak = panels[peak_id]
