@@ -763,7 +763,9 @@
       "options": {
         "mode": "markdown",
         "content": "### RASPBERRY PI · ROOT SSD HEALTH\nRoot SSD SMART data is read by a host-side collector every five minutes and scraped by the existing node-exporter. Windows SSD/NVMe readings above remain exclusively from SensorDash. A missing collector is **unknown**, not healthy; self-test logs are deliberately omitted because this SandForce device reports inconsistent history. Normalized life is **not a verified remaining-life percentage**."
-      }
+      },
+      "targets": [],
+      "transparent": true
     },
     {
       "id": 106,
