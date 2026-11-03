@@ -9,9 +9,9 @@
     "overview",
     "everyday"
   ],
-  "description": "SensorDash read-only overview: latest observed hottest CPU/GPU sensor values with history, clearly separated from peaks over the Grafana time selection with winning-sensor attribution; power, cooling and sensor catalog. Windows retains authority over fan control, aliases and raw sensors. Duplicate radiator fan RPM card replaced by raw Windows measurement age (24-hour observation window).",
+  "description": "SensorDash read-only overview: distinct latest hottest CPU/GPU readings with aggregate history, plus peak values with an individually selected winning physical sensor, alias-first labels, and sparkline; cooling/energy/sensor inventory.",
   "schemaVersion": 40,
-  "version": 5,
+  "version": 6,
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
@@ -352,7 +352,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "### TEMPERATURE PEAKS · SELECTED TIME RANGE\nPeak cards show the highest recorded sensor reading in the Grafana time selection **and its source sensor name** beneath the value. Power readings remain separate to avoid overlapping-rail sums."
+        "content": "### TEMPERATURE PEAKS · SELECTED TIME RANGE\nLarge values are the maximum **recorded** temperature over the chosen Grafana time window. Each background sparkline follows **only the specific sensor that hit that peak**, not the hottest sensor at each moment. Sensor labels use SensorDash aliases when present (otherwise the hardware name)."
       }
     },
     {
@@ -363,7 +363,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Highest actual observed CPU sensor temperature anywhere in the selected Grafana time range, not the latest reading. The sensor name displayed below the value identifies the reading's source. Which physical sensor wins can differ from the latest-temperature panel. Offline gaps are not filled, and this is not necessarily package/core temperature.",
+      "description": "Peak CPU temperature from observed samples in the selected Grafana range. The sparkline traces only the single physical sensor responsible for the selected period's peak (picked once at the end of the range), using interval maxima to retain brief spikes; the displayed maximum comes from that sensor's history, not its latest reading. The small label prefers the SensorDash alias and otherwise uses the original sensor name, with underscores normalized only in display. Missing samples remain missing. A sensor identity can change if you select another time range.",
       "gridPos": {
         "x": 0,
         "y": 11,
@@ -377,9 +377,9 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "topk(1, max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range]) * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Cpu\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\"} == 1))",
-          "instant": true,
-          "legendFormat": "{{name}}"
+          "expr": "label_transform(label_transform(((max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__interval]) and on(host,sensor) (topk(1, max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range] @ end()) * on(host,sensor) group_left() (last_over_time(sensordash_sensor_info_value{host=~\"$host\",device_type=\"Cpu\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\"}[$__range] @ end()) == 1)))) * on(host,sensor) group_left(name) ((label_replace(last_over_time(sensordash_sensor_info_value{host=~\"$host\",device_type=\"Cpu\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\",alias!=\"unassigned\"}[$__range] @ end()) == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (last_over_time(sensordash_sensor_info_value{host=~\"$host\",device_type=\"Cpu\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\",alias=\"unassigned\"}[$__range] @ end()) == 1)))), \"name\", \"_+\", \" \"), \"name\", \"^ +| +$\", \"\")",
+          "legendFormat": "{{name}}",
+          "range": true
         }
       ],
       "fieldConfig": {
@@ -398,6 +398,12 @@
                 "value": null
               }
             ]
+          },
+          "custom": {
+            "textSize": {
+              "titleSize": 13,
+              "valueSize": 46
+            }
           }
         },
         "overrides": []
@@ -406,14 +412,16 @@
         "reduceOptions": {
           "values": false,
           "calcs": [
-            "lastNotNull"
+            "max"
           ],
           "fields": ""
         },
-        "orientation": "auto",
+        "orientation": "vertical",
         "textMode": "value_and_name",
         "colorMode": "value",
-        "graphMode": "none"
+        "graphMode": "area",
+        "wideLayout": false,
+        "justifyMode": "center"
       }
     },
     {
@@ -424,7 +432,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Highest actual observed GPU sensor temperature anywhere in the selected Grafana time range, not the latest reading. The sensor name displayed below the value identifies the reading's source. Which physical sensor wins can differ from the latest-temperature panel. Offline gaps are not filled, and this is not necessarily package/core temperature.",
+      "description": "Peak GPU temperature from observed samples in the selected Grafana range. The sparkline traces only the single physical sensor responsible for the selected period's peak (picked once at the end of the range), using interval maxima to retain brief spikes; the displayed maximum comes from that sensor's history, not its latest reading. The small label prefers the SensorDash alias and otherwise uses the original sensor name, with underscores normalized only in display. Missing samples remain missing. A sensor identity can change if you select another time range.",
       "gridPos": {
         "x": 6,
         "y": 11,
@@ -438,9 +446,9 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "topk(1, max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range]) * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\"} == 1))",
-          "instant": true,
-          "legendFormat": "{{name}}"
+          "expr": "label_transform(label_transform(((max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__interval]) and on(host,sensor) (topk(1, max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range] @ end()) * on(host,sensor) group_left() (last_over_time(sensordash_sensor_info_value{host=~\"$host\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\"}[$__range] @ end()) == 1)))) * on(host,sensor) group_left(name) ((label_replace(last_over_time(sensordash_sensor_info_value{host=~\"$host\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\",alias!=\"unassigned\"}[$__range] @ end()) == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (last_over_time(sensordash_sensor_info_value{host=~\"$host\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\",alias=\"unassigned\"}[$__range] @ end()) == 1)))), \"name\", \"_+\", \" \"), \"name\", \"^ +| +$\", \"\")",
+          "legendFormat": "{{name}}",
+          "range": true
         }
       ],
       "fieldConfig": {
@@ -459,6 +467,12 @@
                 "value": null
               }
             ]
+          },
+          "custom": {
+            "textSize": {
+              "titleSize": 13,
+              "valueSize": 46
+            }
           }
         },
         "overrides": []
@@ -467,14 +481,16 @@
         "reduceOptions": {
           "values": false,
           "calcs": [
-            "lastNotNull"
+            "max"
           ],
           "fields": ""
         },
-        "orientation": "auto",
+        "orientation": "vertical",
         "textMode": "value_and_name",
         "colorMode": "value",
-        "graphMode": "none"
+        "graphMode": "area",
+        "wideLayout": false,
+        "justifyMode": "center"
       }
     },
     {

@@ -49,6 +49,17 @@ def query(expression: str) -> list:
     return data["data"]["result"]
 
 
+def query_range(expression: str, start: float, end: float) -> list:
+    url = BASE + "/api/v1/query_range?" + urllib.parse.urlencode({
+        "query": expression, "start": start, "end": end,
+        "step": 10, "nocache": "1"
+    })
+    with urllib.request.urlopen(url, timeout=10) as response:
+        data = json.load(response)
+    assert data["status"] == "success", data
+    return data["data"]["result"]
+
+
 def main() -> None:
     for _ in range(45):
         try:
@@ -354,6 +365,69 @@ def main() -> None:
     assert {x["metric"]["sensor"] for x in metadata} == {
         "/hdd/0/temperature/0", "/hdd/0/temperature/1", "/hdd/0/temperature/2"
     }, "Static thresholds must stay visible as reference sensor metadata"
+
+    # Real range-query regression: keep the same winning sensor across all
+    # sparkline points, and render metadata aliases only in displayed labels.
+    base_ms = int(time.time() * 1000) - 180_000
+    fixture = [
+        ("cpu_peak", "Cpu", "CCD1__Tdie_", "unassigned", [34, 63.7, 39]),
+        ("cpu_other", "Cpu", "CPU_Package", "Package", [35, 58, 38]),
+        ("gpu_peak", "GpuAmd", "GPU_Memory", "VRAM_Hotspot", [38, 68, 44]),
+        ("gpu_other", "GpuAmd", "GPU_Edge", "unassigned", [35, 48, 42]),
+    ]
+    lines = []
+    for sensor, device_type, name, alias, measurements in fixture:
+        for offset, value in zip((0, 45000, 90000), measurements):
+            lines.append(f"sensordash_reading,host=CI,sensor={sensor},kind=Temperature "
+                         f"value={value} {base_ms + offset}")
+        lines.append(f"sensordash_sensor_info,host=CI,sensor={sensor},kind=Temperature,"
+                     f"device_type={device_type},device=Lab_PC,name={name},alias={alias} "
+                     f"value=1 {base_ms + 90000}")
+    with urllib.request.urlopen(urllib.request.Request(
+        BASE + "/api/v2/write?precision=ms",
+        data=("\n".join(lines) + "\n").encode("ascii"),
+        headers={"Content-Type": "text/plain"}, method="POST",
+    ), timeout=10) as response:
+        assert 200 <= response.status < 300
+
+    for _ in range(30):
+        ready = all(
+            query(f'sensordash_reading_value{{host="CI",sensor="{sensor}"}}')
+            and query(f'sensordash_sensor_info_value{{host="CI",sensor="{sensor}"}}')
+            for sensor, _, _, _, _ in fixture
+        )
+        if ready:
+            break
+        time.sleep(0.5)
+    assert ready, "Peak fixture and names must ingest"
+
+    peak_panels = json.loads(
+        (root / "grafana/dashboards/overview.json").read_text()
+    )["panels"]
+    for panel_id, sensor, display_name, peak in (
+        (5, "cpu_peak", "CCD1 Tdie", 63.7),
+        (6, "gpu_peak", "VRAM Hotspot", 68.0),
+    ):
+        expr = next(p["targets"][0]["expr"] for p in peak_panels if p["id"] == panel_id)
+        expr = (expr.replace('host=~"$host"', 'host="CI"')
+                .replace("$__range", "6m").replace("$__interval", "20s"))
+        end = time.time()
+        results = query_range(expr, end - 360, end)
+        assert len(results) == 1, (panel_id, results)
+        series = results[0]
+        assert series["metric"]["sensor"] == sensor, series
+        assert series["metric"]["name"] == display_name, series
+        numbers = [float(v) for _, v in series["values"]]
+        assert len(numbers) > 2, series
+        assert abs(max(numbers) - peak) < 0.001, (panel_id, numbers)
+        assert min(numbers) < peak, "Sparkline must show actual sensor history"
+        original = query(f'sensordash_sensor_info_value{{host="CI",sensor="{sensor}"}}')
+        assert original[0]["metric"]["name"] in ("CCD1__Tdie_", "GPU_Memory")
+        assert query_range(expr.replace('host="CI"', 'host="NO-SUCH-HOST"'),
+                           end - 360, end) == []
+
+    print("PASS: peak ranges, single physical sensor, user alias priority, "
+          "underscores and history sparklines")
 
     print("PASS: VictoriaMetrics raw + derived watts, metadata, threshold events,"
           " spool footprint, storage joins and removal tombstones")
