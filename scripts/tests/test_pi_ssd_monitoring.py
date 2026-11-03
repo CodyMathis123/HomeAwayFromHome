@@ -21,10 +21,11 @@ def fixture(passed=True, status=0):
         "smartctl": {"exit_status": status},
         "smart_status": {"passed": passed},
         "serial_number": "DO-NOT-PUBLISH",
+        "temperature": {"current": 26},
         "ata_smart_attributes": {"table": [
             row(5, 3), row(9, 0, raw_text="8628h+52m+49.240s"),
             row(171, 1), row(172, 0), row(174, 1566),
-            row(187, 0), row(194, 26, raw_text="26 (Min/Max 6/48)"),
+            row(187, 0), row(194, 25772900000, raw_text="26 (Min/Max 6/48)"),
             row(196, 3), row(231, 0), row(241, 7410), row(242, 10579),
         ]}
     }
@@ -40,6 +41,13 @@ class PiSsdCollectorTests(unittest.TestCase):
         self.assertNotIn("serial", pi_ssd.render(m).lower())
         self.assertNotIn("DO-NOT-PUBLISH", pi_ssd.render(m))
         self.assertNotIn("life_percent", pi_ssd.render(m))
+
+    def test_temperature_missing_or_invalid_is_not_inferred_from_raw_attribute(self):
+        for current in (None, -1, 150, "26", True):
+            data = fixture()
+            data["temperature"] = {"current": current}
+            m = pi_ssd.parse_smart(data)
+            self.assertNotIn("homeaway_pi_ssd_temperature_celsius", m)
 
     def test_failed_smart_is_reported_as_unhealthy_not_missing(self):
         # smartctl bit 3 reports a failing drive, but does not mean query failed.
