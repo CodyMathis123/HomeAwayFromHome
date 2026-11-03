@@ -23,6 +23,27 @@ class GrafanaStatAuditTests(unittest.TestCase):
             self.assertEqual(rows[("overview.json", panel_id)],
                              "attributed / standardized", panel_id)
 
+    def test_cooling_sources_and_intentional_exceptions(self):
+        findings = audit.inspect()
+        rows = {(Path(path).name, panel_id): category
+                for path, panel_id, _, category in findings}
+        for panel_id in (110, 111, 112):
+            self.assertEqual(rows[("cooling-systems.json", panel_id)],
+                             "attributed / standardized", panel_id)
+        for filename, panel_id in audit.AGGREGATE_SPARKLINES:
+            self.assertEqual(rows[(filename, panel_id)],
+                             "changing maximum sparkline / intentionally aggregated")
+        self.assertEqual(rows[("overview.json", 9)],
+                         "sample freshness / no sensor attribution needed")
+        self.assertEqual(rows[("system-health.json", 7)],
+                         "sample freshness / no sensor attribution needed")
+        for panel_id in (30, 31):
+            self.assertEqual(rows[("reporting-summary.json", panel_id)],
+                             "period comparison / no single winner")
+        self.assertFalse(any(category in (
+            "maximum / source not shown", "attributed / review layout")
+            for category in rows.values()))
+
     def test_audits_all_dashboard_json_files(self):
         findings = audit.inspect()
         files = {path for path, _, _, _ in findings}
