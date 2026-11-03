@@ -11,7 +11,7 @@
   ],
   "description": "SensorDash read-only overview: distinct latest hottest CPU/GPU readings with aggregate history, plus peak values with an individually selected winning physical sensor, alias-first labels, and sparkline; cooling/energy/sensor inventory.",
   "schemaVersion": 40,
-  "version": 8,
+  "version": 9,
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
@@ -139,7 +139,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "### TEMPERATURE PEAKS · SELECTED TIME RANGE\nThe CPU/GPU card titles show the sensor that reached each selected-range peak, using SensorDash aliases first. Values stay centered over the historical graph for that winning sensor. Sensor source labels update with Grafana's dashboard variables on range/host changes."
+        "content": "### YOUR HARDWARE · LATEST OBSERVED\nThese four cards show the most recent available hottest sensor or tachometer value and its history. Temperature readings can become stale if Windows sleeps or stops exporting; the graphed series is not proof of PC uptime."
       }
     },
     {
@@ -404,7 +404,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "### TEMPERATURE PEAKS · SELECTED TIME RANGE\nPeak numbers remain centered over each winning sensor’s temperature history. **The source sensor is shown under each card title**, using your SensorDash alias when available (otherwise its hardware name). The sensor name is recalculated on dashboard load and time-range changes."
+        "content": "### TEMPERATURE PEAKS · SELECTED TIME RANGE\nThe **card titles show the sensor** that reached each selected-range peak, preferring SensorDash aliases over hardware names. Temperatures remain centered above that winning sensor’s historical sparkline. Source labels refresh when the dashboard's host or time selection changes."
       }
     },
     {
@@ -430,7 +430,7 @@
             "uid": "homeaway-vm"
           },
           "expr": "label_transform(label_transform(((max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__interval]) and on(host,sensor) (topk(1, max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range] @ end()) * on(host,sensor) group_left() (last_over_time(sensordash_sensor_info_value{host=~\"$host\",device_type=\"Cpu\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\"}[$__range] @ end()) == 1)))) * on(host,sensor) group_left(name) ((label_replace(last_over_time(sensordash_sensor_info_value{host=~\"$host\",device_type=\"Cpu\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\",alias!=\"unassigned\"}[$__range] @ end()) == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (last_over_time(sensordash_sensor_info_value{host=~\"$host\",device_type=\"Cpu\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\",alias=\"unassigned\"}[$__range] @ end()) == 1)))), \"name\", \"_+\", \" \"), \"name\", \"^ +| +$\", \"\")",
-          "legendFormat": "CPU peak",
+          "legendFormat": "{{name}}",
           "range": true
         }
       ],
@@ -499,7 +499,7 @@
             "uid": "homeaway-vm"
           },
           "expr": "label_transform(label_transform(((max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__interval]) and on(host,sensor) (topk(1, max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range] @ end()) * on(host,sensor) group_left() (last_over_time(sensordash_sensor_info_value{host=~\"$host\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\"}[$__range] @ end()) == 1)))) * on(host,sensor) group_left(name) ((label_replace(last_over_time(sensordash_sensor_info_value{host=~\"$host\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\",alias!=\"unassigned\"}[$__range] @ end()) == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (last_over_time(sensordash_sensor_info_value{host=~\"$host\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\",alias=\"unassigned\"}[$__range] @ end()) == 1)))), \"name\", \"_+\", \" \"), \"name\", \"^ +| +$\", \"\")",
-          "legendFormat": "GPU peak",
+          "legendFormat": "{{name}}",
           "range": true
         }
       ],
