@@ -76,6 +76,17 @@ class PiSsdCollectorTests(unittest.TestCase):
             self.assertEqual(path.stat().st_mode & 0o777, 0o644)
             self.assertEqual(list(Path(temp).glob(".homeaway-ssd-*")), [])
 
+    def test_grafana_never_treats_stale_smart_file_as_live(self):
+        dashboard = json.loads((ROOT / "grafana/dashboards/storage.json").read_text())
+        by_id = {panel["id"]: panel for panel in dashboard["panels"]}
+        for panel_id in (106, 107, 108, 109, 110, 112, 113, 114, 115):
+            for target in by_id[panel_id]["targets"]:
+                self.assertIn("homeaway_pi_ssd_last_attempt_timestamp_seconds",
+                              target["expr"], panel_id)
+                self.assertIn("< 900", target["expr"], panel_id)
+        self.assertIn("homeaway_pi_ssd_collection_success",
+                      by_id[107]["targets"][0]["expr"])
+
     def test_static_security_and_scrape_contract(self):
         compose = (ROOT / "compose.yaml").read_text()
         self.assertIn("homeaway-ssd-metrics:ro", compose)
