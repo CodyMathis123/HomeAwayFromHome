@@ -20,6 +20,7 @@ EVENTS = {
     "io_errors": re.compile(r"(?:I/O error|device offline error), dev sd[a-z]\b", re.I),
     "uas_aborts": re.compile(r"uas_eh_abort_handler|uas_eh_device_reset_handler start", re.I),
     "usb_resets": re.compile(r"reset SuperSpeed USB device", re.I),
+    "usb_disconnects": re.compile(r"usb \d+-\d+(?:\.\d+)?: USB disconnect, device number", re.I),
     "host_controller_failures": re.compile(r"HC died|xHCI host controller not responding", re.I),
 }
 ATTRIBUTES = {
