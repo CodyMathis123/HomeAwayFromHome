@@ -3,7 +3,7 @@
   "uid": "homeaway-cooling",
   "title": "SensorDash · Cooling Systems",
   "schemaVersion": 40,
-  "version": 7,
+  "version": 8,
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
@@ -98,7 +98,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Highest current RPM among assigned radiator fan groups.",
+      "description": "Highest current RPM among assigned radiator fan groups. The source is the winning bound sensor, with SensorDash alias preferred and sensor name as fallback; this remains a read-only observation.",
       "gridPos": {
         "x": 0,
         "y": 3,
@@ -121,6 +121,12 @@
                 "value": null
               }
             ]
+          },
+          "custom": {
+            "textSize": {
+              "titleSize": 12,
+              "valueSize": 46
+            }
           }
         },
         "overrides": []
@@ -133,10 +139,12 @@
           "fields": "",
           "values": false
         },
-        "orientation": "auto",
-        "textMode": "value",
+        "orientation": "vertical",
+        "textMode": "value_and_name",
         "colorMode": "value",
-        "graphMode": "none"
+        "graphMode": "none",
+        "wideLayout": false,
+        "justifyMode": "center"
       },
       "targets": [
         {
@@ -145,9 +153,9 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max((sensordash_reading_value{host=~\"$host\",kind=\"Fan\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Fan\",role=~\"fan-group\"} == 1)) * on(host,sensor) group_left(name,alias,device) (sensordash_sensor_info_value{host=~\"$host\"} == 1))",
+          "expr": "label_transform(label_transform((topk(1, (sensordash_reading_value{host=~\"$host\",kind=\"Fan\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Fan\",role=~\"fan-group\"} == 1)) * on(host,sensor) group_left(name,alias,device) (sensordash_sensor_info_value{host=~\"$host\"} == 1))) * on(host,sensor) group_left(display) (label_replace(sensordash_sensor_info_value{host=~\"$host\",kind=\"Fan\",name!~\"(?i).*(warning|critical).*\",alias!=\"unassigned\"} == 1, \"display\", \"$1\", \"alias\", \"(.+)\") or label_replace(sensordash_sensor_info_value{host=~\"$host\",kind=\"Fan\",name!~\"(?i).*(warning|critical).*\",alias=\"unassigned\"} == 1, \"display\", \"$1\", \"name\", \"(.+)\")), \"display\", \"_+\", \" \"), \"display\", \"^ +| +$\", \"\")",
           "instant": true,
-          "legendFormat": "Radiator RPM"
+          "legendFormat": "{{display}}"
         }
       ]
     },
@@ -159,7 +167,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Highest current pump tachometer value (not a PWM-controlled pump).",
+      "description": "Highest current pump tachometer value (not a PWM-controlled pump). The source is the winning bound sensor, with SensorDash alias preferred and sensor name as fallback; this remains a read-only observation.",
       "gridPos": {
         "x": 6,
         "y": 3,
@@ -182,6 +190,12 @@
                 "value": null
               }
             ]
+          },
+          "custom": {
+            "textSize": {
+              "titleSize": 12,
+              "valueSize": 46
+            }
           }
         },
         "overrides": []
@@ -194,10 +208,12 @@
           "fields": "",
           "values": false
         },
-        "orientation": "auto",
-        "textMode": "value",
+        "orientation": "vertical",
+        "textMode": "value_and_name",
         "colorMode": "value",
-        "graphMode": "none"
+        "graphMode": "none",
+        "wideLayout": false,
+        "justifyMode": "center"
       },
       "targets": [
         {
@@ -206,9 +222,9 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max((sensordash_reading_value{host=~\"$host\",kind=\"Fan\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Fan\",role=~\"pump\"} == 1)) * on(host,sensor) group_left(name,alias,device) (sensordash_sensor_info_value{host=~\"$host\"} == 1))",
+          "expr": "label_transform(label_transform((topk(1, (sensordash_reading_value{host=~\"$host\",kind=\"Fan\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Fan\",role=~\"pump\"} == 1)) * on(host,sensor) group_left(name,alias,device) (sensordash_sensor_info_value{host=~\"$host\"} == 1))) * on(host,sensor) group_left(display) (label_replace(sensordash_sensor_info_value{host=~\"$host\",kind=\"Fan\",name!~\"(?i).*(warning|critical).*\",alias!=\"unassigned\"} == 1, \"display\", \"$1\", \"alias\", \"(.+)\") or label_replace(sensordash_sensor_info_value{host=~\"$host\",kind=\"Fan\",name!~\"(?i).*(warning|critical).*\",alias=\"unassigned\"} == 1, \"display\", \"$1\", \"name\", \"(.+)\")), \"display\", \"_+\", \" \"), \"display\", \"^ +| +$\", \"\")",
           "instant": true,
-          "legendFormat": "DDC pump RPM"
+          "legendFormat": "{{display}}"
         }
       ]
     },
@@ -220,7 +236,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Current control-duty sensor reading for the radiator fan group.",
+      "description": "Current control-duty sensor reading for the radiator fan group. The source is the winning bound sensor, with SensorDash alias preferred and sensor name as fallback; this remains a read-only observation.",
       "gridPos": {
         "x": 12,
         "y": 3,
@@ -243,6 +259,12 @@
                 "value": null
               }
             ]
+          },
+          "custom": {
+            "textSize": {
+              "titleSize": 12,
+              "valueSize": 46
+            }
           }
         },
         "overrides": []
@@ -255,10 +277,12 @@
           "fields": "",
           "values": false
         },
-        "orientation": "auto",
-        "textMode": "value",
+        "orientation": "vertical",
+        "textMode": "value_and_name",
         "colorMode": "value",
-        "graphMode": "none"
+        "graphMode": "none",
+        "wideLayout": false,
+        "justifyMode": "center"
       },
       "targets": [
         {
@@ -267,9 +291,9 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max((sensordash_reading_value{host=~\"$host\",kind=\"Control\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Control\",role=~\"fan-group\"} == 1)) * on(host,sensor) group_left(name,alias,device) (sensordash_sensor_info_value{host=~\"$host\"} == 1))",
+          "expr": "label_transform(label_transform((topk(1, (sensordash_reading_value{host=~\"$host\",kind=\"Control\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Control\",role=~\"fan-group\"} == 1)) * on(host,sensor) group_left(name,alias,device) (sensordash_sensor_info_value{host=~\"$host\"} == 1))) * on(host,sensor) group_left(display) (label_replace(sensordash_sensor_info_value{host=~\"$host\",kind=\"Control\",name!~\"(?i).*(warning|critical).*\",alias!=\"unassigned\"} == 1, \"display\", \"$1\", \"alias\", \"(.+)\") or label_replace(sensordash_sensor_info_value{host=~\"$host\",kind=\"Control\",name!~\"(?i).*(warning|critical).*\",alias=\"unassigned\"} == 1, \"display\", \"$1\", \"name\", \"(.+)\")), \"display\", \"_+\", \" \"), \"display\", \"^ +| +$\", \"\")",
           "instant": true,
-          "legendFormat": "Radiator PWM"
+          "legendFormat": "{{display}}"
         }
       ]
     },
