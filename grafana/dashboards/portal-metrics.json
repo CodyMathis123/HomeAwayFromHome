@@ -5,11 +5,12 @@
   "tags": [
     "homeaway",
     "portal",
-    "read-only"
+    "read-only",
+    "embedded"
   ],
-  "description": "Compact shared dashboard for LAN/VPN HomeAway iframe. No template variables or control APIs. All Windows hosts are included (max values on summary tiles).",
+  "description": "Compact shared dashboard for LAN/VPN HomeAway iframe. No template variables or control APIs. All Windows hosts are included (max values on summary tiles). Compact read-only metrics for the Portal's Grafana embed; intentionally repeats small summaries but is not intended to be the primary diagnostic dashboard.",
   "schemaVersion": 40,
-  "version": 1,
+  "version": 2,
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 0,

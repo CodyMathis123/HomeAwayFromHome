@@ -6,11 +6,12 @@
     "homeaway",
     "sensordash",
     "read-only",
-    "overview"
+    "overview",
+    "everyday"
   ],
-  "description": "SensorDash read-only overview: latest observed hottest CPU/GPU sensor values with history, clearly separated from peaks over the Grafana time selection with winning-sensor attribution; power, cooling and sensor catalog. Windows retains authority over fan control, aliases and raw sensors.",
+  "description": "SensorDash read-only overview: latest observed hottest CPU/GPU sensor values with history, clearly separated from peaks over the Grafana time selection with winning-sensor attribution; power, cooling and sensor catalog. Windows retains authority over fan control, aliases and raw sensors. Duplicate radiator fan RPM card replaced by raw Windows measurement age (24-hour observation window).",
   "schemaVersion": 40,
-  "version": 4,
+  "version": 5,
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
@@ -754,7 +755,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "### COOLING ELECTRICAL BUDGET\nFan and pump watts retain source (rated, curve, calibrated, measured) and model revision. They are not verified wall-power or watt-hours."
+        "content": "### COOLING ELECTRICAL & REPORTING FRESHNESS\nEstimates reflect SensorDash's source/revision data, not metered energy. Windows sample age reveals stale exports or PC sleep; a fresh value alone does not prove fan control."
       }
     },
     {
@@ -828,13 +829,13 @@
     },
     {
       "id": 9,
-      "title": "Radiator fan RPM",
+      "title": "Windows telemetry · sample age",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Actual tachometer RPM; radiator fans are controlled by the local SensorDash service.",
+      "description": "Seconds since the newest raw SensorDash measurement from the selected Windows host in the preceding 24 hours. A large value means the stream is old; sleep, shutdown, network failure and exporter failure cannot be distinguished by this signal alone. An empty result means no samples in 24 hours, not zero seconds. This uses VictoriaMetrics' MetricsQL timestamp(range) operator.",
       "gridPos": {
         "x": 15,
         "y": 29,
@@ -848,18 +849,18 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max((sensordash_reading_value{host=~\"$host\",kind=\"Fan\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",role=\"fan-group\",kind=\"Fan\"} == 1)))",
-          "range": true,
-          "legendFormat": "Radiator fan RPM"
+          "expr": "time() - max(timestamp(sensordash_reading_value{host=~\"$host\"}[24h]))",
+          "legendFormat": "Windows telemetry · sample age",
+          "instant": true
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "rotrpm",
-          "noValue": "—",
+          "unit": "s",
+          "noValue": "No samples in 24h",
           "color": {
             "mode": "fixed",
-            "fixedColor": "#62d5ce"
+            "fixedColor": "#6fa7ed"
           },
           "thresholds": {
             "mode": "absolute",
@@ -884,7 +885,7 @@
         "orientation": "auto",
         "textMode": "auto",
         "colorMode": "value",
-        "graphMode": "area"
+        "graphMode": "none"
       }
     },
     {

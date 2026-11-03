@@ -6,19 +6,20 @@
     "homeaway",
     "sensordash",
     "electrical",
-    "read-only"
+    "read-only",
+    "analysis"
   ],
   "schemaVersion": 40,
-  "version": 5,
+  "version": 6,
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
-  "refresh": "15s",
+  "refresh": "30s",
   "time": {
     "from": "now-1h",
     "to": "now"
   },
-  "description": "Fan-group and pump watts recorded by SensorDash from its local electrical model. Ratings are estimates, not actual measurements; no data is filled across sleep or power-off gaps. Does not include CPU/GPU heat-source power. Dashboard formatting is presentation-only; calibrated watts and revision history are retained exactly.",
+  "description": "Fan-group and pump watts recorded by SensorDash from its local electrical model. Ratings are estimates, not actual measurements; no data is filled across sleep or power-off gaps. Does not include CPU/GPU heat-source power. Dashboard formatting is presentation-only; calibrated watts and revision history are retained exactly. Read-only electrical model and measured/calibrated/rated provenance. Windows SensorDash owns fan settings and model input.",
   "templating": {
     "list": [
       {

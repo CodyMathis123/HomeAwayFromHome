@@ -6,11 +6,12 @@
     "homeaway",
     "sensordash",
     "read-only",
-    "overview"
+    "overview",
+    "analysis"
   ],
-  "description": "Daily, weekly and monthly telemetry summaries. Choose Last 24 hours, Last 7 days or Last 30 days in the Grafana time picker. Values reflect only recorded samples; offline intervals are not imputed. Hardware identity uses SensorDash metadata, not sensor ID patterns. Estimated accessory watts are not metered energy. GPU device families include GpuAmd, GpuNvidia and GpuIntel. Fan RPM statistics use role-bound radiator and pump sensors separately. Period-over-period comparisons use an equal duration and yield no value when either period is absent; rolling 24h peaks are not calendar-day aggregates. Sensor-stream presence is an observation indicator, not a percentage of PC uptime. Historical analysis refreshes every five minutes rather than polling a 30-day window every 15 seconds.",
+  "description": "Daily, weekly and monthly telemetry summaries. Choose Last 24 hours, Last 7 days or Last 30 days in the Grafana time picker. Values reflect only recorded samples; offline intervals are not imputed. Hardware identity uses SensorDash metadata, not sensor ID patterns. Estimated accessory watts are not metered energy. GPU device families include GpuAmd, GpuNvidia and GpuIntel. Fan RPM statistics use role-bound radiator and pump sensors separately. Period-over-period comparisons use an equal duration and yield no value when either period is absent; rolling 24h peaks are not calendar-day aggregates. Sensor-stream presence is an observation indicator, not a percentage of PC uptime. Detailed temperature/power history and cooling accessory/fan timelines are provided on the dedicated Hardware Telemetry, Cooling and Electricity dashboards rather than duplicated here. Historical analysis refreshes every five minutes rather than polling a 30-day window every 15 seconds.",
   "schemaVersion": 40,
-  "version": 2,
+  "version": 3,
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
@@ -843,7 +844,7 @@
       }
     },
     {
-      "id": 102,
+      "id": 103,
       "type": "text",
       "title": "",
       "transparent": true,
@@ -860,374 +861,8 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "### TRENDS · NO GAP FILLING\nThese graphs preserve recording gaps. Device aliases remain defined on Windows; historical observations do not retroactively change when aliases are renamed."
+        "content": "### REPORTING COVERAGE & RETRY BUFFER\nRecording density and sensor-stream presence show observed samples, **not PC uptime**. Windows SQLite bytes are the local export retry spool, not the compressed long-term VictoriaMetrics history. For detailed live hardware, cooling and accessory electrical histories, open their dedicated dashboards."
       }
-    },
-    {
-      "id": 20,
-      "title": "CPU temperature history",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "homeaway-vm"
-      },
-      "description": "Matched using the current exported device_type metadata; historical readings are only shown where compatible metadata exists.",
-      "gridPos": {
-        "x": 0,
-        "y": 24,
-        "w": 12,
-        "h": 10
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "homeaway-vm"
-          },
-          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(name,alias,device) (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device_type=\"Cpu\",name!~\"(?i).*(warning|critical).*\"} == 1)",
-          "range": true,
-          "legendFormat": "{{device}} · {{alias}} · {{name}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "celsius",
-          "color": {
-            "mode": "palette-classic-by-name"
-          },
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "fillOpacity": 12,
-            "showPoints": "never",
-            "spanNulls": false
-          },
-          "min": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ]
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "transformations": [
-        {
-          "id": "renameByRegex",
-          "options": {
-            "regex": "/_/g",
-            "renamePattern": " "
-          }
-        }
-      ]
-    },
-    {
-      "id": 21,
-      "title": "GPU temperature history",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "homeaway-vm"
-      },
-      "description": "GPU readings joined using exporter metadata for GpuAmd, GpuNvidia, GpuIntel and Gpu. Alias and sensor names are display labels; missing observations remain gaps.",
-      "gridPos": {
-        "x": 12,
-        "y": 24,
-        "w": 12,
-        "h": 10
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "homeaway-vm"
-          },
-          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(name,alias,device) (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name!~\"(?i).*(warning|critical).*\"} == 1)",
-          "range": true,
-          "legendFormat": "{{device}} · {{alias}} · {{name}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "celsius",
-          "color": {
-            "mode": "palette-classic-by-name"
-          },
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "fillOpacity": 12,
-            "showPoints": "never",
-            "spanNulls": false
-          },
-          "min": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ]
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "transformations": [
-        {
-          "id": "renameByRegex",
-          "options": {
-            "regex": "/_/g",
-            "renamePattern": " "
-          }
-        }
-      ]
-    },
-    {
-      "id": 22,
-      "title": "CPU power history",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "homeaway-vm"
-      },
-      "description": "Matched using the current exported device_type metadata; historical readings are only shown where compatible metadata exists.",
-      "gridPos": {
-        "x": 0,
-        "y": 34,
-        "w": 12,
-        "h": 10
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "homeaway-vm"
-          },
-          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Power\"} * on(host,sensor) group_left(name,alias,device) (sensordash_sensor_info_value{host=~\"$host\",kind=\"Power\",device_type=\"Cpu\",name!~\"(?i).*(warning|critical).*\"} == 1)",
-          "range": true,
-          "legendFormat": "{{device}} · {{alias}} · {{name}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "watt",
-          "color": {
-            "mode": "palette-classic-by-name"
-          },
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "fillOpacity": 12,
-            "showPoints": "never",
-            "spanNulls": false
-          },
-          "min": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ]
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "transformations": [
-        {
-          "id": "renameByRegex",
-          "options": {
-            "regex": "/_/g",
-            "renamePattern": " "
-          }
-        }
-      ]
-    },
-    {
-      "id": 23,
-      "title": "GPU power history",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "homeaway-vm"
-      },
-      "description": "GPU readings joined using exporter metadata for GpuAmd, GpuNvidia, GpuIntel and Gpu. Alias and sensor names are display labels; missing observations remain gaps.",
-      "gridPos": {
-        "x": 12,
-        "y": 34,
-        "w": 12,
-        "h": 10
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "homeaway-vm"
-          },
-          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Power\"} * on(host,sensor) group_left(name,alias,device) (sensordash_sensor_info_value{host=~\"$host\",kind=\"Power\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name!~\"(?i).*(warning|critical).*\"} == 1)",
-          "range": true,
-          "legendFormat": "{{device}} · {{alias}} · {{name}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "watt",
-          "color": {
-            "mode": "palette-classic-by-name"
-          },
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "fillOpacity": 12,
-            "showPoints": "never",
-            "spanNulls": false
-          },
-          "min": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ]
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "transformations": [
-        {
-          "id": "renameByRegex",
-          "options": {
-            "regex": "/_/g",
-            "renamePattern": " "
-          }
-        }
-      ]
-    },
-    {
-      "id": 103,
-      "type": "text",
-      "title": "",
-      "transparent": true,
-      "datasource": {
-        "type": "prometheus",
-        "uid": "homeaway-vm"
-      },
-      "targets": [],
-      "gridPos": {
-        "x": 0,
-        "y": 44,
-        "w": 24,
-        "h": 3
-      },
-      "options": {
-        "mode": "markdown",
-        "content": "### POWER MODEL & DATA QUALITY\nCooling accessory power below is an estimate unless SensorDash explicitly labels its source as measured. Do not calculate kWh by multiplying arbitrary samples by time; sleep/offline gaps and calibration revisions matter."
-      }
-    },
-    {
-      "id": 24,
-      "title": "Cooling accessories · watts by model/source",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "homeaway-vm"
-      },
-      "description": "Real temperature readings only. Sleep/resume gaps remain gaps; no hidden interpolation.",
-      "gridPos": {
-        "x": 0,
-        "y": 47,
-        "w": 12,
-        "h": 10
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "homeaway-vm"
-          },
-          "expr": "sensordash_accessory_power_value{host=~\"$host\"}",
-          "range": true,
-          "legendFormat": "{{component}} · {{source}} · {{revision}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "watt",
-          "color": {
-            "mode": "palette-classic-by-name"
-          },
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "fillOpacity": 12,
-            "showPoints": "never",
-            "spanNulls": false
-          },
-          "min": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ]
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "transformations": [
-        {
-          "id": "renameByRegex",
-          "options": {
-            "regex": "/_/g",
-            "renamePattern": " "
-          }
-        }
-      ]
     },
     {
       "id": 25,
@@ -1239,8 +874,8 @@
       },
       "description": "Shows gaps and reporting density, not a percentage of uptime. If the PC sleeps, lower counts are expected.",
       "gridPos": {
-        "x": 12,
-        "y": 47,
+        "x": 0,
+        "y": 24,
         "w": 12,
         "h": 10
       },
@@ -1299,144 +934,6 @@
       ]
     },
     {
-      "id": 26,
-      "title": "Radiator fan-group RPM history",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "homeaway-vm"
-      },
-      "description": "Individual recorded tachometer series assigned to this cooling role. No unrelated NVMe fan averages; gaps are preserved.",
-      "gridPos": {
-        "x": 0,
-        "y": 57,
-        "w": 12,
-        "h": 10
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "homeaway-vm"
-          },
-          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Fan\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",kind=\"Fan\",role=\"fan-group\"} == 1)",
-          "range": true,
-          "legendFormat": "{{component}} · {{sensor}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "rotrpm",
-          "color": {
-            "mode": "palette-classic-by-name"
-          },
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "fillOpacity": 12,
-            "showPoints": "never",
-            "spanNulls": false
-          },
-          "min": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ]
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "transformations": [
-        {
-          "id": "renameByRegex",
-          "options": {
-            "regex": "/_/g",
-            "renamePattern": " "
-          }
-        }
-      ]
-    },
-    {
-      "id": 27,
-      "title": "DDC pump tach history",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "homeaway-vm"
-      },
-      "description": "Individual recorded tachometer series assigned to this cooling role. No unrelated NVMe fan averages; gaps are preserved.",
-      "gridPos": {
-        "x": 12,
-        "y": 57,
-        "w": 12,
-        "h": 10
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "homeaway-vm"
-          },
-          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Fan\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",kind=\"Fan\",role=\"pump\"} == 1)",
-          "range": true,
-          "legendFormat": "{{component}} · {{sensor}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "rotrpm",
-          "color": {
-            "mode": "palette-classic-by-name"
-          },
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "fillOpacity": 12,
-            "showPoints": "never",
-            "spanNulls": false
-          },
-          "min": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ]
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "transformations": [
-        {
-          "id": "renameByRegex",
-          "options": {
-            "regex": "/_/g",
-            "renamePattern": " "
-          }
-        }
-      ]
-    },
-    {
       "id": 104,
       "type": "text",
       "title": "",
@@ -1448,7 +945,7 @@
       "targets": [],
       "gridPos": {
         "x": 0,
-        "y": 67,
+        "y": 42,
         "w": 24,
         "h": 3
       },
@@ -1468,7 +965,7 @@
       "description": "Difference between the current selected period and the preceding equally long period. Requires observations in both periods; no zero-filling. Values combine available sensors in the device family, not necessarily a single package probe.",
       "gridPos": {
         "x": 0,
-        "y": 70,
+        "y": 45,
         "w": 6,
         "h": 5
       },
@@ -1529,7 +1026,7 @@
       "description": "Difference between the current selected period and the preceding equally long period. Requires observations in both periods; no zero-filling. Values combine available sensors in the device family, not necessarily a single package probe.",
       "gridPos": {
         "x": 6,
-        "y": 70,
+        "y": 45,
         "w": 6,
         "h": 5
       },
@@ -1590,7 +1087,7 @@
       "description": "Difference between the current selected period and the preceding equally long period. Requires observations in both periods; no zero-filling. Values combine available sensors in the device family, not necessarily a single package probe.",
       "gridPos": {
         "x": 12,
-        "y": 70,
+        "y": 45,
         "w": 6,
         "h": 5
       },
@@ -1651,7 +1148,7 @@
       "description": "Difference between the current selected period and the preceding equally long period. Requires observations in both periods; no zero-filling. Values combine available sensors in the device family, not necessarily a single package probe.",
       "gridPos": {
         "x": 18,
-        "y": 70,
+        "y": 45,
         "w": 6,
         "h": 5
       },
@@ -1713,7 +1210,7 @@
       "targets": [],
       "gridPos": {
         "x": 0,
-        "y": 75,
+        "y": 50,
         "w": 24,
         "h": 3
       },
@@ -1733,7 +1230,7 @@
       "description": "Rolling maximum of observed physical temperature readings in the preceding 24 hours. Offline gaps are not reconstructed.",
       "gridPos": {
         "x": 0,
-        "y": 78,
+        "y": 53,
         "w": 12,
         "h": 10
       },
@@ -1804,7 +1301,7 @@
       "description": "Rolling maximum of observed physical temperature readings in the preceding 24 hours. Offline gaps are not reconstructed.",
       "gridPos": {
         "x": 12,
-        "y": 78,
+        "y": 53,
         "w": 12,
         "h": 10
       },
@@ -1865,27 +1362,6 @@
       ]
     },
     {
-      "id": 106,
-      "type": "text",
-      "title": "",
-      "transparent": true,
-      "datasource": {
-        "type": "prometheus",
-        "uid": "homeaway-vm"
-      },
-      "targets": [],
-      "gridPos": {
-        "x": 0,
-        "y": 88,
-        "w": 24,
-        "h": 3
-      },
-      "options": {
-        "mode": "markdown",
-        "content": "### DATA PRESENCE · OBSERVED, NOT UPTIME\nThese graphs show how many CPU/GPU temperature sensor streams had **at least one sample in the preceding hour**. Zero or absent readings can mean the computer was asleep, offline, or telemetry was interrupted; no uptime percentage is inferred. Local Windows buffer size is disk footprint, while VictoriaMetrics history uses shared compressed storage."
-      }
-    },
-    {
       "id": 36,
       "title": "Temperature sensors reporting within 1 hour",
       "type": "timeseries",
@@ -1896,9 +1372,9 @@
       "description": "Per-computer count of CPU temperature sensor streams with observations in the prior hour. GPU is a separate series, never an average.",
       "gridPos": {
         "x": 0,
-        "y": 91,
-        "w": 12,
-        "h": 10
+        "y": 34,
+        "w": 24,
+        "h": 8
       },
       "targets": [
         {
@@ -1979,7 +1455,7 @@
       "description": "Current SQLite main database, WAL and SHM file bytes sampled through time. Not the size of individual sensors in VictoriaMetrics.",
       "gridPos": {
         "x": 12,
-        "y": 91,
+        "y": 24,
         "w": 12,
         "h": 10
       },

@@ -5,19 +5,20 @@
   "tags": [
     "homeaway",
     "sensordash",
-    "read-only"
+    "read-only",
+    "hardware"
   ],
   "timezone": "browser",
   "schemaVersion": 40,
-  "version": 5,
+  "version": 6,
   "time": {
     "from": "now-1h",
     "to": "now"
   },
-  "refresh": "15s",
+  "refresh": "30s",
   "editable": false,
   "graphTooltip": 1,
-  "description": "Live Windows hardware readings. SensorDash remains responsible for fan control and cooling configuration. Display labels are resolved from a read-only catalog; numeric history and sensor identities are unchanged.",
+  "description": "Live Windows hardware readings. SensorDash remains responsible for fan control and cooling configuration. Display labels are resolved from a read-only catalog; numeric history and sensor identities are unchanged. Detailed per-sensor Windows telemetry for investigation; the Overview holds the short everyday summary.",
   "templating": {
     "list": [
       {

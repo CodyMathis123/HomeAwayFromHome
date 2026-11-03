@@ -6,14 +6,15 @@
     "homeaway",
     "pihole",
     "wireguard",
-    "read-only"
+    "read-only",
+    "everyday"
   ],
   "schemaVersion": 40,
-  "version": 4,
+  "version": 5,
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
-  "refresh": "15s",
+  "refresh": "30s",
   "time": {
     "from": "now-1h",
     "to": "now"
@@ -32,7 +33,7 @@
       "gridPos": {
         "x": 0,
         "y": 5,
-        "w": 4,
+        "w": 6,
         "h": 5
       },
       "fieldConfig": {
@@ -99,66 +100,6 @@
       ]
     },
     {
-      "id": 2,
-      "title": "DNS queries · window",
-      "type": "stat",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "homeaway-vm"
-      },
-      "description": "Pi-hole API summary-window gauge, not a cumulative counter.",
-      "gridPos": {
-        "x": 4,
-        "y": 5,
-        "w": 4,
-        "h": 5
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "noValue": "—",
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "#52B6FF"
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "values": false,
-          "calcs": [
-            "lastNotNull"
-          ]
-        },
-        "orientation": "auto",
-        "textMode": "value",
-        "colorMode": "value",
-        "graphMode": "none"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "homeaway-vm"
-          },
-          "expr": "homeaway_pihole_queries_window",
-          "instant": true,
-          "legendFormat": "DNS queries · window"
-        }
-      ]
-    },
-    {
       "id": 3,
       "title": "Blocked DNS (%)",
       "type": "stat",
@@ -168,9 +109,9 @@
       },
       "description": "Percent blocked in Pi-hole's current summary window.",
       "gridPos": {
-        "x": 8,
+        "x": 6,
         "y": 5,
-        "w": 4,
+        "w": 6,
         "h": 5
       },
       "fieldConfig": {
@@ -230,7 +171,7 @@
       "gridPos": {
         "x": 12,
         "y": 5,
-        "w": 4,
+        "w": 6,
         "h": 5
       },
       "fieldConfig": {
@@ -279,66 +220,6 @@
       ]
     },
     {
-      "id": 5,
-      "title": "Cached DNS queries",
-      "type": "stat",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "homeaway-vm"
-      },
-      "description": "Cached in Pi-hole's summary window.",
-      "gridPos": {
-        "x": 16,
-        "y": 5,
-        "w": 4,
-        "h": 5
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "noValue": "—",
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "#D5A0FF"
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "values": false,
-          "calcs": [
-            "lastNotNull"
-          ]
-        },
-        "orientation": "auto",
-        "textMode": "value",
-        "colorMode": "value",
-        "graphMode": "none"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "homeaway-vm"
-          },
-          "expr": "homeaway_pihole_cached_window",
-          "instant": true,
-          "legendFormat": "Cached DNS queries"
-        }
-      ]
-    },
-    {
       "id": 6,
       "title": "Gravity blocklist",
       "type": "stat",
@@ -348,9 +229,9 @@
       },
       "description": "Number of blocklist domains.",
       "gridPos": {
-        "x": 20,
+        "x": 18,
         "y": 5,
-        "w": 4,
+        "w": 6,
         "h": 5
       },
       "fieldConfig": {
@@ -1335,7 +1216,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "### HOME NETWORK · DNS\nPi-hole v6 aggregates · filtering, clients and request volumes · LAN / VPN only"
+        "content": "### HOME NETWORK · DNS\nQuick view: filtering, blocked fraction, active clients and gravity catalog. Total and cached DNS request counts remain in the reporting-window graph below, not repeated as big tiles."
       }
     },
     {
@@ -1356,7 +1237,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "### REMOTE ACCESS · WIREGUARD\nOne private VPN endpoint · peer presence, handshake recency and encrypted throughput"
+        "content": "### REMOTE ACCESS · WIREGUARD\nPeer counts are distinct from current connection: configuration does not prove a recent handshake. Scrape availability is not proof of a working VPN connection."
       }
     }
   ],
