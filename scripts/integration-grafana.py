@@ -48,6 +48,18 @@ def main() -> None:
         assert dashboard["uid"] == uid, uid
         assert dashboard["panels"], uid
         assert dashboard["editable"] is False, uid
+        if uid == "homeaway-sensordash":
+            variables = {v["name"]: v for v in dashboard["templating"]["list"]}
+            panels = {p["id"]: p for p in dashboard["panels"]}
+            for panel_id, name in (
+                (111, "hardwareLatestTempSource"),
+                (112, "hardwarePeakTempSource"),
+            ):
+                assert panels[panel_id]["subtitle"] == "${" + name + "}", panels[panel_id]
+                assert panels[panel_id]["options"]["textMode"] == "value", panels[panel_id]
+                assert variables[name]["hide"] == 2, variables[name]
+                assert variables[name]["refresh"] == 2, variables[name]
+                assert variables[name]["query"]["query"].startswith("query_result("), variables[name]
         if uid == "homeaway-overview":
             variables = {v["name"]: v for v in dashboard["templating"]["list"]}
             panels = {p["id"]: p for p in dashboard["panels"]}
