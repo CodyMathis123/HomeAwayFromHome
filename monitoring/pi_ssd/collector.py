@@ -117,7 +117,7 @@ def render(metrics):
     for name, value in sorted(metrics.items()):
         if not isinstance(value, (int, float)) or not float("-inf") < value < float("inf"):
             raise ValueError("non-finite metric")
-        lines.append(f"{name} {value:g}")
+        lines.append(f"{name} {value:.17g}")
     return "\n".join(lines) + "\n"
 
 def publish(path, body):
