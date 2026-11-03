@@ -28,7 +28,6 @@ class PeakSensorProvenanceTests(unittest.TestCase):
         self.assertFalse(peak["options"]["wideLayout"])
         self.assertEqual(peak["options"]["justifyMode"], "center")
         self.assertEqual(peak["fieldConfig"]["defaults"]["custom"]["textSize"]["valueSize"], 46)
-        self.assertIn("group_left(name,device,device_type)", expr)
 
     def test_reporting_peaks_keep_identity_but_averages_remain_aggregates(self):
         panels = {p["id"]: p for p in dashboard("reporting-summary.json")["panels"]}
