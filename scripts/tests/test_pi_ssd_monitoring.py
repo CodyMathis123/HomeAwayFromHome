@@ -94,6 +94,17 @@ class PiSsdCollectorTests(unittest.TestCase):
                 self.assertIn("< 900", target["expr"], panel_id)
         self.assertIn("homeaway_pi_ssd_collection_success",
                       by_id[107]["targets"][0]["expr"])
+        # Ambiguous normalized life must not be shown as a percent-like headline.
+        self.assertFalse(any("life_normalized" in target.get("expr", "")
+                             for panel in dashboard["panels"]
+                             for target in panel.get("targets", [])))
+        self.assertEqual(by_id[109]["title"], "SSD writes · past 24h")
+        self.assertIn("max_over_time(", by_id[109]["targets"][0]["expr"])
+        self.assertIn("min_over_time(", by_id[109]["targets"][0]["expr"])
+        # The trend must use decoded temperatures and reject older packed artifacts.
+        self.assertEqual(by_id[114]["title"], "SSD temperature · history")
+        self.assertIn("<= 125", by_id[114]["targets"][0]["expr"])
+        self.assertIn("temperature_celsius", by_id[114]["targets"][0]["expr"])
 
     def test_static_security_and_scrape_contract(self):
         compose = (ROOT / "compose.yaml").read_text()
