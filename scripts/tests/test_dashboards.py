@@ -143,7 +143,8 @@ class DashboardContracts(unittest.TestCase):
         self.assertNotIn("top_domains", expressions)
         self.assertNotIn("top_clients", expressions)
         self.assertNotIn("rate(homeaway_pihole_queries_window", expressions)
-        self.assertEqual(len({p["id"] for p in all_dash_panels(d)}), len(d["panels"]))
+        self.assertEqual(len({p["id"] for p in all_dash_panels(d)}),
+                             len(list(all_dash_panels(d))))
         # The quiet-network rate should not be duplicated as an oversized
         # status tile. Summary counts remain gauges, never counter rates.
         self.assertEqual(d["time"]["from"], "now-1h")
@@ -261,9 +262,9 @@ class DashboardContracts(unittest.TestCase):
         # Mixed sensor tables / sample rankings must filter only storage
         # fixed temperatures, preserving other dynamic warning signals.
         for filename, panel_id in (("overview.json", 301), ("storage.json", 17)):
-            expr = next(p for p in json.loads(
-                (PANELS / filename).read_text(encoding="utf-8")
-            )["panels"] if p["id"] == panel_id)["targets"][0]["expr"]
+            dashboard = json.loads((PANELS / filename).read_text(encoding="utf-8"))
+            expr = next(p for p in all_dash_panels(dashboard)
+                        if p["id"] == panel_id)["targets"][0]["expr"]
             with self.subTest(dashboard=filename, panel=panel_id):
                 self.assertIn("unless on(host,sensor)", expr)
                 self.assertIn('device_type="Storage"', expr)
@@ -275,9 +276,9 @@ class DashboardContracts(unittest.TestCase):
             ("storage.json", 10), ("sensordash.json", 10),
             ("cooling-systems.json", 1)
         ):
-            expr = next(p for p in json.loads(
-                (PANELS / filename).read_text(encoding="utf-8")
-            )["panels"] if p["id"] == panel_id)["targets"][0]["expr"]
+            dashboard = json.loads((PANELS / filename).read_text(encoding="utf-8"))
+            expr = next(p for p in all_dash_panels(dashboard)
+                        if p["id"] == panel_id)["targets"][0]["expr"]
             self.assertIn("sensordash_sensor_info_value", expr)
             self.assertNotIn('name!~"(?i).*(warning|critical).*"', expr)
 
