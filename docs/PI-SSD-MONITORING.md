@@ -58,7 +58,7 @@ from mounted files; Grafana itself does not require a restart.
   missing = no recent sample (not healthy).
 - homeaway_pi_ssd_smart_passed: 1 = drive reports SMART PASS; 0 = failed;
   absent if unreadable. This is not a guarantee of future reliability.
-- homeaway_pi_ssd_temperature_celsius: physical SMART attribute 194.
+- homeaway_pi_ssd_temperature_celsius: smartctl-decoded `temperature.current` in Celsius; raw attribute 194 is packed and must not be used as a direct Celsius value.
 - homeaway_pi_ssd_retired_blocks, program_failures, erase_failures,
   uncorrectable_errors, reallocation_events, unexpected_power_losses:
   lifetime vendor SMART counters, not newly detected events.
@@ -77,7 +77,7 @@ from mounted files; Grafana itself does not require a restart.
 - homeaway_pi_root_filesystem_*_bytes: actual Pi / filesystem usage,
   not VictoriaMetrics' own accounting metrics.
 
-For this older SandForce SSD, the self-test log is inconsistent, so no
+The main SSD dashboard deliberately omits the ambiguous normalized life indicator and shows observed writes over the past 24 hours instead. This is the range of the lifetime-write counter in that window (max minus min), not a precise moving write rate: firmware counters move in approximately 1 GiB increments, and periods with too few samples may show zero. Temperature history filters implausible values outside 0–125 °C; existing incorrect historical samples are retained but excluded from that chart. SMART fault series show lifetime baselines, not incidents newly detected during the displayed time range. Power-on hours and unexpected power losses remain available as exported metrics for technical queries.\n\nFor this older SandForce SSD, the self-test log is inconsistent, so no
 self-test success/failure metrics are reported. The starting values of
 3 retired blocks, 1 program failure and 1,566 unexpected power losses
 are **historical baselines**; look for *changes* or actual collection failure.
