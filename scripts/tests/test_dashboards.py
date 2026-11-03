@@ -189,6 +189,56 @@ class DashboardContracts(unittest.TestCase):
             self.assertIn("on(host,sensor) group_left(name,alias,device)", query)
             self.assertEqual(panels[id]["targets"][0]["legendFormat"], "{{name}}")
 
+    def test_hardware_temperature_stat_subtitles_identify_the_winning_sensor(self):
+        dashboard = json.loads((PANELS / "sensordash.json").read_text(encoding="utf-8"))
+        panels = {p["id"]: p for p in dashboard["panels"]}
+        variables = {v["name"]: v for v in dashboard["templating"]["list"]}
+        self.assertIn("Latest", panels[100]["options"]["content"])
+        self.assertIn("peak", panels[100]["options"]["content"])
+        for panel_id, variable_name, title in (
+            (111, "hardwareLatestTempSource", "Highest temperature · latest reading"),
+            (112, "hardwarePeakTempSource", "Peak temperature · selected range"),
+        ):
+            panel = panels[panel_id]
+            self.assertEqual(panel["title"], title)
+            self.assertEqual(panel["subtitle"], "${" + variable_name + "}")
+            self.assertEqual(panel["options"]["textMode"], "value")
+            self.assertEqual(panel["options"]["justifyMode"], "center")
+            self.assertEqual(panel["options"]["graphMode"], "none")
+            self.assertTrue(panel["targets"][0]["instant"])
+            self.assertIn('sensor=~"$sensor"', panel["targets"][0]["expr"])
+            self.assertIn('name!~"(?i).*(warning|critical).*"', panel["targets"][0]["expr"])
+            v = variables[variable_name]
+            self.assertEqual(v["type"], "query")
+            self.assertEqual(v["datasource"]["uid"], "homeaway-vm")
+            self.assertEqual(v["hide"], 2)
+            self.assertEqual(v["refresh"], 2)
+            self.assertTrue(v["skipUrlSync"])
+            self.assertFalse(v["includeAll"])
+            self.assertFalse(v["multi"])
+            self.assertEqual(v["regex"], '/name="([^"]+)"/')
+            q = v["query"]["query"]
+            self.assertTrue(q.startswith("query_result("))
+            self.assertIn('host=~"$host"', q)
+            self.assertIn('sensor=~"$sensor"', q)
+            self.assertIn('kind="Temperature"', q)
+            self.assertIn('name!~"(?i).*(warning|critical).*"', q)
+            self.assertIn("topk(1,", q)
+            self.assertIn("group_left(name)", q)
+            self.assertIn('alias!="unassigned"', q)
+            self.assertIn('alias="unassigned"', q)
+            self.assertIn('"name", "$1", "alias", "(.+)"', q)
+            self.assertIn('"name", "_+", " "', q)
+            self.assertIn('"name", "^ +| +$", ""', q)
+            self.assertNotIn("vector(0)", q)
+            if panel_id == 112:
+                self.assertIn("[$__range]", q)
+                self.assertIn("max_over_time(", q)
+            else:
+                self.assertNotIn("[$__range]", q)
+        self.assertEqual(dashboard["templating"]["list"][0]["name"], "host")
+        self.assertEqual(dashboard["templating"]["list"][1]["name"], "sensor")
+
     def test_user_alias_is_display_name_with_raw_fallback(self):
         # The exporter always emits alias=unassigned when no user alias exists.
         # PromQL's label_replace runs on a separate metadata branch for real

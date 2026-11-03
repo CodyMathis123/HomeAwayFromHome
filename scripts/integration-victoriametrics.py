@@ -441,6 +441,43 @@ def main() -> None:
         assert query_range(expr.replace('host="CI"', 'host="NO-SUCH-HOST"'),
                            end - 360, end) == []
 
+    # Hardware Telemetry's global latest/peak Stat cards keep the original
+    # numeric calculations. Their hidden subtitle variables must identify
+    # the SAME winning physical sensor, and honor host + sensor selection.
+    hardware_dashboard = json.loads(
+        (root / "grafana/dashboards/sensordash.json").read_text()
+    )
+    hardware_panels = {p["id"]: p for p in hardware_dashboard["panels"]}
+    hardware_variables = {v["name"]: v for v in hardware_dashboard["templating"]["list"]}
+    for panel_id, variable_name in (
+        (111, "hardwareLatestTempSource"),
+        (112, "hardwarePeakTempSource"),
+    ):
+        panel_expr = hardware_panels[panel_id]["targets"][0]["expr"]
+        variable_expr = hardware_variables[variable_name]["query"]["query"]
+        assert variable_expr.startswith("query_result("), variable_expr
+        variable_expr = variable_expr[len("query_result("):-1]
+        def configured(expression: str, sensor: str = ".*") -> str:
+            return (expression.replace('host=~"$host"', 'host="CI"')
+                    .replace('sensor=~"$sensor"', 'sensor=~"' + sensor + '"')
+                    .replace("$__range", "6m"))
+        for sensor_filter in (".*", "gpu_peak"):
+            numeric = query(configured(panel_expr, sensor_filter))
+            decorated = query(configured(variable_expr, sensor_filter))
+            assert len(numeric) == len(decorated) == 1, (
+                panel_id, sensor_filter, numeric, decorated)
+            assert abs(float(numeric[0]["value"][1])
+                       - float(decorated[0]["value"][1])) < 0.001, (
+                           panel_id, numeric, decorated)
+            assert decorated[0]["metric"].get("sensor"), decorated
+            assert decorated[0]["metric"].get("name"), decorated
+            if sensor_filter == "gpu_peak":
+                assert decorated[0]["metric"]["sensor"] == "gpu_peak", decorated
+                assert decorated[0]["metric"]["name"] == "VRAM Hotspot", decorated
+        assert query(configured(variable_expr).replace('host="CI"', 'host="NO-SUCH-HOST"')) == []
+    print("PASS: Hardware Telemetry latest/peak subtitle attribution, aliases, "
+          "sensor filters, and unchanged stat values")
+
     print("PASS: peak ranges, single physical sensor, user alias priority, "
           "underscores and history sparklines")
 
