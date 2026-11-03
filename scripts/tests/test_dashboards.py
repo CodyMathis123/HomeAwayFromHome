@@ -31,7 +31,11 @@ class DashboardContracts(unittest.TestCase):
                     continue
                 self.assertEqual(len(panel["targets"]), 1, (path.name, panel["id"]))
                 target = panel["targets"][0]
-                self.assertEqual(target["legendFormat"], panel["title"],
+                # The two peak cards deliberately expose the winning
+                # physical sensor name instead of repeating the panel title.
+                expected = ("{{name}}" if path.name == "overview.json"
+                            and panel["id"] in (5, 6) else panel["title"])
+                self.assertEqual(target["legendFormat"], expected,
                                  (path.name, panel["id"]))
                 self.assertNotIn("sensordash_", target["legendFormat"])
                 self.assertLessEqual(len(target["legendFormat"]), 80)
@@ -357,6 +361,33 @@ class DashboardContracts(unittest.TestCase):
             example = "/amdcpu/0/power/0" if id == 201 else "/amdcpu/0/temperature/0"
             selectors = re.findall(r'sensor=~"([^"]+)"', query)
             self.assertTrue(any(re.fullmatch(s, example) for s in selectors), id)
+
+    def test_overview_latest_and_peak_temperatures_have_clear_provenance(self):
+        overview = json.loads((PANELS / "overview.json").read_text(encoding="utf-8"))
+        panels = {p["id"]: p for p in overview["panels"]}
+        self.assertIn("Latest cards take the hottest available", panels[100]["options"]["content"])
+        self.assertIn("source sensor name", panels[101]["options"]["content"])
+        for latest_id, peak_id, family in ((1, 5, "CPU"), (2, 6, "GPU")):
+            latest = panels[latest_id]
+            peak = panels[peak_id]
+            self.assertEqual(latest["title"], family + " · latest temperature")
+            self.assertEqual(peak["title"], family + " · peak (selected range)")
+            self.assertTrue(latest["targets"][0]["range"])
+            self.assertNotIn("instant", latest["targets"][0])
+            self.assertEqual(latest["options"]["graphMode"], "area")
+            self.assertEqual(latest["options"]["reduceOptions"]["calcs"], ["lastNotNull"])
+            self.assertTrue(latest["targets"][0]["expr"].startswith("max("))
+            self.assertIn("not a fixed", latest["description"])
+            self.assertIn("currently online", latest["description"])
+            self.assertTrue(peak["targets"][0]["instant"])
+            self.assertEqual(peak["options"]["graphMode"], "none")
+            self.assertEqual(peak["options"]["textMode"], "value_and_name")
+            self.assertEqual(peak["targets"][0]["legendFormat"], "{{name}}")
+            self.assertTrue(peak["targets"][0]["expr"].startswith("topk(1, max_over_time("))
+            self.assertIn("[$__range]", peak["targets"][0]["expr"])
+            self.assertIn("group_left(device,name)", peak["targets"][0]["expr"])
+            self.assertIn("source", peak["description"])
+            self.assertNotIn("vector(0)", peak["targets"][0]["expr"])
 
     def test_sensordash_style_overview_is_read_only_and_gap_safe(self):
         d = json.loads((PANELS / "overview.json").read_text(encoding="utf-8"))

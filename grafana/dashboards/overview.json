@@ -8,9 +8,9 @@
     "read-only",
     "overview"
   ],
-  "description": "A SensorDash-inspired, read-only front page with featured sensor cards, sample-based peaks, CPU/GPU power, cooling electrical estimates, temperature history, and catalog summaries. Actual fan control, aliases, configured probes, energy integrals and retention remain authoritative on the Windows collector.",
+  "description": "SensorDash read-only overview: latest observed hottest CPU/GPU sensor values with history, clearly separated from peaks over the Grafana time selection with winning-sensor attribution; power, cooling and sensor catalog. Windows retains authority over fan control, aliases and raw sensors.",
   "schemaVersion": 40,
-  "version": 3,
+  "version": 4,
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
@@ -86,18 +86,18 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "### YOUR HARDWARE · AT A GLANCE\nThe same monitoring focus as SensorDash Overview · live cards show real exported readings · no remote fan commands"
+        "content": "### YOUR HARDWARE · LATEST OBSERVED\nLatest cards take the hottest available CPU/GPU sensor, not one fixed probe. The latest value can be old when Windows stops reporting; the sparklines show history, not continuous uptime."
       }
     },
     {
       "id": 1,
-      "title": "CPU · warmest reported",
+      "title": "CPU · latest temperature",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Cpu temperature from active SensorDash device_type metadata; no vendor-specific sensor ID assumptions. Latest exported observed sample. Missing is not zero.",
+      "description": "Latest available reported temperature across CPU sensors, taking the highest at each observation; the sparkline is that maximum over time. This is not a fixed package/core/hotspot sensor and does not prove the PC is currently online. For individual sensor names, open the Live hardware readings detail table below. Offline gaps are not filled.",
       "gridPos": {
         "x": 0,
         "y": 3,
@@ -113,7 +113,7 @@
           },
           "expr": "max(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Cpu\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\"} == 1))",
           "range": true,
-          "legendFormat": "CPU · warmest reported"
+          "legendFormat": "CPU · latest temperature"
         }
       ],
       "fieldConfig": {
@@ -152,13 +152,13 @@
     },
     {
       "id": 2,
-      "title": "GPU · warmest reported",
+      "title": "GPU · latest temperature",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Gpu temperature from active SensorDash device_type metadata; no vendor-specific sensor ID assumptions. Latest exported observed sample. Missing is not zero.",
+      "description": "Latest available reported temperature across GPU sensors, taking the highest at each observation; the sparkline is that maximum over time. This is not a fixed package/core/hotspot sensor and does not prove the PC is currently online. For individual sensor names, open the Live hardware readings detail table below. Offline gaps are not filled.",
       "gridPos": {
         "x": 6,
         "y": 3,
@@ -174,7 +174,7 @@
           },
           "expr": "max(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\"} == 1))",
           "range": true,
-          "legendFormat": "GPU · warmest reported"
+          "legendFormat": "GPU · latest temperature"
         }
       ],
       "fieldConfig": {
@@ -351,18 +351,18 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "### RECORDED PEAKS & COMPONENT POWER\nPeaks are taken from observed samples in the selected time range; CPU/GPU power readings are displayed separately to avoid overlapping-rail sums"
+        "content": "### TEMPERATURE PEAKS · SELECTED TIME RANGE\nPeak cards show the highest recorded sensor reading in the Grafana time selection **and its source sensor name** beneath the value. Power readings remain separate to avoid overlapping-rail sums."
       }
     },
     {
       "id": 5,
-      "title": "CPU · temperature peak",
+      "title": "CPU · peak (selected range)",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Cpu temperature from active SensorDash device_type metadata; no vendor-specific sensor ID assumptions. Maximum of observed samples in selected range. Missing is not zero.",
+      "description": "Highest actual observed CPU sensor temperature anywhere in the selected Grafana time range, not the latest reading. The sensor name displayed below the value identifies the reading's source. Which physical sensor wins can differ from the latest-temperature panel. Offline gaps are not filled, and this is not necessarily package/core temperature.",
       "gridPos": {
         "x": 0,
         "y": 11,
@@ -376,9 +376,9 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max(max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range]) * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Cpu\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\"} == 1))",
+          "expr": "topk(1, max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range]) * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Cpu\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\"} == 1))",
           "instant": true,
-          "legendFormat": "CPU · temperature peak"
+          "legendFormat": "{{name}}"
         }
       ],
       "fieldConfig": {
@@ -410,20 +410,20 @@
           "fields": ""
         },
         "orientation": "auto",
-        "textMode": "auto",
+        "textMode": "value_and_name",
         "colorMode": "value",
         "graphMode": "none"
       }
     },
     {
       "id": 6,
-      "title": "GPU · temperature peak",
+      "title": "GPU · peak (selected range)",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Gpu temperature from active SensorDash device_type metadata; no vendor-specific sensor ID assumptions. Maximum of observed samples in selected range. Missing is not zero.",
+      "description": "Highest actual observed GPU sensor temperature anywhere in the selected Grafana time range, not the latest reading. The sensor name displayed below the value identifies the reading's source. Which physical sensor wins can differ from the latest-temperature panel. Offline gaps are not filled, and this is not necessarily package/core temperature.",
       "gridPos": {
         "x": 6,
         "y": 11,
@@ -437,9 +437,9 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max(max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range]) * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\"} == 1))",
+          "expr": "topk(1, max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range]) * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\"} == 1))",
           "instant": true,
-          "legendFormat": "GPU · temperature peak"
+          "legendFormat": "{{name}}"
         }
       ],
       "fieldConfig": {
@@ -471,7 +471,7 @@
           "fields": ""
         },
         "orientation": "auto",
-        "textMode": "auto",
+        "textMode": "value_and_name",
         "colorMode": "value",
         "graphMode": "none"
       }
