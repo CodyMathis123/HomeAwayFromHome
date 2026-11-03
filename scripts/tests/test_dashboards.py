@@ -8,7 +8,7 @@ PANELS = ROOT / "grafana" / "dashboards"
 
 def all_dash_panels(dashboard):
     """Include panels nested under Grafana's native collapsed rows."""
-    for panel in all_dash_panels(dashboard):
+    for panel in dashboard["panels"]:
         yield panel
         yield from panel.get("panels", [])
 
@@ -25,7 +25,8 @@ class DashboardContracts(unittest.TestCase):
         for name, d in dashboards.items():
             self.assertFalse(d["editable"], name)
             self.assertIn("read-only", d["tags"], name)
-            self.assertEqual(len({p["id"] for p in all_dash_panels(d)}), len(d["panels"]), name)
+            self.assertEqual(len({p["id"] for p in all_dash_panels(d)}),
+                                 len(list(all_dash_panels(d))), name)
             self.assertTrue(all(p["datasource"]["uid"] == "homeaway-vm"
                                 for p in all_dash_panels(d)), name)
 
@@ -330,8 +331,8 @@ class DashboardContracts(unittest.TestCase):
         events = json.loads((PANELS / "events.json").read_text(encoding="utf-8"))
         self.assertEqual(storage["uid"], "homeaway-storage")
         self.assertEqual(events["uid"], "homeaway-events")
-        s = "\\n".join(t["expr"] for p in storage["panels"] for t in p["targets"])
-        e = "\\n".join(t["expr"] for p in events["panels"] for t in p["targets"])
+        s = "\\n".join(t["expr"] for p in all_dash_panels(storage) for t in p["targets"])
+        e = "\\n".join(t["expr"] for p in all_dash_panels(events) for t in p["targets"])
         self.assertIn('device_type="Storage"', s)
         self.assertIn("sensordash_spool_value", s)
         self.assertIn("sensordash_sensor_info_value", s)
