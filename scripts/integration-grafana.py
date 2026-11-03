@@ -48,6 +48,17 @@ def main() -> None:
         assert dashboard["uid"] == uid, uid
         assert dashboard["panels"], uid
         assert dashboard["editable"] is False, uid
+        if uid == "homeaway-overview":
+            variables = {v["name"]: v for v in dashboard["templating"]["list"]}
+            panels = {p["id"]: p for p in dashboard["panels"]}
+            for id, variable in ((5, "peakCpuSource"), (6, "peakGpuSource")):
+                assert panels[id]["subtitle"] == "${" + variable + "}", panels[id]
+                assert panels[id]["options"]["textMode"] == "value", panels[id]
+                assert panels[id]["options"]["graphMode"] == "area", panels[id]
+                assert variables[variable]["hide"] == 2, variables[variable]
+                assert variables[variable]["refresh"] == 2, variables[variable]
+                assert "query_result(" in variables[variable]["query"]["query"]
+
     print("PASS: Grafana boot, authentication and all nine provisioned dashboards")
 
 
