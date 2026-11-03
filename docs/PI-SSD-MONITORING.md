@@ -67,8 +67,9 @@ from mounted files; Grafana itself does not require a restart.
 - homeaway_pi_ssd_lifetime_writes_gib, lifetime_reads_gib: SandForce
   reported GiB counters (241/242). Grafana converts to bytes.
 - homeaway_pi_ssd_power_on_hours: firmware hour count (attribute 9).
-- homeaway_pi_ssd_last_attempt_timestamp_seconds: the time of the
-  most recent host collection attempt; panels show freshness.
+- homeaway_pi_ssd_last_attempt_timestamp_seconds: the exact Unix time of the
+  most recent host collection attempt; panels show freshness. Collector output
+  preserves sufficient numeric precision to prevent false 10+ minute sample ages.
 - homeaway_pi_ssd_kernel_collection_success: 1 = kernel journal readable.
   No kernel events are published as zero when journal reading failed.
 - homeaway_pi_ssd_kernel_events_since_boot: host-journal diagnostics
