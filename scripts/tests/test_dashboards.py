@@ -377,7 +377,7 @@ class DashboardContracts(unittest.TestCase):
         overview = json.loads((PANELS / "overview.json").read_text(encoding="utf-8"))
         panels = {p["id"]: p for p in overview["panels"]}
         self.assertIn("Latest cards take the hottest available", panels[100]["options"]["content"])
-        self.assertIn("source sensor name", panels[101]["options"]["content"])
+        self.assertIn("specific sensor", panels[101]["options"]["content"])
         for latest_id, peak_id, family in ((1, 5, "CPU"), (2, 6, "GPU")):
             latest = panels[latest_id]
             peak = panels[peak_id]
@@ -390,15 +390,44 @@ class DashboardContracts(unittest.TestCase):
             self.assertTrue(latest["targets"][0]["expr"].startswith("max("))
             self.assertIn("not a fixed", latest["description"])
             self.assertIn("currently online", latest["description"])
-            self.assertTrue(peak["targets"][0]["instant"])
-            self.assertEqual(peak["options"]["graphMode"], "none")
+            self.assertTrue(peak["targets"][0]["range"])
+            self.assertNotIn("instant", peak["targets"][0])
+            self.assertEqual(peak["options"]["graphMode"], "area")
+            self.assertEqual(peak["options"]["reduceOptions"]["calcs"], ["max"])
             self.assertEqual(peak["options"]["textMode"], "value_and_name")
+            self.assertEqual(peak["options"]["orientation"], "vertical")
+            self.assertIs(peak["options"]["wideLayout"], False)
+            self.assertEqual(peak["options"]["justifyMode"], "center")
+            self.assertEqual(peak["fieldConfig"]["defaults"]["custom"]["textSize"]["titleSize"], 13)
+            self.assertGreater(peak["fieldConfig"]["defaults"]["custom"]["textSize"]["valueSize"], 36)
             self.assertEqual(peak["targets"][0]["legendFormat"], "{{name}}")
-            self.assertTrue(peak["targets"][0]["expr"].startswith("topk(1, max_over_time("))
-            self.assertIn("[$__range]", peak["targets"][0]["expr"])
-            self.assertIn("group_left(device,name)", peak["targets"][0]["expr"])
-            self.assertIn("source", peak["description"])
-            self.assertNotIn("vector(0)", peak["targets"][0]["expr"])
+            query = peak["targets"][0]["expr"]
+            self.assertIn("topk(1, max_over_time(", query)
+            self.assertIn("[$__range] @ end()", query)
+            self.assertIn("[$__interval]", query)
+            self.assertIn("and on(host,sensor)", query)
+            self.assertIn("group_left(name)", query)
+            self.assertIn("last_over_time(sensordash_sensor_info_value", query)
+            self.assertIn('alias!="unassigned"', query)
+            self.assertIn('alias="unassigned"', query)
+            self.assertIn('"name", "$1", "alias", "(.+)"', query)
+            self.assertIn('label_transform(label_transform(', query)
+            self.assertIn('"name", "_+", " "', query)
+            self.assertIn('"name", "^ +| +$", ""', query)
+            self.assertIn("sensor", peak["description"])
+            self.assertNotIn("vector(0)", query)
+
+    def test_peak_series_has_single_selected_sensor_and_never_mutates_catalog(self):
+        overview = json.loads((PANELS / "overview.json").read_text(encoding="utf-8"))
+        panels = {p["id"]: p for p in overview["panels"]}
+        for id in (5, 6):
+            query = panels[id]["targets"][0]["expr"]
+            self.assertEqual(query.count("topk(1,"), 1)
+            self.assertEqual(query.count("last_over_time(sensordash_sensor_info_value"), 3)
+            self.assertEqual(query.count("@ end()"), 4)
+            self.assertNotIn("offset -", query)
+            self.assertFalse(panels[id]["editable"] if "editable" in panels[id] else False)
+        self.assertIn("sensor", panels[101]["options"]["content"])
 
     def test_sensordash_style_overview_is_read_only_and_gap_safe(self):
         d = json.loads((PANELS / "overview.json").read_text(encoding="utf-8"))
