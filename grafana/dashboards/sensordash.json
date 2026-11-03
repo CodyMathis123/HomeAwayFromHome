@@ -10,7 +10,7 @@
   ],
   "timezone": "browser",
   "schemaVersion": 40,
-  "version": 9,
+  "version": 10,
   "time": {
     "from": "now-1h",
     "to": "now"
@@ -613,7 +613,7 @@
           },
           "expr": "max(sensordash_reading_value{host=~\"$host\",sensor=~\"$sensor\",kind=\"Temperature\"} * on(host,sensor) group_left(name,device,device_type) (sensordash_sensor_info_value{host=~\"$host\",name!~\"(?i).*(warning|critical).*\"} == 1))",
           "instant": true,
-          "legendFormat": "Latest temp"
+          "legendFormat": "Latest temp · ${hardwareLatestTempSource}"
         }
       ]
     },
@@ -675,7 +675,7 @@
           },
           "expr": "max(max_over_time(sensordash_reading_value{host=~\"$host\",sensor=~\"$sensor\",kind=\"Temperature\"}[$__range]) * on(host,sensor) group_left(name,device,device_type) (sensordash_sensor_info_value{host=~\"$host\",name!~\"(?i).*(warning|critical).*\"} == 1))",
           "instant": true,
-          "legendFormat": "Range peak"
+          "legendFormat": "Range peak · ${hardwarePeakTempSource}"
         }
       ]
     },
