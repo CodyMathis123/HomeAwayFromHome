@@ -5,15 +5,16 @@
   "tags": [
     "homeaway",
     "sensordash",
-    "read-only"
+    "read-only",
+    "diagnostics"
   ],
-  "description": "Read-only timeline of Windows SensorDash threshold crossings and recoveries. Full messages, sensor association editing, and threshold settings remain local to Windows. Each event is sent once at its original timestamp; no raw event message or remote control is exported.",
+  "description": "Read-only timeline of Windows SensorDash threshold crossings and recoveries. Full messages, sensor association editing, and threshold settings remain local to Windows. Each event is sent once at its original timestamp; no raw event message or remote control is exported. Event timelines are a troubleshooting view; an empty event count cannot prove the Windows exporter is currently reporting. Compare the SensorDash sample age on Overview.",
   "schemaVersion": 40,
-  "version": 1,
+  "version": 2,
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
-  "refresh": "30s",
+  "refresh": "1m",
   "time": {
     "from": "now-24h",
     "to": "now"
@@ -441,18 +442,18 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "### RECORDED EVENT SIGNALS\nEvent details and threshold configuration remain accessible in SensorDash → Events / Settings."
+        "content": "### DIAGNOSTIC EVENT STREAM\nThe timeline reflects recorded Windows threshold crossings and recoveries. Zero exported events does **not** establish that monitoring was online throughout the period; check Windows sample age on Overview. Detailed event configuration stays in SensorDash."
       }
     },
     {
       "id": 6,
-      "title": "Recent event signals",
+      "title": "Recent event series · diagnostic",
       "type": "table",
       "datasource": {
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Instant query lists only recently active series; use the timeline above for the full selected time range.",
+      "description": "Instant query may contain only recently present event series. The graphs above represent the selected history; absence in this table is not proof that no events occurred earlier.",
       "gridPos": {
         "x": 0,
         "y": 26,
