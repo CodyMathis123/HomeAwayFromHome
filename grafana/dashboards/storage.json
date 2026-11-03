@@ -10,7 +10,7 @@
   ],
   "description": "Read-only Windows SSD/NVMe observations from SensorDash, Pi root SSD SMART and transport metrics from an optional host collector, plus VictoriaMetrics retention history.",
   "schemaVersion": 40,
-  "version": 9,
+  "version": 10,
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
@@ -153,7 +153,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Current highest physical drive temperature. The concise on-card label identifies the winning sensor; the full host, drive model, and sensor identity remain in the query's series labels (inspect data). Fixed warning/critical temperature specifications are excluded.",
+      "description": "Current hottest physical SSD/NVMe temperature. The centered label is the SensorDash alias when assigned; otherwise the full drive and sensor identifiers. Configure aliases in SensorDash, which owns the sensor catalog. Full source labels remain with the series; static warning/critical temperature specifications are excluded.",
       "gridPos": {
         "x": 6,
         "y": 3,
@@ -167,9 +167,9 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "topk(1, sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(name,device,device_type) (label_replace(sensordash_sensor_info_value{host=~\"$host\",device_type=\"Storage\",name!~\"(?i).*(warning|critical).*\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Storage\",name!~\"(?i).*(warning|critical).*\",alias=\"unassigned\"} == 1)))",
+          "expr": "topk(1, sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(display,device,name,device_type) (label_replace(sensordash_sensor_info_value{host=~\"$host\",device_type=\"Storage\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\",alias!=\"unassigned\"} == 1, \"display\", \"$1\", \"alias\", \"(.+)\") or label_join(sensordash_sensor_info_value{host=~\"$host\",device_type=\"Storage\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\",alias=\"unassigned\"} == 1, \"display\", \" · \", \"device\", \"name\")))",
           "instant": true,
-          "legendFormat": "{{name}}"
+          "legendFormat": "{{display}}"
         }
       ],
       "fieldConfig": {
@@ -188,6 +188,12 @@
                 "value": null
               }
             ]
+          },
+          "custom": {
+            "textSize": {
+              "titleSize": 12,
+              "valueSize": 46
+            }
           }
         },
         "overrides": []
@@ -203,7 +209,9 @@
         "colorMode": "value",
         "graphMode": "none",
         "orientation": "vertical",
-        "textMode": "value_and_name"
+        "textMode": "value_and_name",
+        "wideLayout": false,
+        "justifyMode": "center"
       }
     },
     {
