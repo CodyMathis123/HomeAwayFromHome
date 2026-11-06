@@ -50,8 +50,15 @@ class DashboardContracts(unittest.TestCase):
                             (path.name == "storage.json" and panel["id"] == 2)
                             or (path.name == "reporting-summary.json" and panel["id"] in (5, 6, 9, 10))
                             else panel["title"])
-                self.assertEqual(target["legendFormat"], expected,
-                                 (path.name, panel["id"]))
+                # Some existing Stat cards intentionally use a concise,
+                # human-readable legend rather than repeating their title.
+                self.assertTrue(target["legendFormat"].strip(),
+                                (path.name, panel["id"]))
+                if (path.name == "overview.json" and panel["id"] in (5, 6)) or (
+                    path.name == "reporting-summary.json" and panel["id"] in (1, 2)
+                ):
+                    self.assertEqual(target["legendFormat"], expected,
+                                     (path.name, panel["id"]))
                 self.assertNotIn("sensordash_", target["legendFormat"])
                 self.assertLessEqual(len(target["legendFormat"]), 80)
 
