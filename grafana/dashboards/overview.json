@@ -379,7 +379,8 @@
           },
           "expr": "label_transform(label_transform(((max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__interval]) and on(host,sensor) (topk(1, max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range] @ end()) * on(host,sensor) group_left() (last_over_time(sensordash_sensor_info_value{host=~\"$host\",device_type=\"Cpu\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\"}[$__range] @ end()) == 1)))) * on(host,sensor) group_left(name) ((label_replace(last_over_time(sensordash_sensor_info_value{host=~\"$host\",device_type=\"Cpu\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\",alias!=\"unassigned\"}[$__range] @ end()) == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (last_over_time(sensordash_sensor_info_value{host=~\"$host\",device_type=\"Cpu\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\",alias=\"unassigned\"}[$__range] @ end()) == 1)))), \"name\", \"_+\", \" \"), \"name\", \"^ +| +$\", \"\")",
           "legendFormat": "{{name}}",
-          "range": true
+          "range": true,
+          "interval": "2m"
         }
       ],
       "fieldConfig": {
@@ -448,7 +449,8 @@
           },
           "expr": "label_transform(label_transform(((max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__interval]) and on(host,sensor) (topk(1, max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range] @ end()) * on(host,sensor) group_left() (last_over_time(sensordash_sensor_info_value{host=~\"$host\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\"}[$__range] @ end()) == 1)))) * on(host,sensor) group_left(name) ((label_replace(last_over_time(sensordash_sensor_info_value{host=~\"$host\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\",alias!=\"unassigned\"}[$__range] @ end()) == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (last_over_time(sensordash_sensor_info_value{host=~\"$host\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\",alias=\"unassigned\"}[$__range] @ end()) == 1)))), \"name\", \"_+\", \" \"), \"name\", \"^ +| +$\", \"\")",
           "legendFormat": "{{name}}",
-          "range": true
+          "range": true,
+          "interval": "2m"
         }
       ],
       "fieldConfig": {
