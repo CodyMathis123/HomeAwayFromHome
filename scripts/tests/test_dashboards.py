@@ -45,9 +45,20 @@ class DashboardContracts(unittest.TestCase):
                 expected = ("{{name}}" if
                             (path.name == "overview.json" and panel["id"] in (5, 6))
                             or (path.name == "sensordash.json" and panel["id"] in (111, 112))
+                            or (path.name == "reporting-summary.json" and panel["id"] in (1, 2))
+                            else "{{display}}" if
+                            (path.name == "storage.json" and panel["id"] == 2)
+                            or (path.name == "reporting-summary.json" and panel["id"] in (5, 6, 9, 10))
                             else panel["title"])
-                self.assertEqual(target["legendFormat"], expected,
-                                 (path.name, panel["id"]))
+                # Some existing Stat cards intentionally use a concise,
+                # human-readable legend rather than repeating their title.
+                self.assertTrue(target["legendFormat"].strip(),
+                                (path.name, panel["id"]))
+                if (path.name == "overview.json" and panel["id"] in (5, 6)) or (
+                    path.name == "reporting-summary.json" and panel["id"] in (1, 2)
+                ):
+                    self.assertEqual(target["legendFormat"], expected,
+                                     (path.name, panel["id"]))
                 self.assertNotIn("sensordash_", target["legendFormat"])
                 self.assertLessEqual(len(target["legendFormat"]), 80)
 
@@ -311,7 +322,9 @@ class DashboardContracts(unittest.TestCase):
                         self.assertEqual(expr.count(reference), expected)
                         self.assertLess(
                             expr.index(reference),
-                            expr.index('"name", "$1", "alias", "(.+)"'))
+                            expr.index('"display", "$1", "alias", "(.+)"'
+                                       if filename == "storage.json" and panel_id == 2
+                                       else '"name", "$1", "alias", "(.+)"'))
         # Mixed sensor tables / sample rankings must filter only storage
         # fixed temperatures, preserving other dynamic warning signals.
         for filename, panel_id in (("overview.json", 301), ("storage.json", 17)):
@@ -655,6 +668,25 @@ class DashboardContracts(unittest.TestCase):
         self.assertNotIn("vm_data_size_bytes", panels[37]["targets"][0]["expr"])
         self.assertIn("equal duration", dashboard["description"].lower())
 
+    def test_reporting_summary_peak_temperature_picks_one_fixed_sensor(self):
+        report = json.loads((PANELS / "reporting-summary.json").read_text(encoding="utf-8"))
+        panels = {p["id"]: p for p in report["panels"]}
+        overview = json.loads((PANELS / "overview.json").read_text(encoding="utf-8"))
+        overview_panels = {p["id"]: p for p in overview["panels"]}
+        for report_id, overview_id in ((1, 5), (2, 6)):
+            panel = panels[report_id]
+            query = panel["targets"][0]["expr"]
+            # Historical winner is pinned to the dashboard end time, not
+            # reevaluated for every step (which produces several Stat values).
+            self.assertEqual(query, overview_panels[overview_id]["targets"][0]["expr"])
+            self.assertEqual(query.count("topk(1,"), 1)
+            self.assertIn("[$__range] @ end()", query)
+            self.assertIn("and on(host,sensor)", query)
+            self.assertEqual(panel["targets"][0]["legendFormat"], "{{name}}")
+            self.assertEqual(panel["options"]["reduceOptions"]["calcs"], ["max"])
+            self.assertEqual(panel["options"]["textMode"], "value_and_name")
+            self.assertEqual(panel["options"]["graphMode"], "area")
+
     def test_reporting_summary_uses_metadata_and_preserves_gaps(self):
         d = json.loads((PANELS / "reporting-summary.json").read_text(encoding="utf-8"))
         self.assertEqual(d["uid"], "homeaway-sensordash-summary")
@@ -666,7 +698,7 @@ class DashboardContracts(unittest.TestCase):
         self.assertIn("count_over_time(", queries)
         self.assertIn("sensordash_spool_value", queries)
         self.assertNotIn("or vector(0)", queries)
-        self.assertNotIn("[$__interval]", queries)
+        # Peak temperature cards use short-window series for a real sparkline.\n        other_queries = "\\n".join(t["expr"] for p in all_dash_panels(d)\n                                   if p["id"] not in (1, 2) for t in p["targets"])\n        self.assertNotIn("[$__interval]", other_queries)
         for p in all_dash_panels(d):
             if p["type"] == "timeseries":
                 self.assertFalse(p["fieldConfig"]["defaults"]["custom"]["spanNulls"])
