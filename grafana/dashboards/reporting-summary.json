@@ -112,9 +112,9 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "label_transform(label_transform((topk(1, max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range]) * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device_type=\"Cpu\",name!~\"(?i).*(warning|critical).*\"} == 1))) * on(host,sensor) group_left(display) (label_replace(sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",alias!=\"unassigned\"} == 1, \"display\", \"$1\", \"alias\", \"(.+)\") or label_replace(sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",alias=\"unassigned\"} == 1, \"display\", \"$1\", \"name\", \"(.+)\")), \"display\", \"_+\", \" \"), \"display\", \"^ +| +$\", \"\")",
+          "expr": "label_transform(label_transform(((max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__interval]) and on(host,sensor) (topk(1, max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range] @ end()) * on(host,sensor) group_left() (last_over_time(sensordash_sensor_info_value{host=~\"$host\",device_type=\"Cpu\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\"}[$__range] @ end()) == 1)))) * on(host,sensor) group_left(name) ((label_replace(last_over_time(sensordash_sensor_info_value{host=~\"$host\",device_type=\"Cpu\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\",alias!=\"unassigned\"}[$__range] @ end()) == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (last_over_time(sensordash_sensor_info_value{host=~\"$host\",device_type=\"Cpu\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\",alias=\"unassigned\"}[$__range] @ end()) == 1)))), \"name\", \"_+\", \" \"), \"name\", \"^ +| +$\", \"\")",
           "range": true,
-          "legendFormat": "{{display}}"
+          "legendFormat": "{{name}}"
         }
       ],
       "fieldConfig": {
@@ -147,7 +147,7 @@
         "reduceOptions": {
           "values": false,
           "calcs": [
-            "lastNotNull"
+            "max"
           ],
           "fields": ""
         },
@@ -181,9 +181,9 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "label_transform(label_transform((topk(1, max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range]) * on(host,sensor) group_left(device,name) (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name!~\"(?i).*(warning|critical).*\"} == 1))) * on(host,sensor) group_left(display) (label_replace(sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",alias!=\"unassigned\"} == 1, \"display\", \"$1\", \"alias\", \"(.+)\") or label_replace(sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",alias=\"unassigned\"} == 1, \"display\", \"$1\", \"name\", \"(.+)\")), \"display\", \"_+\", \" \"), \"display\", \"^ +| +$\", \"\")",
+          "expr": "label_transform(label_transform(((max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__interval]) and on(host,sensor) (topk(1, max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range] @ end()) * on(host,sensor) group_left() (last_over_time(sensordash_sensor_info_value{host=~\"$host\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\"}[$__range] @ end()) == 1)))) * on(host,sensor) group_left(name) ((label_replace(last_over_time(sensordash_sensor_info_value{host=~\"$host\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\",alias!=\"unassigned\"}[$__range] @ end()) == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (last_over_time(sensordash_sensor_info_value{host=~\"$host\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",kind=\"Temperature\",name!~\"(?i).*(warning|critical).*\",alias=\"unassigned\"}[$__range] @ end()) == 1)))), \"name\", \"_+\", \" \"), \"name\", \"^ +| +$\", \"\")",
           "range": true,
-          "legendFormat": "{{display}}"
+          "legendFormat": "{{name}}"
         }
       ],
       "fieldConfig": {
@@ -216,7 +216,7 @@
         "reduceOptions": {
           "values": false,
           "calcs": [
-            "lastNotNull"
+            "max"
           ],
           "fields": ""
         },
