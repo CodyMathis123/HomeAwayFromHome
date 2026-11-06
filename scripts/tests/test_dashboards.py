@@ -45,6 +45,10 @@ class DashboardContracts(unittest.TestCase):
                 expected = ("{{name}}" if
                             (path.name == "overview.json" and panel["id"] in (5, 6))
                             or (path.name == "sensordash.json" and panel["id"] in (111, 112))
+                            or (path.name == "reporting-summary.json" and panel["id"] in (1, 2))
+                            else "{{display}}" if
+                            (path.name == "storage.json" and panel["id"] == 2)
+                            or (path.name == "reporting-summary.json" and panel["id"] in (5, 6, 9, 10))
                             else panel["title"])
                 self.assertEqual(target["legendFormat"], expected,
                                  (path.name, panel["id"]))
@@ -311,7 +315,9 @@ class DashboardContracts(unittest.TestCase):
                         self.assertEqual(expr.count(reference), expected)
                         self.assertLess(
                             expr.index(reference),
-                            expr.index('"name", "$1", "alias", "(.+)"'))
+                            expr.index('"display", "$1", "alias", "(.+)"'
+                                       if filename == "storage.json" and panel_id == 2
+                                       else '"name", "$1", "alias", "(.+)"'))
         # Mixed sensor tables / sample rankings must filter only storage
         # fixed temperatures, preserving other dynamic warning signals.
         for filename, panel_id in (("overview.json", 301), ("storage.json", 17)):
