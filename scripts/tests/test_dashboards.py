@@ -459,6 +459,8 @@ class DashboardContracts(unittest.TestCase):
             self.assertIn("topk(1, max_over_time(", query)
             self.assertIn("[$__range] @ end()", query)
             self.assertIn("[$__interval]", query)
+            self.assertEqual(peak["targets"][0]["interval"], "2m",
+                             "Sparkline lookbehind must not be shorter than the expected telemetry cadence")
             self.assertIn("and on(host,sensor)", query)
             self.assertIn("group_left(name)", query)
             self.assertIn("last_over_time(sensordash_sensor_info_value", query)
