@@ -13,6 +13,7 @@ It does **not** modify the existing HomeAway Pi or replace its deployment.
 
 - [Component catalog and packaging architecture](docs/MODULAR-ARCHITECTURE.md)
 - [Cooling-only proof of concept and acceptance checklist](docs/COOLING-STANDALONE.md)
+- [Portable/.deb release packaging and real Linux CI](docs/COOLING-RELEASES.md)
 
 This is experimental; do not deploy it on the live Pi until reviewed and
 independently tested. The existing full-stack `Production` installation
