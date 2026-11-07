@@ -1,8 +1,8 @@
 # Component selection and dependency resolution
 
-**Experimental in PR #104.** The executable catalog now supports two
-independently selectable Linux monitoring features, with a shared, generated
-Compose deployment. The existing household Pi is not changed.
+**Experimental in PR #104.** The executable catalog supports cooling monitoring and Linux host
+monitoring, plus optional read-only diagnostics and a component-aware
+Portal. The packages use one generated Compose deployment per installation. The existing household Pi is not changed.
 
 ## Supported selections
 
@@ -11,6 +11,9 @@ Compose deployment. The existing household Pi is not changed.
 | cooling-monitoring | observability-ui, metrics-storage | Caddy, Grafana, VictoriaMetrics, telemetry-ingest (4) |
 | linux-host-monitoring | observability-ui, metrics-storage | Caddy, Grafana, VictoriaMetrics, node-exporter (4) |
 | cooling-monitoring,linux-host-monitoring | observability-ui, metrics-storage | All five, no duplicate backend |
+| cooling-monitoring,monitoring-diagnostics | observability-ui, metrics-storage | Five; diagnostics only on private Docker network |
+| linux-host-monitoring,home-portal | observability-ui, metrics-storage, monitoring-diagnostics | Six; authenticated Portal automatically requires diagnostics |
+| cooling-monitoring,linux-host-monitoring,home-portal | observability-ui, metrics-storage, monitoring-diagnostics | Seven; shared backend with both monitoring sources |
 
 The CLI offers both text and JSON output:
 
@@ -32,7 +35,12 @@ allowlist of implemented service graphs. It adds required capabilities,
 deduplicates shared services, reports host requirements and shows optional
 suggestions without selecting them.
 
-Components beyond cooling and Linux host metrics, including Pi-hole,
+Optional `monitoring-diagnostics` and `home-portal` are now implemented
+as add-ons; the Portal uses a separate password and exposes only the installed
+feature list and read-only diagnostics. Neither is installable without at
+least one monitoring source. See [Optional Diagnostics and Portal](MODULAR-DIAGNOSTICS-PORTAL.md).
+
+Components beyond monitoring and the Portal, including Pi-hole,
 WireGuard, household accounts and remote PC management, are planned
 only. They cannot be installed or selected for a running deployment.
 
