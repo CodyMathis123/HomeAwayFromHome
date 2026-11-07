@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "contract": "Validated dependency catalog. Only cooling-monitoring + its shared metrics-storage capability are currently wired to a deployable standalone bundle; all other choices are design-only.",
+  "contract": "Executable component catalog. Cooling and Linux host metrics can be selected independently or together; unimplemented features are design-only. Shared UI and metrics capabilities are automatic.",
   "components": [
     {
       "id": "cooling-monitoring",
@@ -8,15 +8,13 @@
       "status": "prototype",
       "selected_by_default": false,
       "requires": [
-        "metrics-storage"
+        "observability-ui"
       ],
       "suggests": [
         "linux-host-monitoring"
       ],
       "services": [
-        "grafana",
-        "telemetry-ingest",
-        "gateway"
+        "telemetry-ingest"
       ],
       "host_requirements": [
         "Docker Engine",
@@ -27,22 +25,22 @@
     {
       "id": "linux-host-monitoring",
       "label": "Linux host diagnostics",
-      "status": "planned",
+      "status": "prototype",
       "requires": [
-        "metrics-storage"
+        "observability-ui"
       ],
       "suggests": [
         "cooling-monitoring"
       ],
       "services": [
-        "pi-node-exporter",
-        "host SMART collector"
+        "node-exporter"
       ],
       "host_requirements": [
-        "Linux proc/sys",
-        "systemd for optional SMART timer"
+        "Linux proc/sys read-only bind mounts",
+        "Docker Engine",
+        "Docker Compose v2"
       ],
-      "notes": "Decouple Linux host exporter from SensorDash telemetry."
+      "notes": "Read-only node-exporter for CPU, memory, load, disk I/O and thermal metrics; SMART collector remains future scope."
     },
     {
       "id": "dns-filtering",
@@ -192,6 +190,26 @@
         "HTTPS gateway"
       ],
       "notes": "Requires optional-component-aware navigation before release."
+    },
+    {
+      "id": "observability-ui",
+      "label": "Grafana dashboards and private HTTPS gateway",
+      "status": "prototype",
+      "requires": [
+        "metrics-storage"
+      ],
+      "suggests": [],
+      "services": [
+        "grafana",
+        "gateway"
+      ],
+      "host_requirements": [
+        "Docker Engine",
+        "Docker Compose v2",
+        "Local HTTPS listener"
+      ],
+      "notes": "Shared capability for cooling-only, Linux host-only, or combined monitoring. Grafana login always required.",
+      "selectable": false
     }
   ]
 }
