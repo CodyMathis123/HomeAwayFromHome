@@ -93,7 +93,9 @@ def render_caddy(*, cooling: bool) -> str:
         ]
     else:
         parts += [
-            '  handle /ingest { respond "Telemetry ingestion not installed" 404 }',
+            "  handle /ingest {",
+            '    respond "Telemetry ingestion not installed" 404',
+            "  }",
             "",
         ]
     parts += [
