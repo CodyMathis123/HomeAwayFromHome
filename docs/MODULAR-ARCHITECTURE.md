@@ -14,8 +14,9 @@ Windows SensorDash remains the source of truth for local hardware reads,
 aliases, fan profiles, calibration, PWM, fail-safes and outbound telemetry.
 No HomeAway backend has any fan-control command or authority.
 
-The backend offers data retention, aggregation, dashboards and explicitly
-selected network/household management features. Docker Compose remains the
+The backend offers data retention, aggregation, selected dashboards,
+optional private diagnostics and an authenticated read-only modular Portal.
+Network/household management features remain separately planned. Docker Compose remains the
 runtime for the initial Linux implementation.
 
 ## Component model
@@ -181,6 +182,15 @@ plans but never authorizes an installation. The selected feature IDs are
 recorded at initialization and checked against the current Compose service
 list before running Docker; no feature changes are made by editing the
 manifest alone. See [Component Selection](COMPONENT-SELECTION.md).
+
+## Optional Diagnostics and Portal
+
+The modular package can add a private metrics diagnostics observer using only
+static queries for the selected sources, and an independent authenticated
+Portal that displays only installed features. The original full-household
+Portal and its DNS/VPN/PC control assumptions are intentionally unchanged.
+The standalone Portal has its own credential and HTTPS route, neither of
+which exists unless selected. See [Optional Diagnostics and Portal](MODULAR-DIAGNOSTICS-PORTAL.md).
 
 ## Experimental package/release validation
 
