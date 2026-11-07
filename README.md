@@ -13,6 +13,7 @@ It does **not** modify the existing HomeAway Pi or replace its deployment.
 
 - [Component catalog and packaging architecture](docs/MODULAR-ARCHITECTURE.md)
 - [Feature selection, dependency resolution and safety boundaries](docs/COMPONENT-SELECTION.md)
+- [Linux host monitoring and generated Compose](docs/LINUX-HOST-AND-COMPOSE.md)
 - [Cooling-only proof of concept and acceptance checklist](docs/COOLING-STANDALONE.md)
 - [Portable/.deb release packaging and real Linux CI](docs/COOLING-RELEASES.md)
 
