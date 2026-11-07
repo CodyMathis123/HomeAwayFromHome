@@ -39,9 +39,11 @@ def bind_ip(value: str) -> str:
 
 
 def check_fresh_state() -> None:
-    # A symlinked data parent could redirect credential creation elsewhere.
-    if (ROOT / "data").is_symlink() or (ROOT / "data/cooling").is_symlink():
-        raise ValueError("Symlinked cooling data parent is not supported.")
+    # Never follow an existing symlink into a different state or config tree.
+    for value in (SECRET_DIR, ENV_FILE):
+        for candidate in (value, *value.parents):
+            if candidate.is_symlink():
+                raise ValueError(f"Symlinked config/state path is not supported: {candidate}")
     if ENV_FILE.exists() or ENV_FILE.is_symlink():
         raise ValueError("Cooling configuration already exists; refusing to overwrite it.")
     if SECRET_DIR.exists() or SECRET_DIR.is_symlink():
@@ -148,6 +150,7 @@ def initialize(address: str, name: str, port: int) -> None:
                 f"COOLING_BIND_IP={address}\n"
                 f"COOLING_TLS_NAME={name}\n"
                 f"COOLING_HTTPS_PORT={port}\n"
+                f"COOLING_STATE_DIR={SECRET_DIR.parent.resolve()}\n"
             )
     print("Cooling-only credentials generated. No containers were started.")
     print("Next: validate Compose and review docs/COOLING-STANDALONE.md.")
@@ -164,8 +167,19 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--bind-ip", help="Specific LAN IPv4 address of this Linux host.")
     p.add_argument("--tls-name", help="IP or DNS name clients use; defaults to --bind-ip.")
     p.add_argument("--https-port", type=int, default=9443, help="Host port (default 9443).")
+    p.add_argument("--config-file", type=Path, help="Absolute runtime configuration path.")
+    p.add_argument("--state-dir", type=Path, help="Absolute persistent data directory.")
     args = p.parse_args(argv)
     try:
+        global ENV_FILE, SECRET_DIR
+        if args.config_file:
+            if not args.config_file.is_absolute():
+                raise ValueError("--config-file must be absolute.")
+            ENV_FILE = args.config_file
+        if args.state_dir:
+            if not args.state_dir.is_absolute():
+                raise ValueError("--state-dir must be absolute.")
+            SECRET_DIR = args.state_dir / "secrets"
         if args.https_port < 1024 or args.https_port > 65535:
             raise ValueError("Use an unprivileged HTTPS port between 1024 and 65535.")
         address = bind_ip(args.bind_ip) if args.bind_ip else None
@@ -178,7 +192,7 @@ def main(argv: list[str] | None = None) -> int:
             check_fresh_state()
             print("PLAN ONLY — cooling-only installation; no Pi-hole or WireGuard.")
             print("Prerequisites: Docker Engine, Compose v2, Python 3, OpenSSL, a LAN IP.")
-            print("Will create isolated data/cooling/secrets and deploy/cooling/.env.")
+            print(f"Will create isolated {SECRET_DIR} and {ENV_FILE}.")
             print("Will NOT start containers, publish a WAN port or change existing services.")
             print("Example: sudo python3 scripts/init-cooling-standalone.py "
                   "--init --bind-ip 192.168.1.50")
