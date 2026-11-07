@@ -7,7 +7,8 @@ runtime-integration milestone, not a supported production release.
 
 One allowlisted payload (Python ingest service, Compose definitions,
 Caddy configuration, VictoriaMetrics scrape configuration, provisioned
-Grafana dashboards, component catalog/resolver, and operator CLI) produces:
+Grafana dashboards, component catalog/resolver, and operator CLI, Linux node-exporter dashboard and component-aware
+Compose generator) produces:
 
 - `homeaway-cooling_0.1.0_linux-portable.tar.gz`
 - `homeaway-cooling_0.1.0_all.deb`
@@ -53,8 +54,8 @@ use a clean Linux test machine:
 sudo apt install ./homeaway-cooling_0.1.0_all.deb
 homeaway-cooling version
 sudo homeaway-cooling components
-sudo homeaway-cooling plan --components cooling-monitoring
-sudo homeaway-cooling init --components cooling-monitoring --bind-ip 192.168.1.50 --https-port 9443
+sudo homeaway-cooling plan --components linux-host-monitoring
+sudo homeaway-cooling init --components linux-host-monitoring --bind-ip 192.168.1.50 --https-port 9443
 sudo homeaway-cooling plan
 sudo homeaway-cooling start
 sudo homeaway-cooling status
@@ -65,6 +66,12 @@ implicitly requires shared metrics-storage, and other components remain
 planned. `homeaway-cooling plan --components dns-metrics --design` provides
 a hypothetical, read-only dependency preview, while attempts to install
 planned components are rejected. See [Component Selection](COMPONENT-SELECTION.md).
+
+Cooling-only, Linux-host-only and combined monitoring bundles are now
+supported by one component-aware Compose generator. Host-only installations
+expose no SensorDash intake and generate no ingest token. See
+[Linux Host and Compose](LINUX-HOST-AND-COMPOSE.md). The six Linux CI variants
+exercise each bundle on both x86-64 and ARM64.
 
 The bootstrap and start commands require a real interactive terminal and
 typed confirmation. The Caddy frontend uses a **private** CA; explicitly trust
