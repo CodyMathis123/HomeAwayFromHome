@@ -39,6 +39,9 @@ def bind_ip(value: str) -> str:
 
 
 def check_fresh_state() -> None:
+    # A symlinked data parent could redirect credential creation elsewhere.
+    if (ROOT / "data").is_symlink() or (ROOT / "data/cooling").is_symlink():
+        raise ValueError("Symlinked cooling data parent is not supported.")
     if ENV_FILE.exists() or ENV_FILE.is_symlink():
         raise ValueError("Cooling configuration already exists; refusing to overwrite it.")
     if SECRET_DIR.exists() or SECRET_DIR.is_symlink():
