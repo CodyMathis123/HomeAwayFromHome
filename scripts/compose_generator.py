@@ -167,7 +167,7 @@ def render(plan: dict, env_file: Path, state: Path, root: Path = ROOT) -> dict[s
         _mount(root / "grafana/provisioning/datasources/victoriametrics.yaml", "/etc/grafana/provisioning/datasources/homeaway.yaml"),
     ]
     for cid in sorted(selected):
-        for dashboard in DASHBOARDS[cid]:
+        for dashboard in DASHBOARDS.get(cid, ()):
             grafana_volumes.append(
                 _mount(root / "grafana/dashboards" / dashboard,
                        "/etc/grafana/dashboards/" + dashboard)
