@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""Isolated, component-selected HomeAway cooling backend operator CLI.
-
-Feature choices are resolved against a validated manifest before changing
-state. Only the four-service cooling bundle is currently deployable.
-"""
+"""Component-selected HomeAway Linux metrics backend operator CLI."""
 from __future__ import annotations
 
 import argparse
@@ -13,38 +9,33 @@ import subprocess
 import sys
 
 from components import (
-    SelectionError,
-    describe,
-    load_catalog,
-    parse_selection,
-    plan_json,
-    plan_text,
-    resolve,
+    SelectionError, describe, load_catalog, parse_selection,
+    plan_json, plan_text, resolve,
 )
+import compose_generator
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGED = ROOT == Path("/opt/homeaway-cooling")
 CONFIG = Path("/etc/homeaway-cooling/cooling.env") if PACKAGED else ROOT / "deploy/cooling/.env"
 STATE = Path("/var/lib/homeaway-cooling") if PACKAGED else ROOT / "data/cooling"
-COMPOSE = ROOT / "compose.cooling-only.yaml"
-SUPPORTED_SERVICES = {"victoria-metrics", "grafana", "telemetry-ingest", "gateway"}
 DEFAULT_SELECTION = ("cooling-monitoring",)
 
 
 def run(argv: list[str], *, capture=False) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        argv, cwd=ROOT, check=True, text=True, capture_output=capture,
-    )
+    return subprocess.run(argv, cwd=ROOT, check=True, text=True, capture_output=capture)
 
 
-def fail(message: str, code=2) -> int:
+def fail(message: str, code: int = 2) -> int:
     print(f"ERROR: {message}", file=sys.stderr)
     return code
 
 
 def docker(*args: str) -> list[str]:
-    return ["docker", "compose", "--env-file", str(CONFIG),
-            "-f", str(COMPOSE), *args]
+    return [
+        "docker", "compose", "--env-file", str(CONFIG),
+        "--project-directory", str(ROOT),
+        "-f", str(STATE / "generated/compose.generated.json"), *args,
+    ]
 
 
 def confirmation(phrase: str, warning: str) -> None:
@@ -65,47 +56,49 @@ def configured_selection() -> tuple[str, ...] | None:
         if line.startswith("COOLING_COMPONENTS="):
             choices.append(line.split("=", 1)[1])
     if len(choices) > 1:
-        raise SelectionError("Duplicate COOLING_COMPONENTS setting; refusing to deploy.")
-    # Backward compatible with the earlier cooling-only prototype.
+        raise SelectionError("Duplicate COOLING_COMPONENTS setting.")
+    # Older cooling-only installs are interpreted as their original selection.
     return parse_selection(choices[0]) if choices else DEFAULT_SELECTION
 
 
-def validate_existing(catalog: dict[str, dict], expected: tuple[str, ...] | None) -> dict:
-    selected = configured_selection()
-    if selected is None:
-        raise ValueError(f"No cooling configuration: {CONFIG}. Run init first.")
-    if expected is not None and expected != selected:
+def validate_saved(catalog: dict[str, dict], requested: tuple[str, ...] | None) -> tuple[dict, dict]:
+    installed = configured_selection()
+    if installed is None:
+        raise ValueError(f"No installation configuration: {CONFIG}. Run init first.")
+    if requested is not None and installed != requested:
         raise SelectionError(
-            "Requested selection differs from installed components. "
-            "Component reconfiguration is not implemented yet; nothing changed."
+            "Requested components differ from installed selection. "
+            "Adding/removing components on an existing installation requires a "
+            "future migration workflow; no changes made."
         )
-    plan = resolve(catalog, selected)
+    plan = resolve(catalog, installed)
     if not (STATE / "secrets").is_dir() or (STATE / "secrets").is_symlink():
-        raise ValueError("Cooling state is missing or symlinked; refusing to deploy.")
+        raise ValueError("Cooling state is missing or symlinked.")
+    rendered = compose_generator.render(plan, CONFIG, STATE, ROOT)
+    return plan, rendered
+
+
+def verify_compose(plan: dict) -> None:
     run(docker("config", "-q"))
-    actual_services = set(run(docker("config", "--services"), capture=True).stdout.splitlines())
-    if actual_services != SUPPORTED_SERVICES or actual_services != set(plan["services"]):
-        raise ValueError(f"Unexpected Compose services: {sorted(actual_services)}")
-    return plan
+    actual = set(run(docker("config", "--services"), capture=True).stdout.splitlines())
+    if actual != set(plan["services"]):
+        raise SelectionError(
+            f"Generated Compose services are not the selected bundle: {sorted(actual)}"
+        )
 
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
         prog="homeaway-cooling",
-        description="Modular SensorDash monitoring backend; DNS and VPN are optional and not installed.",
+        description="Selectable Linux monitoring backend; DNS and VPN are never installed by this CLI.",
     )
     p.add_argument("command", choices=(
-        "version", "components", "plan", "init", "start", "status", "stop"
+        "version", "components", "plan", "init", "start", "status", "stop",
     ))
-    p.add_argument(
-        "--components", metavar="IDS",
-        help="Comma-separated user features, e.g. cooling-monitoring,dns-metrics.",
-    )
-    p.add_argument(
-        "--design", action="store_true",
-        help="Plan hypothetical feature dependencies only; never permits deployment.",
-    )
-    p.add_argument("--json", action="store_true", help="Structured output for components/plan.")
+    p.add_argument("--components", metavar="IDS", help="Comma-separated user features.")
+    p.add_argument("--design", action="store_true",
+                   help="Read-only planning for future modules; never permits apply.")
+    p.add_argument("--json", action="store_true", help="Structured components or plan output.")
     p.add_argument("--bind-ip", help="Host LAN IPv4, required on first init.")
     p.add_argument("--tls-name", help="Client-facing IP/DNS name.")
     p.add_argument("--https-port", type=int, default=9443)
@@ -125,39 +118,43 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 for item in listing:
                     suffix = " [shared dependency]" if not item["selectable"] else ""
-                    print(f'{item["id"]:<24} {item["status"]:<10} {item["label"]}{suffix}')
-                print("Only cooling-monitoring is currently deployable; others are design previews.")
+                    print(
+                        f'{item["id"]:<24} {item["status"]:<10} '
+                        f'{item["label"]}{suffix}'
+                    )
             return 0
 
         requested = parse_selection(args.components) if args.components else None
         installed = configured_selection()
-
         if args.command == "plan":
             selection = requested or installed or DEFAULT_SELECTION
             plan = resolve(catalog, selection, design=args.design)
+            changed = []
             if installed is not None and selection == installed and not args.design:
-                validate_existing(catalog, selection)
+                current, rendered = validate_saved(catalog, installed)
+                changed = compose_generator.differences(rendered, STATE)
+            result = {
+                **plan,
+                "initialized": installed is not None,
+                "selection_matches_installed": installed is None or selection == installed,
+                "generated_files_to_update": changed,
+            }
             if args.json:
-                print(plan_json({
-                    **plan,
-                    "initialized": installed is not None,
-                    "selection_matches_installed": installed is None or selection == installed,
-                }))
+                print(plan_json(result))
             else:
-                print(plan_text(plan))
+                print(plan_text(result))
                 if installed is None:
-                    print("Not initialized: 'init --bind-ip <LAN_IP>' prepares credentials only.")
+                    print("Not initialized. 'init --bind-ip <LAN_IP>' creates private credentials.")
                 elif selection != installed:
-                    print("Installed selection differs: this is a read-only preview, NOT an update.")
+                    print("Installed selection differs. This preview does not migrate components.")
                 else:
-                    validate_existing(catalog, selection)
-                    print("Installed configuration and Compose service graph verified.")
-                print("No services or configuration changed.")
+                    print("Generated files requiring creation/update: " + (
+                        ", ".join(changed) or "(none)"
+                    ))
+                print("Read-only: no files, containers or network settings changed.")
             return 0
-
         if args.design:
             raise SelectionError("--design is read-only and only valid with 'plan'.")
-
         if args.command == "init":
             selection = requested or DEFAULT_SELECTION
             plan = resolve(catalog, selection)
@@ -167,34 +164,53 @@ def main(argv: list[str] | None = None) -> int:
                 raise ValueError("init requires --bind-ip.")
             command = [
                 sys.executable, "-B", str(ROOT / "scripts/init-cooling-standalone.py"),
-                "--init", "--config-file", str(CONFIG),
-                "--state-dir", str(STATE), "--bind-ip", args.bind_ip,
-                "--https-port", str(args.https_port),
+                "--init", "--config-file", str(CONFIG), "--state-dir", str(STATE),
+                "--bind-ip", args.bind_ip, "--https-port", str(args.https_port),
                 "--components", ",".join(plan["selected_features"]),
             ]
             if args.tls_name:
                 command += ["--tls-name", args.tls_name]
             run(command)
+            saved, generated = validate_saved(catalog, selection)
+            compose_generator.write(generated, STATE)
+            print("Generated selected-service Compose, scrape configuration, and HTTPS routes.")
             return 0
 
         if installed is None and args.command == "status":
             print("Not initialized. No backend containers are managed yet.")
             return 0
-        plan = validate_existing(catalog, requested)
+        plan, rendered = validate_saved(catalog, requested)
+        changed = compose_generator.differences(rendered, STATE)
         if args.command == "status":
-            run(docker("ps", "--all"))
-        elif args.command == "start":
+            if changed:
+                print("Generated deployment files are missing or outdated. Run plan then start.")
+            else:
+                verify_compose(plan)
+                run(docker("ps", "--all"))
+            return 0
+
+        if args.command == "start":
             confirmation(
-                "START COOLING",
-                "Starts only the resolved cooling services; local HTTPS listener will become active.",
+                "START MONITORING",
+                "Reconciles only the selected monitoring services. "
+                "HTTPS binds to the configured local IP. "
+                f"Managed configuration changes: {', '.join(changed) or '(none)'}.",
             )
+            compose_generator.write(rendered, STATE)
+            verify_compose(plan)
             run(docker("up", "-d", "--build"))
             run(docker("ps"))
         elif args.command == "stop":
             confirmation(
-                "STOP COOLING",
-                "Stops cooling containers; metrics, configurations and credentials are retained.",
+                "STOP MONITORING",
+                "Stops the installed monitoring bundle; metrics, keys and Docker volumes remain.",
             )
+            if changed:
+                raise SelectionError(
+                    "Generated deployment files differ from installed definition. "
+                    "Refusing to stop with an unreviewed service graph."
+                )
+            verify_compose(plan)
             run(docker("down"))
         return 0
     except (SelectionError, ValueError, OSError, subprocess.CalledProcessError) as exc:

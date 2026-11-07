@@ -32,10 +32,13 @@ class CoolingModularityContracts(unittest.TestCase):
         components = {item["id"]: item for item in content["components"]}
         self.assertEqual(len(components), len(content["components"]))
         self.assertEqual(components["cooling-monitoring"]["status"], "prototype")
-        self.assertEqual(components["cooling-monitoring"]["requires"], ["metrics-storage"])
+        self.assertEqual(components["cooling-monitoring"]["requires"], ["observability-ui"])
+        self.assertEqual(components["linux-host-monitoring"]["requires"], ["observability-ui"])
+        self.assertEqual(components["observability-ui"]["requires"], ["metrics-storage"])
         self.assertEqual(components["metrics-storage"]["selectable"], False)
         self.assertEqual(
             set(components["cooling-monitoring"]["services"])
+            | set(components["observability-ui"]["services"])
             | set(components["metrics-storage"]["services"]),
             {"victoria-metrics", "grafana", "telemetry-ingest", "gateway"},
         )

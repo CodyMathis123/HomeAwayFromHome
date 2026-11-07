@@ -25,8 +25,13 @@ METRIC = f'sensordash_reading_value{{host="{HOST}"}}'
 
 
 def docker(root: Path, env: Path, *command: str) -> list[str]:
+    state = Path(next(
+        line.split("=", 1)[1] for line in env.read_text().splitlines()
+        if line.startswith("COOLING_STATE_DIR=")
+    ))
     return ["docker", "compose", "--env-file", str(env),
-            "-f", str(root / "compose.cooling-only.yaml"), *command]
+            "--project-directory", str(root),
+            "-f", str(state / "generated/compose.generated.json"), *command]
 
 
 def request(url: str, ca: Path, *, method="GET", body=None, token=None, basic=None):
@@ -117,7 +122,10 @@ def main() -> None:
     port = int(conf["COOLING_HTTPS_PORT"])
     url = f"https://{host}:{port}"
     secret = state / "secrets"
-    token = (secret / "telemetry/token").read_text().strip()
+    selected = set(conf.get("COOLING_COMPONENTS", "cooling-monitoring").split(","))
+    cooling = "cooling-monitoring" in selected
+    linux_host = "linux-host-monitoring" in selected
+    token = (secret / "telemetry/token").read_text().strip() if cooling else None
     password = (secret / "grafana_admin_password").read_text().strip()
     assert conf["COOLING_STATE_DIR"] == str(state)
     with tempfile.TemporaryDirectory(prefix="cooling-https-check-") as folder:
@@ -128,17 +136,23 @@ def main() -> None:
         assert anonymous in (401, 403), f"Grafana org endpoint unauthenticated: {anonymous}"
         print("PASS: trusted TLS connects, Grafana requires independent authentication.")
 
-        bad_auth, _ = request(
-            url + "/ingest", ca, method="POST", body=b"invalid metric\n"
-        )
-        assert bad_auth == 401, f"Anonymous ingest was not denied: {bad_auth}"
-        malformed, _ = request(
-            url + "/ingest", ca, method="POST", body=b"invalid metric\n", token=token
-        )
-        assert malformed == 422, f"Authenticated malformed body was not denied: {malformed}"
-        print("PASS: gateway routes require bearer token and enforce metric schema.")
+        if cooling:
+            bad_auth, _ = request(
+                url + "/ingest", ca, method="POST", body=b"invalid metric\n"
+            )
+            assert bad_auth == 401, f"Anonymous ingest was not denied: {bad_auth}"
+            malformed, _ = request(
+                url + "/ingest", ca, method="POST", body=b"invalid metric\n", token=token
+            )
+            assert malformed == 422, f"Authenticated malformed body was not denied: {malformed}"
+            print("PASS: gateway routes require bearer token and enforce metric schema.")
+        else:
+            missing, _ = request(url + "/ingest", ca, method="POST", body=b"invalid\n")
+            assert missing == 404, f"Unselected ingestion is exposed: HTTP {missing}"
+            assert not (secret / "telemetry").exists()
+            print("PASS: host-only install has no ingestion endpoint or collector credentials.")
 
-        if not args.check_existing:
+        if cooling and not args.check_existing:
             sample = (
                 f"sensordash_reading,host={HOST},"
                 "sensor=/amdcpu/0/temperature/0,kind=temperature"
@@ -149,27 +163,41 @@ def main() -> None:
             assert accepted == 204, f"Valid synthetic SensorDash sample was not accepted: {accepted}"
             print("PASS: synthetic SensorDash-format event accepted over verified HTTPS.")
 
-        deadline = time.monotonic() + 60
-        series = []
-        while time.monotonic() < deadline:
-            res = query_metrics(root, env)
-            series = res["data"]["result"]
-            if series:
-                break
-            time.sleep(2)
-        assert series, "Sample not queryable from internal VictoriaMetrics"
-        print("PASS: sample found by label in the internal VictoriaMetrics query API.")
+        if cooling:
+            deadline = time.monotonic() + 60
+            series = []
+            while time.monotonic() < deadline:
+                res = query_metrics(root, env)
+                series = res["data"]["result"]
+                if series:
+                    break
+                time.sleep(2)
+            assert series, "Sample not queryable from internal VictoriaMetrics"
+            print("PASS: synthetic sample queryable from internal VictoriaMetrics.")
 
-        # Verify the real authenticated Grafana datasource query route.
-        query = quote(METRIC, safe="")
-        grafana_url = url + "/api/datasources/proxy/uid/homeaway-vm/api/v1/query?query=" + query
-        stat, payload = request(grafana_url, ca, basic=password)
-        assert stat == 200, f"Grafana datasource query failed: HTTP {stat}"
-        result = json.loads(payload)
-        assert result.get("status") == "success" and result["data"]["result"], (
-            "Grafana datasource proxy could not read synthetic telemetry"
-        )
-        print("PASS: Grafana queried the real datasource and returned the synthetic reading.")
+        # Every selected feature must be queryable through the authenticated
+        # Grafana datasource, with shared VictoriaMetrics remaining private.
+        queries = ([METRIC] if cooling else [])
+        if linux_host:
+            queries.extend(['up{job="linux-host"}', 'node_memory_MemTotal_bytes{job="linux-host"}'])
+        for metric in queries:
+            deadline = time.monotonic() + 75
+            result = {}
+            while time.monotonic() < deadline:
+                query = quote(metric, safe="")
+                grafana_url = url + "/api/datasources/proxy/uid/homeaway-vm/api/v1/query?query=" + query
+                stat, payload = request(grafana_url, ca, basic=password)
+                if stat == 200:
+                    result = json.loads(payload)
+                    matches = result.get("data", {}).get("result", [])
+                    if matches and (metric != 'up{job="linux-host"}' or
+                                    all(float(x["value"][1]) == 1 for x in matches)):
+                        break
+                time.sleep(2)
+            assert stat == 200 and result.get("data", {}).get("result"), (
+                f"Grafana datasource did not return selected metric {metric}: HTTP {stat}"
+            )
+        print("PASS: every selected monitoring feature is queryable through Grafana.")
 
         dashboard_status, raw = request(
             url + "/api/search?type=dash-db", ca, basic=password
@@ -177,10 +205,21 @@ def main() -> None:
         assert dashboard_status == 200, f"Grafana dashboard search HTTP {dashboard_status}"
         dashboards = json.loads(raw)
         titles = [item.get("title", "") for item in dashboards]
-        assert any("SensorDash" in title for title in titles), (
-            f"SensorDash dashboard was not provisioned; returned {titles}"
-        )
-        print("PASS: Grafana provisioned the SensorDash dashboard.")
+        if cooling:
+            assert any("SensorDash" in title for title in titles), (
+                f"SensorDash dashboard was not provisioned; returned {titles}"
+            )
+        else:
+            assert not any("SensorDash" in title for title in titles), (
+                f"Unselected SensorDash dashboard was provisioned: {titles}"
+            )
+        if linux_host:
+            assert "Linux Host Monitoring" in titles, (
+                f"Linux host dashboard was not provisioned: {titles}"
+            )
+        else:
+            assert "Linux Host Monitoring" not in titles
+        print("PASS: Grafana provisioned only selected feature dashboards.")
         if args.check_existing:
             print("PASS: cooling data persisted across container stop/start.")
 
@@ -189,10 +228,13 @@ def main() -> None:
          "--format", "{{.Names}}"],
         check=True, capture_output=True, text=True,
     )
-    assert len(ps.stdout.splitlines()) == 4, f"Unexpected cooling containers: {ps.stdout}"
+    expected = 3 + int(cooling) + int(linux_host)
+    assert len(ps.stdout.splitlines()) == expected, (
+        f"Expected {expected} component-selected containers, got {ps.stdout}"
+    )
     assert all(not x.startswith(("homeawayfromhome-pihole", "homeawayfromhome-wg"))
                for x in ps.stdout.splitlines())
-    print("PASS: only four isolated cooling containers exist (no Pi-hole or WireGuard).")
+    print(f"PASS: {expected} isolated monitoring containers (no Pi-hole or WireGuard).")
 
 
 if __name__ == "__main__":

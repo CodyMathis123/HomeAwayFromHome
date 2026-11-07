@@ -120,8 +120,11 @@ def initialize(address: str, name: str, port: int, selected: tuple[str, ...]) ->
 
     with tempfile.TemporaryDirectory(prefix="homeaway-cooling-") as folder:
         staging = Path(folder)
-        make_tls(staging, address)
-        (staging / "token").write_text(secrets.token_hex(32) + "\n", encoding="ascii")
+        if "cooling-monitoring" in selected:
+            make_tls(staging, address)
+            (staging / "token").write_text(
+                secrets.token_hex(32) + "\n", encoding="ascii"
+            )
         (staging / "grafana_admin_password").write_text(
             secrets.token_urlsafe(32) + "\n", encoding="ascii"
         )
@@ -129,17 +132,18 @@ def initialize(address: str, name: str, port: int, selected: tuple[str, ...]) ->
         check_fresh_state()
         SECRET_DIR.mkdir(parents=True, mode=0o700)
         SECRET_DIR.chmod(0o700)
-        telemetry = SECRET_DIR / "telemetry"
-        telemetry.mkdir(mode=0o700)
-        os.chown(telemetry, 65534, 65534)
-        write_secret(staging / "ca.key", SECRET_DIR / "telemetry-ca.key", 0, 0o600)
-        for filename, mode in (
-            ("ca.crt", 0o644),
-            ("server.crt", 0o644),
-            ("server.key", 0o600),
-            ("token", 0o600),
-        ):
-            write_secret(staging / filename, telemetry / filename, 65534, mode)
+        if "cooling-monitoring" in selected:
+            telemetry = SECRET_DIR / "telemetry"
+            telemetry.mkdir(mode=0o700)
+            os.chown(telemetry, 65534, 65534)
+            write_secret(staging / "ca.key", SECRET_DIR / "telemetry-ca.key", 0, 0o600)
+            for filename, mode in (
+                ("ca.crt", 0o644),
+                ("server.crt", 0o644),
+                ("server.key", 0o600),
+                ("token", 0o600),
+            ):
+                write_secret(staging / filename, telemetry / filename, 65534, mode)
         write_secret(
             staging / "grafana_admin_password",
             SECRET_DIR / "grafana_admin_password", 472, 0o600,
@@ -157,8 +161,9 @@ def initialize(address: str, name: str, port: int, selected: tuple[str, ...]) ->
             )
     print("Cooling-only credentials generated. No containers were started.")
     print("Next: validate Compose and review docs/COOLING-STANDALONE.md.")
-    print("Caddy generates a SEPARATE client-facing local CA on its first start.")
-    print("Import only Caddy's PUBLIC CA certificate into SensorDash trust settings.")
+    print("Caddy generates a separate client-facing local CA on its first start.")
+    if "cooling-monitoring" in selected:
+        print("Import only Caddy's PUBLIC CA certificate into SensorDash trust settings.")
     print("Never share the token, private keys or Grafana password in logs/issues.")
 
 

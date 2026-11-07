@@ -28,6 +28,8 @@ FILES = (
     "scripts/init-cooling-standalone.py",
     "scripts/cooling-stack.py",
     "scripts/components.py",
+    "scripts/compose_generator.py",
+    "grafana/dashboards/linux-host.json",
     "ingest/Dockerfile",
     "ingest/app.py",
     "grafana/provisioning/dashboards/dashboards.yaml",
@@ -38,6 +40,7 @@ FILES = (
     "grafana/dashboards/electrical.json",
     "grafana/dashboards/events.json",
     "docs/COOLING-STANDALONE.md",
+    "docs/COMPONENT-SELECTION.md",
     "docs/MODULAR-ARCHITECTURE.md",
 )
 
@@ -59,15 +62,27 @@ def copy_payload(destination: Path, version: str) -> dict[str, str]:
         hashes[rel] = digest(target)
     (destination / "VERSION").write_text(version + "\n", encoding="ascii")
     hashes["VERSION"] = digest(destination / "VERSION")
-    resolved = resolve(
-        load_catalog(ROOT / "deploy/components/catalog.json"), ("cooling-monitoring",)
-    )
+    catalog = load_catalog(ROOT / "deploy/components/catalog.json")
+    supported = []
+    for choice in (
+        ("cooling-monitoring",),
+        ("linux-host-monitoring",),
+        ("cooling-monitoring", "linux-host-monitoring"),
+    ):
+        outcome = resolve(catalog, choice)
+        supported.append({
+            "selected_features": outcome["selected_features"],
+            "services": outcome["services"],
+            "resolved_components": outcome["component_order"],
+        })
+    resolved = resolve(catalog, ("cooling-monitoring",))
     manifest = {
         "name": PACKAGE,
         "version": version,
         "selected_features": resolved["selected_features"],
         "resolved_components": resolved["component_order"],
         "services": resolved["services"],
+        "supported_bundles": supported,
         "files_sha256": hashes,
         "config_policy": "runtime config and credentials never shipped",
         "runtime": "Docker Compose v2",

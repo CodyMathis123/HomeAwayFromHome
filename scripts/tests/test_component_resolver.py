@@ -34,6 +34,7 @@ class ComponentResolverTests(unittest.TestCase):
         self.assertEqual(len(items), len(self.catalog))
         self.assertFalse(next(x for x in items if x["id"] == "metrics-storage")["selectable"])
         self.assertTrue(next(x for x in items if x["id"] == "cooling-monitoring")["installable_now"])
+        self.assertTrue(next(x for x in items if x["id"] == "linux-host-monitoring")["installable_now"])
         self.assertFalse(next(x for x in items if x["id"] == "vpn")["installable_now"])
         with self.assertRaisesRegex(components.SelectionError, "internal capability"):
             components.resolve(self.catalog, ("metrics-storage",))
@@ -44,12 +45,12 @@ class ComponentResolverTests(unittest.TestCase):
         )
         self.assertTrue(result["deployable"])
         self.assertEqual(result["selected_features"], ["cooling-monitoring"])
-        self.assertEqual(result["component_order"], ["metrics-storage", "cooling-monitoring"])
-        self.assertEqual(result["automatically_added"], ["metrics-storage"])
+        self.assertEqual(result["component_order"], ["metrics-storage", "observability-ui", "cooling-monitoring"])
+        self.assertEqual(result["automatically_added"], ["metrics-storage", "observability-ui"])
         self.assertEqual(result["services"], [
             "gateway", "grafana", "telemetry-ingest", "victoria-metrics"
         ])
-        self.assertEqual(result["deployment"], "compose.cooling-only.yaml")
+        self.assertEqual(result["deployment"], "compose.generated.json")
         self.assertIn("linux-host-monitoring", result["suggestions_not_selected"])
         self.assertNotIn("pihole", result["services"])
         self.assertNotIn("wg-easy", result["services"])
@@ -70,9 +71,10 @@ class ComponentResolverTests(unittest.TestCase):
 
     def test_linux_host_monitoring_requires_shared_storage(self):
         plan = components.resolve(self.catalog, ("linux-host-monitoring",), design=True)
-        self.assertEqual(plan["automatically_added"], ["metrics-storage"])
+        self.assertEqual(plan["automatically_added"], ["metrics-storage", "observability-ui"])
         self.assertEqual(plan["services"].count("victoria-metrics"), 1)
-        self.assertFalse(plan["deployable"])
+        self.assertTrue(plan["deployable"])
+        self.assertEqual(plan["services"], ["gateway", "grafana", "node-exporter", "victoria-metrics"])
 
     def test_plan_never_installs_suggested_modules(self):
         plan = components.resolve(self.catalog, ("dns-filtering",), design=True)
@@ -84,7 +86,7 @@ class ComponentResolverTests(unittest.TestCase):
         # Removing a feature's wires must not silently reinterpret the
         # existing four-container deployment as a different install choice.
         copy_catalog = copy.deepcopy(self.catalog)
-        copy_catalog["cooling-monitoring"]["services"].remove("gateway")
+        copy_catalog["cooling-monitoring"]["services"].remove("telemetry-ingest")
         with self.assertRaisesRegex(components.SelectionError, "not wired"):
             components.resolve(copy_catalog, ("cooling-monitoring",))
         self.assertFalse(
