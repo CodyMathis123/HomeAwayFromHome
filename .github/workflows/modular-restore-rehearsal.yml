@@ -1,0 +1,101 @@
+name: Isolated modular backup restore rehearsal
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches:
+      - Production
+      - design/modular-components-cooling-standalone
+    paths:
+      - '.github/workflows/modular-restore-rehearsal.yml'
+      - 'scripts/rehearsal_archive.py'
+      - 'scripts/rehearse_modular_restore.py'
+      - 'scripts/tests/test_restore_rehearsal.py'
+      - 'docs/MODULAR-RESTORE-REHEARSAL.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scratch-restore:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Reject unsafe tar entries and guard non-CI use
+        run: |
+          python3 -m unittest discover -s scripts/tests -p test_restore_rehearsal.py -v
+          python3 -m compileall -q scripts/rehearsal_archive.py scripts/rehearse_modular_restore.py
+
+      - name: Install the experimental Linux monitoring package
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y age
+          python3 scripts/build-cooling-release.py --version 0.1.0
+          python3 scripts/verify-cooling-package.py --version 0.1.0
+          sudo dpkg -i dist/homeaway-cooling_0.1.0_all.deb
+          printf 'INITIALIZE COOLING\n' |
+            sudo script -q -e -c 'homeaway-cooling init --components cooling-monitoring --bind-ip 127.0.0.1 --https-port 19443' /dev/null
+          printf 'START MONITORING\n' |
+            sudo script -q -e -c 'homeaway-cooling start' /dev/null
+          sudo python3 scripts/integration-cooling-linux.py
+
+      - name: Capture fresh, encrypted, quiesced state
+        run: |
+          age-keygen -o "$RUNNER_TEMP/restore-ci-key.txt"
+          recipient="$(age-keygen -y "$RUNNER_TEMP/restore-ci-key.txt")"
+          printf 'BACKUP MONITORING\n' |
+            sudo script -q -e -c "homeaway-cooling backup --recipient $recipient --apply" /dev/null
+          archive="$(sudo find /var/lib/homeaway-cooling/backups -maxdepth 1 -type f -name '*.tar.age' | sort | tail -1)"
+          test -n "$archive"
+          sudo test -s "$archive.json"
+          echo "REHEARSAL_ARCHIVE=$archive" >> "$GITHUB_ENV"
+          sudo docker ps -q --filter label=com.docker.compose.project=homeaway-cooling |
+            sort > "$RUNNER_TEMP/live-before.txt"
+          test "$(wc -l < "$RUNNER_TEMP/live-before.txt")" -eq 4
+
+      - name: Decrypt and restore only into isolated scratch volumes
+        run: |
+          sudo HOMEAWAY_RESTORE_REHEARSAL_CI=1 \
+            python3 scripts/rehearse_modular_restore.py \
+              --archive "$REHEARSAL_ARCHIVE" \
+              --identity "$RUNNER_TEMP/restore-ci-key.txt" \
+              > "$RUNNER_TEMP/rehearsal-results.json"
+          python3 -c 'import json,sys; j=json.load(open(sys.argv[1])); assert j["rehearsal_passed"] and j["restored_metric_verified"] and j["grafana_sqlite_verified"] and j["caddy_public_ca_present"]' "$RUNNER_TEMP/rehearsal-results.json"
+          echo 'PASS: full decrypted archive, restored Grafana SQLite, Caddy CA and queryable VictoriaMetrics sample'
+
+      - name: Verify running installation was never modified
+        run: |
+          sudo docker ps -q --filter label=com.docker.compose.project=homeaway-cooling |
+            sort > "$RUNNER_TEMP/live-after.txt"
+          diff -u "$RUNNER_TEMP/live-before.txt" "$RUNNER_TEMP/live-after.txt"
+          test -z "$(sudo docker volume ls -q --filter label=homeaway.rehearsal=true)"
+          test -z "$(sudo docker network ls -q --filter label=homeaway.rehearsal=true)"
+          sudo docker volume inspect homeaway-cooling_cooling-metrics >/dev/null
+          sudo docker volume inspect homeaway-cooling_cooling-grafana >/dev/null
+          sudo python3 scripts/integration-cooling-linux.py --check-existing
+          echo 'PASS: live monitoring, credentials and original Docker volumes untouched'
+
+      - name: Show only scoped resources when CI fails
+        if: failure()
+        run: |
+          sudo docker ps -a --filter label=com.docker.compose.project=homeaway-cooling || true
+          sudo docker volume ls --filter label=homeaway.rehearsal=true || true
+          sudo docker network ls --filter label=homeaway.rehearsal=true || true
+
+      - name: Remove only disposable CI state and key
+        if: always()
+        run: |
+          if sudo test -f /etc/homeaway-cooling/cooling.env && sudo test -f /var/lib/homeaway-cooling/generated/compose.generated.json; then
+            sudo docker compose --env-file /etc/homeaway-cooling/cooling.env \
+              --project-directory /opt/homeaway-cooling \
+              -f /var/lib/homeaway-cooling/generated/compose.generated.json \
+              down -v --remove-orphans || true
+          fi
+          sudo rm -rf -- /etc/homeaway-cooling /var/lib/homeaway-cooling
+          rm -f "$RUNNER_TEMP/restore-ci-key.txt"
