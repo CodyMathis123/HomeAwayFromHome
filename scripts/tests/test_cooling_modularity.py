@@ -30,10 +30,13 @@ class CoolingModularityContracts(unittest.TestCase):
         components = {item["id"]: item for item in content["components"]}
         self.assertEqual(len(components), len(content["components"]))
         self.assertEqual(components["cooling-monitoring"]["status"], "prototype")
-        self.assertEqual(components["cooling-monitoring"]["requires"], [])
-        self.assertEqual(set(components["cooling-monitoring"]["services"]), {
-            "victoria-metrics", "grafana", "telemetry-ingest", "gateway"
-        })
+        self.assertEqual(components["cooling-monitoring"]["requires"], ["metrics-storage"])
+        self.assertEqual(components["metrics-storage"]["selectable"], False)
+        self.assertEqual(
+            set(components["cooling-monitoring"]["services"])
+            | set(components["metrics-storage"]["services"]),
+            {"victoria-metrics", "grafana", "telemetry-ingest", "gateway"},
+        )
         for item in components.values():
             for dep in item["requires"] + item["suggests"]:
                 self.assertIn(dep, components, (item["id"], dep))
