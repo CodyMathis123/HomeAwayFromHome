@@ -1,0 +1,123 @@
+name: Cooling package and Linux end-to-end
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [Production]
+    paths:
+      - '.github/workflows/cooling-linux-e2e.yml'
+      - 'compose.cooling-only.yaml'
+      - 'deploy/cooling/**'
+      - 'deploy/components/**'
+      - 'scripts/init-cooling-standalone.py'
+      - 'scripts/cooling-stack.py'
+      - 'scripts/build-cooling-release.py'
+      - 'scripts/verify-cooling-package.py'
+      - 'scripts/integration-cooling-linux.py'
+      - 'ingest/**'
+      - 'grafana/**'
+  push:
+    branches: ['design/modular-components-cooling-standalone']
+    paths:
+      - '.github/workflows/cooling-linux-e2e.yml'
+      - 'compose.cooling-only.yaml'
+      - 'deploy/cooling/**'
+      - 'deploy/components/**'
+      - 'scripts/init-cooling-standalone.py'
+      - 'scripts/cooling-stack.py'
+      - 'scripts/build-cooling-release.py'
+      - 'scripts/verify-cooling-package.py'
+      - 'scripts/integration-cooling-linux.py'
+      - 'ingest/**'
+      - 'grafana/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package-and-runtime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Compile and build release payloads
+        run: |
+          python3 -m compileall -q scripts/init-cooling-standalone.py scripts/cooling-stack.py scripts/build-cooling-release.py scripts/verify-cooling-package.py scripts/integration-cooling-linux.py
+          python3 scripts/build-cooling-release.py --version 0.1.0
+          python3 scripts/verify-cooling-package.py --version 0.1.0
+
+      - name: Install built Debian package without starting services
+        run: |
+          sudo dpkg -i dist/homeaway-cooling_0.1.0_all.deb
+          test ! -e /etc/homeaway-cooling/cooling.env
+          test ! -e /var/lib/homeaway-cooling
+          test -z "$(sudo docker ps -a -q --filter label=com.docker.compose.project=homeaway-cooling)"
+          homeaway-cooling version
+          sudo homeaway-cooling plan
+
+      - name: Initialize brand-new test-only cooling credentials
+        run: |
+          printf 'INITIALIZE COOLING\n' |
+            sudo script -q -e -c 'homeaway-cooling init --bind-ip 127.0.0.1 --https-port 19443' /dev/null
+          sudo test -f /etc/homeaway-cooling/cooling.env
+          sudo test -f /var/lib/homeaway-cooling/secrets/telemetry/token
+          sudo homeaway-cooling plan
+
+      - name: Boot released containers, verify actual HTTPS and ingestion
+        run: |
+          printf 'START COOLING\n' |
+            sudo script -q -e -c 'homeaway-cooling start' /dev/null
+          sudo python3 scripts/integration-cooling-linux.py
+
+      - name: Verify samples persist across container teardown/recreation
+        run: |
+          printf 'STOP COOLING\n' |
+            sudo script -q -e -c 'homeaway-cooling stop' /dev/null
+          printf 'START COOLING\n' |
+            sudo script -q -e -c 'homeaway-cooling start' /dev/null
+          sudo python3 scripts/integration-cooling-linux.py --check-existing
+
+      - name: Verify Debian remove leaves installed state intact
+        run: |
+          printf 'STOP COOLING\n' |
+            sudo script -q -e -c 'homeaway-cooling stop' /dev/null
+          sudo dpkg -r homeaway-cooling
+          sudo test -s /etc/homeaway-cooling/cooling.env
+          sudo test -s /var/lib/homeaway-cooling/secrets/telemetry/token
+          test ! -e /opt/homeaway-cooling
+          echo 'PASS: package removal did not wipe configuration or credentials'
+
+      - name: Upload portable and Debian artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: homeaway-cooling-linux-0.1.0
+          path: |
+            dist/homeaway-cooling_0.1.0_linux-portable.tar.gz
+            dist/homeaway-cooling_0.1.0_all.deb
+            dist/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Show scoped diagnostic logs on failure
+        if: failure()
+        run: |
+          sudo docker ps -a --filter label=com.docker.compose.project=homeaway-cooling             --format 'table {{.Names}}\t{{.Status}}'
+          # Do not dump container environment or secret-bearing request headers.
+          sudo docker logs --tail=50 homeaway-cooling-gateway-1 2>&1 || true
+          sudo docker logs --tail=50 homeaway-cooling-grafana-1 2>&1 || true
+          sudo docker logs --tail=50 homeaway-cooling-telemetry-ingest-1 2>&1 || true
+
+      - name: Teardown disposable CI-only project
+        if: always()
+        run: |
+          if sudo test -f /etc/homeaway-cooling/cooling.env && test -f /opt/homeaway-cooling/compose.cooling-only.yaml; then
+            sudo docker compose --env-file /etc/homeaway-cooling/cooling.env               -f /opt/homeaway-cooling/compose.cooling-only.yaml down -v --remove-orphans || true
+          fi
+          # GitHub hosted runner is ephemeral. These paths are CI-generated only.
+          sudo rm -rf -- /etc/homeaway-cooling /var/lib/homeaway-cooling
