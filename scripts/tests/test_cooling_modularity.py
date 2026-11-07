@@ -60,6 +60,8 @@ class CoolingModularityContracts(unittest.TestCase):
     def test_caddy_validates_upstream_tls_and_requires_grafana_login(self):
         caddy = (ROOT / "deploy/cooling/Caddyfile").read_text(encoding="utf-8")
         self.assertIn("tls internal", caddy)
+        self.assertIn("default_sni {$COOLING_TLS_NAME}", caddy)
+        self.assertIn("skip_install_trust", caddy)
         self.assertIn("tls_trust_pool file /run/telemetry-ca.crt", caddy)
         self.assertIn("tls_server_name {$COOLING_BIND_IP}", caddy)
         self.assertIn("handle /ingest", caddy)
@@ -72,6 +74,7 @@ class CoolingModularityContracts(unittest.TestCase):
         self.assertIn("cooling-private:", config)
         self.assertIn("internal: true", config)
         self.assertNotIn("docker.sock", config)
+        self.assertIn("cap_add: [NET_BIND_SERVICE]", config)
 
     def test_scrape_does_not_require_dns_or_vpn(self):
         scrape = (ROOT / "deploy/cooling/scrape.yml").read_text(encoding="utf-8")
