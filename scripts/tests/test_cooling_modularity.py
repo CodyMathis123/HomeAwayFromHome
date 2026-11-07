@@ -10,6 +10,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+import sys
 import unittest
 from unittest.mock import patch
 
@@ -17,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[2]
 COMPOSE = ROOT / "compose.cooling-only.yaml"
 CATALOG = ROOT / "deploy/components/catalog.json"
 BOOTSTRAP = ROOT / "scripts/init-cooling-standalone.py"
+sys.path.insert(0, str(ROOT / "scripts"))
 spec = importlib.util.spec_from_file_location("cooling_bootstrap", BOOTSTRAP)
 bootstrap = importlib.util.module_from_spec(spec)
 assert spec.loader is not None
