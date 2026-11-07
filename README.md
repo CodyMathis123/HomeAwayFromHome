@@ -4,6 +4,20 @@
 
 > **Current status (November 2, 2026):** `Production` contains the Pi infrastructure, Grafana/VictoriaMetrics, authenticated HomeAway control, LLDAP-backed household account administration and Phase 2 Computer Management (merged in [PR #14](https://github.com/CodyMathis123/HomeAwayFromHome/pull/14)). The operator completed live Pi socket checks, role/UI checks and an inactive computer draft exercise; the Production container cutover was subsequently reported complete. **Real enrollment and disable/archive/restore on a second Windows PC remain unverified.** Future setup/monitoring and operations/maintenance phases are **planning**, not shipped. See the [current roadmap](docs/ROADMAP.md) for branch ownership and outstanding acceptance.
  
+## Modular Linux installation (prototype)
+
+A separate design and **cooling-only** Compose proof of concept demonstrates
+how Windows SensorDash historical telemetry could run on an ordinary Linux
+host without Pi-hole, WireGuard, accounts or remote PC management.
+It does **not** modify the existing HomeAway Pi or replace its deployment.
+
+- [Component catalog and packaging architecture](docs/MODULAR-ARCHITECTURE.md)
+- [Cooling-only proof of concept and acceptance checklist](docs/COOLING-STANDALONE.md)
+
+This is experimental; do not deploy it on the live Pi until reviewed and
+independently tested. The existing full-stack `Production` installation
+remains the supported baseline.
+
 ## Start with Production
 
 | Capability | Current state | Guide |

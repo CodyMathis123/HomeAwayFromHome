@@ -1,0 +1,193 @@
+{
+  "schema_version": 1,
+  "contract": "Design catalog; only cooling-monitoring has a runnable standalone proof of concept. No dependency resolver is shipped.",
+  "components": [
+    {
+      "id": "cooling-monitoring",
+      "label": "Hardware & cooling monitoring",
+      "status": "prototype",
+      "selected_by_default": false,
+      "requires": [],
+      "suggests": [
+        "linux-host-monitoring"
+      ],
+      "services": [
+        "victoria-metrics",
+        "grafana",
+        "telemetry-ingest",
+        "gateway"
+      ],
+      "host_requirements": [
+        "Docker Engine",
+        "Docker Compose v2"
+      ],
+      "notes": "Windows SensorDash is optional to run but required for actual PC hardware telemetry; backend never controls PWM."
+    },
+    {
+      "id": "linux-host-monitoring",
+      "label": "Linux host diagnostics",
+      "status": "planned",
+      "requires": [],
+      "suggests": [
+        "cooling-monitoring"
+      ],
+      "services": [
+        "pi-node-exporter",
+        "host SMART collector"
+      ],
+      "host_requirements": [
+        "Linux proc/sys",
+        "systemd for optional SMART timer"
+      ],
+      "notes": "Decouple Linux host exporter from SensorDash telemetry."
+    },
+    {
+      "id": "dns-filtering",
+      "label": "Pi-hole DNS filtering",
+      "status": "planned",
+      "requires": [],
+      "suggests": [
+        "dns-metrics"
+      ],
+      "services": [
+        "pihole"
+      ],
+      "host_requirements": [
+        "Host port 53",
+        "router/local DNS migration"
+      ],
+      "notes": "Network service installation requires staged cutover and rollback."
+    },
+    {
+      "id": "dns-metrics",
+      "label": "Pi-hole observability",
+      "status": "planned",
+      "requires": [
+        "dns-filtering",
+        "metrics-storage"
+      ],
+      "suggests": [],
+      "services": [
+        "pihole-exporter"
+      ],
+      "host_requirements": [],
+      "notes": "Separate optional scrape integration."
+    },
+    {
+      "id": "vpn",
+      "label": "WireGuard VPN",
+      "status": "planned",
+      "requires": [],
+      "suggests": [
+        "vpn-metrics"
+      ],
+      "services": [
+        "wg-easy"
+      ],
+      "host_requirements": [
+        "Linux kernel WireGuard",
+        "UDP forwarding if remote"
+      ],
+      "notes": "Optional; never a prerequisite for cooling history."
+    },
+    {
+      "id": "vpn-metrics",
+      "label": "WireGuard observability",
+      "status": "planned",
+      "requires": [
+        "vpn",
+        "metrics-storage"
+      ],
+      "suggests": [],
+      "services": [
+        "WireGuard scrape"
+      ],
+      "host_requirements": [],
+      "notes": "Separate optional scrape integration."
+    },
+    {
+      "id": "metrics-storage",
+      "label": "Shared metric storage",
+      "status": "planned",
+      "requires": [],
+      "suggests": [],
+      "services": [
+        "victoria-metrics"
+      ],
+      "host_requirements": [
+        "Docker Engine",
+        "Docker Compose v2"
+      ],
+      "notes": "Internal capability shared by optional observability modules; deduplicate when resolving."
+    },
+    {
+      "id": "identity",
+      "label": "Authenticated operator access",
+      "status": "planned",
+      "requires": [],
+      "suggests": [
+        "account-directory"
+      ],
+      "services": [
+        "authelia",
+        "gateway"
+      ],
+      "host_requirements": [
+        "TLS configuration"
+      ],
+      "notes": "Needed for privileged PC management; not required merely to view authenticated Grafana."
+    },
+    {
+      "id": "account-directory",
+      "label": "Household accounts",
+      "status": "planned",
+      "requires": [
+        "identity"
+      ],
+      "suggests": [],
+      "services": [
+        "lldap",
+        "account-broker"
+      ],
+      "host_requirements": [],
+      "notes": "Optional multi-user management with separate privileges."
+    },
+    {
+      "id": "computer-management",
+      "label": "Remote computer management",
+      "status": "planned",
+      "requires": [
+        "identity"
+      ],
+      "suggests": [],
+      "services": [
+        "pc-control",
+        "pcctl host sockets",
+        "inventory agents"
+      ],
+      "host_requirements": [
+        "systemd",
+        "SSH host-key pinning"
+      ],
+      "notes": "No fan-control API. Host integration currently Linux/systemd-specific."
+    },
+    {
+      "id": "home-portal",
+      "label": "Read-only aggregate portal",
+      "status": "planned",
+      "requires": [],
+      "suggests": [
+        "cooling-monitoring",
+        "dns-filtering",
+        "vpn"
+      ],
+      "services": [
+        "portal"
+      ],
+      "host_requirements": [
+        "HTTPS gateway"
+      ],
+      "notes": "Requires optional-component-aware navigation before release."
+    }
+  ]
+}

@@ -1,0 +1,82 @@
+# Isolated cooling telemetry proof of concept. Do NOT combine with compose.yaml.
+# Separate project, volumes, secrets, and Docker networks: no household DNS/VPN changes.
+name: homeaway-cooling
+
+services:
+  victoria-metrics:
+    image: victoriametrics/victoria-metrics:v1.155.0
+    restart: unless-stopped
+    command:
+      - "-storageDataPath=/victoria-metrics-data"
+      - "-retentionPeriod=90d"
+      - "-promscrape.config=/etc/victoria-metrics/prometheus.yml"
+    volumes:
+      - cooling-metrics:/victoria-metrics-data
+      - ./deploy/cooling/scrape.yml:/etc/victoria-metrics/prometheus.yml:ro
+    networks: [cooling-private]
+
+  grafana:
+    image: grafana/grafana:13.3.0
+    restart: unless-stopped
+    depends_on: [victoria-metrics]
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_SECURITY_COOKIE_SECURE: "true"
+      GF_SECURITY_ALLOW_EMBEDDING: "false"
+      GF_SERVER_ROOT_URL: "https://${COOLING_TLS_NAME:?Set COOLING_TLS_NAME}:${COOLING_HTTPS_PORT:?Set COOLING_HTTPS_PORT}"
+    volumes:
+      - cooling-grafana:/var/lib/grafana
+      - ./data/cooling/secrets/grafana_admin_password:/run/secrets/grafana_admin_password:ro
+      - ./grafana/provisioning/dashboards/dashboards.yaml:/etc/grafana/provisioning/dashboards/homeaway.yaml:ro
+      - ./grafana/provisioning/datasources/victoriametrics.yaml:/etc/grafana/provisioning/datasources/homeaway.yaml:ro
+      - ./grafana/dashboards/sensordash.json:/etc/grafana/dashboards/sensordash.json:ro
+      - ./grafana/dashboards/cooling-systems.json:/etc/grafana/dashboards/cooling-systems.json:ro
+      - ./grafana/dashboards/reporting-summary.json:/etc/grafana/dashboards/reporting-summary.json:ro
+      - ./grafana/dashboards/electrical.json:/etc/grafana/dashboards/electrical.json:ro
+      - ./grafana/dashboards/events.json:/etc/grafana/dashboards/events.json:ro
+    networks: [cooling-private]
+
+  telemetry-ingest:
+    build:
+      context: ./ingest
+    restart: unless-stopped
+    depends_on: [victoria-metrics]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    volumes:
+      - ./data/cooling/secrets/telemetry:/run/tls:ro
+    networks: [cooling-private]
+
+  gateway:
+    image: caddy:2.11.7-alpine
+    restart: unless-stopped
+    depends_on: [grafana, telemetry-ingest]
+    environment:
+      COOLING_TLS_NAME: "${COOLING_TLS_NAME:?Set COOLING_TLS_NAME}"
+      COOLING_BIND_IP: "${COOLING_BIND_IP:?Set COOLING_BIND_IP}"
+    ports:
+      - "${COOLING_BIND_IP:?Set COOLING_BIND_IP}:${COOLING_HTTPS_PORT:?Set COOLING_HTTPS_PORT}:8443/tcp"
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    volumes:
+      - ./deploy/cooling/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./data/cooling/secrets/telemetry/ca.crt:/run/telemetry-ca.crt:ro
+      - cooling-caddy-data:/data
+      - cooling-caddy-config:/config
+    networks: [cooling-public, cooling-private]
+
+networks:
+  cooling-private:
+    internal: true
+  cooling-public:
+    driver: bridge
+
+volumes:
+  cooling-metrics:
+  cooling-grafana:
+  cooling-caddy-data:
+  cooling-caddy-config:
