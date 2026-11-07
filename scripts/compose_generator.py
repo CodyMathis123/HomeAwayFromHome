@@ -108,6 +108,16 @@ def render_caddy(*, cooling: bool, portal: bool = False) -> str:
             "  }",
             "",
         ]
+    else:
+        parts += [
+            "  handle /portal {",
+            '    respond "Portal not installed" 404',
+            "  }",
+            "  handle_path /portal/* {",
+            '    respond "Portal not installed" 404',
+            "  }",
+            "",
+        ]
     parts += [
         "  handle {",
         "    reverse_proxy grafana:3000",
