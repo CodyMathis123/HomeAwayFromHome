@@ -6,7 +6,7 @@
  
 ## Modular Linux installation (prototype)
 
-A separate design and **cooling-only** Compose proof of concept demonstrates
+An isolated, component-aware Linux monitoring prototype demonstrates
 how Windows SensorDash historical telemetry could run on an ordinary Linux
 host without Pi-hole, WireGuard, accounts or remote PC management.
 It does **not** modify the existing HomeAway Pi or replace its deployment.
@@ -14,6 +14,7 @@ It does **not** modify the existing HomeAway Pi or replace its deployment.
 - [Component catalog and packaging architecture](docs/MODULAR-ARCHITECTURE.md)
 - [Feature selection, dependency resolution and safety boundaries](docs/COMPONENT-SELECTION.md)
 - [Linux host monitoring and generated Compose](docs/LINUX-HOST-AND-COMPOSE.md)
+- [Optional read-only diagnostics and authenticated component-aware Portal](docs/MODULAR-DIAGNOSTICS-PORTAL.md)
 - [Cooling-only proof of concept and acceptance checklist](docs/COOLING-STANDALONE.md)
 - [Portable/.deb release packaging and real Linux CI](docs/COOLING-RELEASES.md)
 
