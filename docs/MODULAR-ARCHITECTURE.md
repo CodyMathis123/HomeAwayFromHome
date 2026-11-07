@@ -33,7 +33,9 @@ runtime for the initial Linux implementation.
 - **Manifest first:** machine-readable draft at
   [deploy/components/catalog.json](../deploy/components/catalog.json) declares
   IDs, required and suggested dependencies, host requirements and status.
-  It is not yet an executable dependency resolver.
+  It is now validated by an executable, read-only dependency resolver
+  (`scripts/components.py`); only the explicitly tested cooling bundle
+  has an installer/deployment mapping. Planned features cannot be installed.
 
 ### Suggested feature bundles
 
@@ -156,6 +158,18 @@ intentionally creates separate storage and a separate Caddy local CA.
 - Can component additions/upgrades be safely applied to an existing Pi
   while retaining the historical VictoriaMetrics/Grafana data?
 - What is the stable long-term API from SensorDash to optional backends?
+
+## Component selection and dependency resolution
+
+The release CLI now supports `homeaway-cooling components` and
+`homeaway-cooling plan --components cooling-monitoring`. It shows implicit
+`metrics-storage` without duplicating VictoriaMetrics, keeps optional
+recommendations unselected, and rejects unknown, cyclic, conflicted or
+not-yet-deployable combinations. `--design` produces hypothetical dependency
+plans but never authorizes an installation. The selected feature IDs are
+recorded at initialization and checked against the current Compose service
+list before running Docker; no feature changes are made by editing the
+manifest alone. See [Component Selection](COMPONENT-SELECTION.md).
 
 ## Experimental package/release validation
 
