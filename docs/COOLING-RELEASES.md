@@ -7,7 +7,7 @@ runtime-integration milestone, not a supported production release.
 
 One allowlisted payload (Python ingest service, Compose definitions,
 Caddy configuration, VictoriaMetrics scrape configuration, provisioned
-Grafana dashboards, and operator CLI) produces:
+Grafana dashboards, component catalog/resolver, and operator CLI) produces:
 
 - `homeaway-cooling_0.1.0_linux-portable.tar.gz`
 - `homeaway-cooling_0.1.0_all.deb`
@@ -52,12 +52,19 @@ use a clean Linux test machine:
 ```bash
 sudo apt install ./homeaway-cooling_0.1.0_all.deb
 homeaway-cooling version
-sudo homeaway-cooling plan
-sudo homeaway-cooling init --bind-ip 192.168.1.50 --https-port 9443
+sudo homeaway-cooling components
+sudo homeaway-cooling plan --components cooling-monitoring
+sudo homeaway-cooling init --components cooling-monitoring --bind-ip 192.168.1.50 --https-port 9443
 sudo homeaway-cooling plan
 sudo homeaway-cooling start
 sudo homeaway-cooling status
 ```
+
+Feature selection is resolved before initialization: cooling-monitoring
+implicitly requires shared metrics-storage, and other components remain
+planned. `homeaway-cooling plan --components dns-metrics --design` provides
+a hypothetical, read-only dependency preview, while attempts to install
+planned components are rejected. See [Component Selection](COMPONENT-SELECTION.md).
 
 The bootstrap and start commands require a real interactive terminal and
 typed confirmation. The Caddy frontend uses a **private** CA; explicitly trust
@@ -88,9 +95,11 @@ the tarball. No package-manager scripts run.
 runs on disposable GitHub-hosted Ubuntu on **x86-64 and ARM64**:
 
 1. Builds and verifies both package types, hashes and the strict release
-   allowlist.
+   allowlist, component catalog and resolver.
 2. Installs the newly built Debian package; asserts **no state, containers or
-   listeners** were created by the package installation.
+   listeners** were created by the package installation. Resolves the cooling
+   bundle and shared metrics dependency, checks design-only DNS/VPN plans,
+   and verifies unsupported selections fail before initialization.
 3. Bootstraps fresh test-only credentials through the interactive guard in a
    pseudo-terminal, validates the exact four-service Compose graph and starts
    the installed backend.
