@@ -43,25 +43,25 @@ with the household compose.yaml; they are intentionally independent.
 
 1. Review the read-only bootstrap plan:
 
-   \`\`\`bash
+   ```bash
    python3 scripts/init-cooling-standalone.py --plan
-   \`\`\`
+   ```
 
 2. Generate local credentials ONCE, choosing the host's current LAN IPv4.
    Default port 9443 is intentionally separate from your full Pi port 443:
 
-   \`\`\`bash
+   ```bash
    sudo python3 scripts/init-cooling-standalone.py \
      --init --bind-ip 192.168.1.50 --https-port 9443
-   \`\`\`
+   ```
 
-   Optionally add \`--tls-name cooling.example.lan\` if that DNS name already
+   Optionally add `--tls-name cooling.example.lan` if that DNS name already
    resolves correctly for clients. Otherwise an IP-address certificate is
    issued. No system DNS configuration is created by the installer.
 
    The init script requires interactive typed confirmation; it NEVER
    overwrites existing secrets, starts containers or configures the router.
-   It creates \`deploy/cooling/.env\` and \`data/cooling/secrets/\` with
+   It creates `deploy/cooling/.env` and `data/cooling/secrets/` with
    restricted file ownership for container users (Grafana UID 472, ingester
    UID 65534). Back up these credentials securely. If initialization fails
    partway through, inspect the partially created state instead of rerunning
@@ -69,7 +69,7 @@ with the household compose.yaml; they are intentionally independent.
 
 3. Validate the isolated Compose project, then start deliberately:
 
-   \`\`\`bash
+   ```bash
    sudo docker compose --env-file deploy/cooling/.env \
      -f compose.cooling-only.yaml config -q
    sudo docker compose --env-file deploy/cooling/.env \
@@ -78,20 +78,20 @@ with the household compose.yaml; they are intentionally independent.
      -f compose.cooling-only.yaml up -d --build
    sudo docker compose --env-file deploy/cooling/.env \
      -f compose.cooling-only.yaml ps
-   \`\`\`
+   ```
 
    Review that the services are ONLY victoria-metrics, grafana,
-   telemetry-ingest and gateway before \`up\`.
+   telemetry-ingest and gateway before `up`.
 
 4. The gateway generates its own public root CA when it first starts.
    After it is running, export ONLY that public certificate (not the key):
 
-   \`\`\`bash
+   ```bash
    cid="$(sudo docker compose --env-file deploy/cooling/.env \
      -f compose.cooling-only.yaml ps -q gateway)"
    sudo docker cp \
-     "$cid:/data/caddy/pki/authorities/local/root.crt" ./cooling-root.crt
-   \`\`\`
+     "$cid:/data/caddy/pki/authorities/local/root.crt" data/cooling/caddy-root.crt
+   ```
 
    Protect the Caddy Docker volume; it contains the local CA's private key.
    Compare certificate fingerprints and install the root certificate only
@@ -99,15 +99,15 @@ with the household compose.yaml; they are intentionally independent.
    option, or a reviewed Windows certificate-store import when using
    'Use Windows certificate trust'. Do not publish the private CA key.
 
-5. Open \`https://192.168.1.50:9443\` on a client which trusts the public
-   Caddy CA. Sign into Grafana as \`admin\`. Retrieve the generated
+5. Open `https://192.168.1.50:9443` on a client which trusts the public
+   Caddy CA. Sign into Grafana as `admin`. Retrieve the generated
    Grafana password locally with
-   \`sudo cat data/cooling/secrets/grafana_admin_password\`;
+   `sudo cat data/cooling/secrets/grafana_admin_password`;
    do not paste it into logs, tickets or screenshots.
 
 6. In **SensorDash → Settings → Pi telemetry export**, opt in to sending
-   data to \`https://192.168.1.50:9443/ingest\`. Configure the receiver bearer
-   token from \`sudo cat data/cooling/secrets/telemetry/token\` and the
+   data to `https://192.168.1.50:9443/ingest`. Configure the receiver bearer
+   token from `sudo cat data/cooling/secrets/telemetry/token` and the
    trusted public Caddy CA. No direct VictoriaMetrics port is exposed.
    Windows sensor identities and cooling bindings remain Windows-owned.
 
@@ -118,27 +118,27 @@ with the household compose.yaml; they are intentionally independent.
 
 ## Stopping without deleting data
 
-\`\`\`bash
+```bash
 sudo docker compose --env-file deploy/cooling/.env \
   -f compose.cooling-only.yaml down
-\`\`\`
+```
 
-\`down\` retains the named metrics, Grafana and Caddy volumes.
-**Do not use \`down -v\`** unless you have separately approved destruction of
+`down` retains the named metrics, Grafana and Caddy volumes.
+**Do not use `down -v`** unless you have separately approved destruction of
 historical data and the Caddy local CA.
 
-Persistent named volumes are owned by the \`homeaway-cooling\` Docker
-project, separate from HomeAway's original \`data/\` directories.
+Persistent named volumes are owned by the `homeaway-cooling` Docker
+project, separate from HomeAway's original `data/` directories.
 Backup and isolated restore of these volumes are not implemented in this
 proof of concept. Do not treat container recreation as disaster recovery.
 
 ## Acceptance checklist
 
-- \`config --services\` outputs exactly four expected services.
+- `config --services` outputs exactly four expected services.
 - No Docker ports published except the one selected HTTPS listener.
 - Pi-hole and WireGuard are neither installed nor required for scraping.
 - Grafana requires login and cannot be reached except via Caddy HTTPS.
-- Anonymous POST to \`/ingest\` is 401; malformed authorized metrics are 422;
+- Anonymous POST to `/ingest` is 401; malformed authorized metrics are 422;
   valid SensorDash telemetry is accepted.
 - Windows SensorDash fan curves still operate when the backend is down.
 - No credentials appear in CI, command previews, log output or Git.
