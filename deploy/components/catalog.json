@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "contract": "Design catalog; only cooling-monitoring has a runnable standalone proof of concept. No dependency resolver is shipped.",
+  "contract": "Validated dependency catalog. Only cooling-monitoring + its shared metrics-storage capability are currently wired to a deployable standalone bundle; all other choices are design-only.",
   "components": [
     {
       "id": "cooling-monitoring",
