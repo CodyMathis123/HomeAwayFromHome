@@ -15,6 +15,8 @@ It does **not** modify the existing HomeAway Pi or replace its deployment.
 - [Feature selection, dependency resolution and safety boundaries](docs/COMPONENT-SELECTION.md)
 - [Linux host monitoring and generated Compose](docs/LINUX-HOST-AND-COMPOSE.md)
 - [Optional read-only diagnostics and authenticated component-aware Portal](docs/MODULAR-DIAGNOSTICS-PORTAL.md)
+- [Encrypted backups and reversible optional component changes](docs/MODULAR-LIFECYCLE.md)
+- [Developer architecture and module boundaries](docs/DEVELOPER-ARCHITECTURE.md)
 - [Cooling-only proof of concept and acceptance checklist](docs/COOLING-STANDALONE.md)
 - [Portable/.deb release packaging and real Linux CI](docs/COOLING-RELEASES.md)
 
