@@ -12,6 +12,7 @@ on:
       - 'scripts/cooling-stack.py'
       - 'scripts/build-cooling-release.py'
       - 'scripts/tests/test_component_lifecycle.py'
+      - 'scripts/tests/test_developer_boundaries.py'
       - 'scripts/compose_generator.py'
       - 'deploy/components/**'
       - 'portal/modular.py'
@@ -34,6 +35,7 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y age
           python3 -m unittest discover -s scripts/tests -p test_component_lifecycle.py -v
+          python3 -m unittest discover -s scripts/tests -p test_developer_boundaries.py -v
           python3 -m compileall -q scripts/backup_service.py scripts/reconfigure_service.py scripts/component_changes.py
 
       - name: Install modular package and start minimum cooling backend
