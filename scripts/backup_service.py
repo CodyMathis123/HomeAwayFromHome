@@ -78,6 +78,7 @@ def capture(config: Path, state: Path, selection: tuple[str, ...],
             tar = subprocess.Popen(archive, stdout=subprocess.PIPE,
                                    stderr=subprocess.DEVNULL)
             assert tar.stdout is not None
+            cipher = None
             try:
                 cipher = subprocess.Popen(["age", "-r", recipient],
                                           stdin=tar.stdout, stdout=output,
@@ -90,6 +91,9 @@ def capture(config: Path, state: Path, selection: tuple[str, ...],
                         "Encrypted snapshot failed; container or age command returned error."
                     )
             finally:
+                if cipher is not None and cipher.poll() is None:
+                    cipher.kill()
+                    cipher.wait()
                 if tar.poll() is None:
                     tar.kill()
                     tar.wait()
@@ -113,7 +117,8 @@ def capture(config: Path, state: Path, selection: tuple[str, ...],
             os.chmod(metadata, 0o600)
             json.dump(manifest, file, indent=2, sort_keys=True)
             file.write("\n")
-    except Exception as error:
+    except BaseException as error:
+        # Also restart the scoped monitoring project after Ctrl+C.
         snapshot_error = error
         temporary.unlink(missing_ok=True)
         destination.unlink(missing_ok=True)
