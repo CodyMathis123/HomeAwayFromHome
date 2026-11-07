@@ -1,6 +1,10 @@
 # Cooling-only Linux backend — isolated proof of concept
 
 **Status: prototype on a review branch. Not production validated.**
+This document preserves the original standalone Compose proof of concept.
+For the package-managed component-selected installation, prefer
+[Linux Host and Compose](LINUX-HOST-AND-COMPOSE.md), which uses generated
+Compose/Caddy/scrape definitions rather than the static cooling-only file.
 The CI package, HTTPS and ingestion tests pass on GitHub-hosted x86-64 and
 ARM64 Linux; no real Raspberry Pi or Windows collector has been tested.
 For the package-managed variant, see [Cooling Releases](COOLING-RELEASES.md).
