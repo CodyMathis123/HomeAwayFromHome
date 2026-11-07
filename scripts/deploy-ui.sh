@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 # Targeted, operator-triggered UI deployment for an already-running HomeAway Pi.
-# Does NOT pull images or restart Pi-hole, WireGuard, Grafana or other services.
+# Does NOT pull images or restart Pi-hole, WireGuard or unrelated services.
 set -euo pipefail
 
 usage() {
   cat >&2 <<'EOF'
-Usage: bash scripts/deploy-ui.sh --plan|--apply [--services both|portal|pc-control]
+Usage: bash scripts/deploy-ui.sh --plan|--apply [--services both|portal|pc-control|grafana]
 
   --plan         Read-only preflight. Shows last-fetched Production versions.
   --apply        Fetch and fast-forward Production, then build/reconcile only
-                 the selected already-running UI containers.
-  --services     Default both (portal and pc-control); one service is allowed.
+                 the selected already-running UI or Grafana containers.
+  --services     Default both (portal and pc-control); grafana targets dashboards.
 
 Run as your normal Pi login, not with sudo. Docker is called with sudo.
 This is NOT a DNS/VPN updater, backup tool or a Phase 2 host installer.
@@ -36,7 +36,7 @@ done
 [[ -n "$mode" ]] || { usage; exit 2; }
 case "$selection" in
   both) services=(portal pc-control) ;;
-  portal|pc-control) services=("$selection") ;;
+  portal|pc-control|grafana) services=("$selection") ;;
   *) usage; exit 2 ;;
 esac
 
