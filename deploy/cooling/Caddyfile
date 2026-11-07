@@ -2,6 +2,10 @@
 # Browsers and Windows clients must explicitly trust the PUBLIC Caddy root CA.
 {
   admin off
+  # IP-address clients typically omit SNI. Select the configured certificate
+  # while still enforcing a fully verified HTTPS connection.
+  default_sni {$COOLING_TLS_NAME}
+  skip_install_trust
 }
 
 https://{$COOLING_TLS_NAME}:8443 {
