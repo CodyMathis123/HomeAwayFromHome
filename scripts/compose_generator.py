@@ -24,10 +24,7 @@ DASHBOARDS = {
     "linux-host-monitoring": ("linux-host.json",),
 }
 BASE_SERVICES = frozenset({"victoria-metrics", "grafana", "gateway"})
-GENERATED = (
-    "compose.generated.json", "scrape.generated.yml",
-    "Caddyfile.generated", "dashboards.generated.yml",
-)
+GENERATED = ("compose.generated.json", "scrape.generated.yml", "Caddyfile.generated")
 NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9.-]{0,252}$")
 
 
@@ -131,25 +128,6 @@ def render_caddy(*, cooling: bool, portal: bool = False) -> str:
     return "\n".join(parts)
 
 
-def render_dashboard_provider() -> str:
-    # Standalone modules own their dashboard selection. When a feature is
-    # removed, drop only the provisioned dashboard definition from Grafana;
-    # VictoriaMetrics history and Grafana user state are never deleted.
-    return (
-        "apiVersion: 1\n"
-        "providers:\n"
-        "  - name: HomeAway Managed Dashboards\n"
-        "    orgId: 1\n"
-        "    folder: HomeAway\n"
-        "    type: file\n"
-        "    disableDeletion: false\n"
-        "    updateIntervalSeconds: 10\n"
-        "    allowUiUpdates: false\n"
-        "    options:\n"
-        "      path: /etc/grafana/dashboards\n"
-    )
-
-
 def render_scrape(*, host: bool) -> str:
     result = [
         "global:",
@@ -185,7 +163,7 @@ def render(plan: dict, env_file: Path, state: Path, root: Path = ROOT) -> dict[s
     grafana_volumes = [
         "cooling-grafana:/var/lib/grafana",
         _mount(state / "secrets/grafana_admin_password", "/run/secrets/grafana_admin_password"),
-        _mount(generated / "dashboards.generated.yml", "/etc/grafana/provisioning/dashboards/homeaway.yaml"),
+        _mount(root / "grafana/provisioning/dashboards/modular.yaml", "/etc/grafana/provisioning/dashboards/homeaway.yaml"),
         _mount(root / "grafana/provisioning/datasources/victoriametrics.yaml", "/etc/grafana/provisioning/datasources/homeaway.yaml"),
     ]
     for cid in sorted(selected):
@@ -335,7 +313,6 @@ def render(plan: dict, env_file: Path, state: Path, root: Path = ROOT) -> dict[s
         "compose.generated.json": json.dumps(project, indent=2, sort_keys=True) + "\n",
         "scrape.generated.yml": render_scrape(host=host),
         "Caddyfile.generated": render_caddy(cooling=cooling, portal=portal),
-        "dashboards.generated.yml": render_dashboard_provider(),
     }
 
 
