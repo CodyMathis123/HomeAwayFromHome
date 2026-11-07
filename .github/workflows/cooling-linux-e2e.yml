@@ -16,20 +16,6 @@ on:
       - 'scripts/integration-cooling-linux.py'
       - 'ingest/**'
       - 'grafana/**'
-  push:
-    branches: ['design/modular-components-cooling-standalone']
-    paths:
-      - '.github/workflows/cooling-linux-e2e.yml'
-      - 'compose.cooling-only.yaml'
-      - 'deploy/cooling/**'
-      - 'deploy/components/**'
-      - 'scripts/init-cooling-standalone.py'
-      - 'scripts/cooling-stack.py'
-      - 'scripts/build-cooling-release.py'
-      - 'scripts/verify-cooling-package.py'
-      - 'scripts/integration-cooling-linux.py'
-      - 'ingest/**'
-      - 'grafana/**'
   workflow_dispatch:
 
 permissions:
@@ -37,8 +23,12 @@ permissions:
 
 jobs:
   package-and-runtime:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -83,6 +73,21 @@ jobs:
             sudo script -q -e -c 'homeaway-cooling start' /dev/null
           sudo python3 scripts/integration-cooling-linux.py --check-existing
 
+      - name: Upgrade Debian release without losing data or restarting containers
+        run: |
+          before="$(sudo docker ps -q --filter label=com.docker.compose.project=homeaway-cooling | sort)"
+          test -n "$before"
+          python3 scripts/build-cooling-release.py --version 0.1.1 --output dist/upgrade
+          python3 scripts/verify-cooling-package.py --version 0.1.1 --dist dist/upgrade
+          sudo dpkg -i dist/upgrade/homeaway-cooling_0.1.1_all.deb
+          test "$(homeaway-cooling version)" = "0.1.1"
+          after="$(sudo docker ps -q --filter label=com.docker.compose.project=homeaway-cooling | sort)"
+          test "$before" = "$after"
+          sudo test -s /etc/homeaway-cooling/cooling.env
+          sudo test -s /var/lib/homeaway-cooling/secrets/telemetry/token
+          sudo python3 scripts/integration-cooling-linux.py --check-existing
+          echo 'PASS: package upgrade preserves running containers, credentials and metric history'
+
       - name: Verify Debian remove leaves installed state intact
         run: |
           printf 'STOP COOLING\n' |
@@ -96,7 +101,7 @@ jobs:
       - name: Upload portable and Debian artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: homeaway-cooling-linux-0.1.0
+          name: homeaway-cooling-linux-0.1.0-${{ runner.arch }}
           path: |
             dist/homeaway-cooling_0.1.0_linux-portable.tar.gz
             dist/homeaway-cooling_0.1.0_all.deb
