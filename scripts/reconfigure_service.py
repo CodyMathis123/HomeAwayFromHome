@@ -139,7 +139,7 @@ def change(config: Path, state: Path, root: Path, catalog: dict[str, dict],
         listed = set(run(docker_command("config", "--services"), capture=True).stdout.splitlines())
         if listed != set(target["services"]):
             raise SelectionError("Generated Compose graph differs from resolved target.")
-        run(docker_command("up", "-d", "--build", "--remove-orphans"))
+        run(docker_command("up", "-d", "--build", "--force-recreate", "--remove-orphans"))
         deadline = time.monotonic() + 75
         while running_services(docker_command, run) != set(target["services"]):
             if time.monotonic() >= deadline:
@@ -149,7 +149,7 @@ def change(config: Path, state: Path, root: Path, catalog: dict[str, dict],
         try:
             replace_file(config, old_config)
             compose_generator.write(prior, state)
-            run(docker_command("up", "-d", "--build", "--remove-orphans"))
+            run(docker_command("up", "-d", "--build", "--force-recreate", "--remove-orphans"))
             if running_services(docker_command, run) != set(before["services"]):
                 raise RuntimeError("Old services did not return to running.")
         except Exception as rollback_error:
