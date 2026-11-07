@@ -21,7 +21,7 @@ from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 HOST = "ci-synthetic-cooling"
-METRIC = f'sensordash_reading{{host="{HOST}"}}'
+METRIC = f'sensordash_reading_value{{host="{HOST}"}}'
 
 
 def docker(root: Path, env: Path, *command: str) -> list[str]:
