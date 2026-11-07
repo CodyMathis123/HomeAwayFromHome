@@ -83,7 +83,7 @@ def portable_wrapper() -> str:
         "#!/bin/sh\n"
         "set -eu\n"
         'HERE="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"\n'
-        'exec python3 "$HERE/scripts/cooling-stack.py" "$@"\n'
+        'exec python3 -B "$HERE/scripts/cooling-stack.py" "$@"\n'
     )
 
 
@@ -91,7 +91,7 @@ def deb_wrapper() -> str:
     return (
         "#!/bin/sh\n"
         "set -eu\n"
-        'exec /usr/bin/python3 /opt/homeaway-cooling/scripts/cooling-stack.py "$@"\n'
+        'exec /usr/bin/python3 -B /opt/homeaway-cooling/scripts/cooling-stack.py "$@"\n'
     )
 
 
