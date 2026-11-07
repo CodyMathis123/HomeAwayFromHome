@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "contract": "Executable component catalog. Cooling and Linux host metrics can be selected independently or together; unimplemented features are design-only. Shared UI and metrics capabilities are automatic.",
+  "contract": "Executable catalog: cooling and Linux host monitoring can each be installed with optional monitoring diagnostics and component-aware portal; no other components deployable.",
   "components": [
     {
       "id": "cooling-monitoring",
@@ -176,12 +176,13 @@
     {
       "id": "home-portal",
       "label": "Read-only aggregate portal",
-      "status": "planned",
-      "requires": [],
+      "status": "prototype",
+      "requires": [
+        "monitoring-diagnostics"
+      ],
       "suggests": [
         "cooling-monitoring",
-        "dns-filtering",
-        "vpn"
+        "linux-host-monitoring"
       ],
       "services": [
         "portal"
@@ -189,7 +190,7 @@
       "host_requirements": [
         "HTTPS gateway"
       ],
-      "notes": "Requires optional-component-aware navigation before release."
+      "notes": "Minimal authenticated component-aware status portal for monitoring installations, separate from full-stack household portal; no DNS, VPN or PC controls."
     },
     {
       "id": "observability-ui",
@@ -210,6 +211,25 @@
       ],
       "notes": "Shared capability for cooling-only, Linux host-only, or combined monitoring. Grafana login always required.",
       "selectable": false
+    },
+    {
+      "id": "monitoring-diagnostics",
+      "label": "Read-only monitoring diagnostics",
+      "status": "prototype",
+      "requires": [
+        "observability-ui"
+      ],
+      "suggests": [
+        "home-portal"
+      ],
+      "services": [
+        "metrics-diagnostics"
+      ],
+      "host_requirements": [
+        "Docker Engine",
+        "Docker Compose v2"
+      ],
+      "notes": "Static allowlisted queries for selected metrics sources only; no certificate scanner or Pi-hole/VPN requirements."
     }
   ]
 }
