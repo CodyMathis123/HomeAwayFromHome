@@ -63,7 +63,7 @@ def settings(env_file: Path, state: Path) -> dict:
     return {"ip": str(ip), "port": port, "hostname": hostname}
 
 
-def render_caddy(*, cooling: bool) -> str:
+def render_caddy(*, cooling: bool, portal: bool = False) -> str:
     parts = [
         "{",
         "  admin off",
@@ -95,6 +95,16 @@ def render_caddy(*, cooling: bool) -> str:
         parts += [
             "  handle /ingest {",
             '    respond "Telemetry ingestion not installed" 404',
+            "  }",
+            "",
+        ]
+    if portal:
+        parts += [
+            "  handle /portal {",
+            "    redir /portal/ 308",
+            "  }",
+            "  handle_path /portal/* {",
+            "    reverse_proxy portal:8080",
             "  }",
             "",
         ]
@@ -133,7 +143,10 @@ def render(plan: dict, env_file: Path, state: Path, root: Path = ROOT) -> dict[s
     selected = set(plan["selected_features"])
     cooling = "cooling-monitoring" in selected
     host = "linux-host-monitoring" in selected
-    if not (cooling or host) or selected - set(DASHBOARDS):
+    diagnostics = "monitoring-diagnostics" in plan["component_order"]
+    portal = "home-portal" in selected
+    allowed = set(DASHBOARDS) | {"monitoring-diagnostics", "home-portal"}
+    if not (cooling or host) or selected - allowed:
         raise SelectionError("Selected features have no implemented Compose mapping.")
     opts = settings(env_file, state)
     generated = state / "generated"
@@ -182,7 +195,7 @@ def render(plan: dict, env_file: Path, state: Path, root: Path = ROOT) -> dict[s
     gateway = {
         "image": "caddy:2.11.7-alpine",
         "restart": "unless-stopped",
-        "depends_on": ["grafana"] + (["telemetry-ingest"] if cooling else []),
+        "depends_on": ["grafana"] + (["telemetry-ingest"] if cooling else []) + (["portal"] if portal else []),
         "environment": {
             "COOLING_TLS_NAME": opts["hostname"],
             "COOLING_BIND_IP": opts["ip"],
@@ -235,6 +248,40 @@ def render(plan: dict, env_file: Path, state: Path, root: Path = ROOT) -> dict[s
             ],
             "networks": ["cooling-private"],
         }
+    if diagnostics:
+        services["metrics-diagnostics"] = {
+            "build": {"context": str(root / "monitoring/diagnostics")},
+            "restart": "unless-stopped",
+            "depends_on": ["victoria-metrics"],
+            "environment": {
+                "HOMEAWAY_DIAGNOSTICS_MODE": "modular",
+                "HOMEAWAY_SELECTED_FEATURES": ",".join(sorted(selected)),
+            },
+            "read_only": True,
+            "cap_drop": ["ALL"],
+            "security_opt": ["no-new-privileges:true"],
+            "networks": ["cooling-private"],
+        }
+    if portal:
+        services["portal"] = {
+            "build": {
+                "context": str(root / "portal"),
+                "dockerfile": "Dockerfile.modular",
+            },
+            "restart": "unless-stopped",
+            "depends_on": ["metrics-diagnostics"],
+            "environment": {
+                "HOMEAWAY_SELECTED_FEATURES": ",".join(sorted(set(plan["component_order"]) & allowed)),
+                "HOMEAWAY_PORTAL_PASSWORD_FILE": "/run/secrets/portal_password",
+            },
+            "volumes": [
+                _mount(state / "secrets/portal_password", "/run/secrets/portal_password"),
+            ],
+            "read_only": True,
+            "cap_drop": ["ALL"],
+            "security_opt": ["no-new-privileges:true"],
+            "networks": ["cooling-private"],
+        }
     if set(services) != set(plan["services"]):
         raise SelectionError(
             f"Generated service graph mismatch: expected {plan['services']}, "
@@ -255,7 +302,7 @@ def render(plan: dict, env_file: Path, state: Path, root: Path = ROOT) -> dict[s
     return {
         "compose.generated.json": json.dumps(project, indent=2, sort_keys=True) + "\n",
         "scrape.generated.yml": render_scrape(host=host),
-        "Caddyfile.generated": render_caddy(cooling=cooling),
+        "Caddyfile.generated": render_caddy(cooling=cooling, portal=portal),
     }
 
 
