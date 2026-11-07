@@ -22,8 +22,9 @@ post-install scripts and does not start any service.
 
 `Architecture: all` applies to the package's architecture-neutral Python
 and configuration assets, **not** a claim of verified CPU support. Containers
-still need images supporting the host's architecture. CI currently exercises
-Linux amd64; Raspberry Pi arm64 must be tested separately.
+still need images supporting the host's architecture. CI now exercises both x86-64 and ARM64 GitHub-hosted Linux runners.
+That is genuine ARM64 container validation, but not yet a physical Raspberry
+Pi hardware acceptance test.
 
 ## Installed layout
 
@@ -84,7 +85,7 @@ the tarball. No package-manager scripts run.
 ## CI test scope
 
 [Cooling package and Linux end-to-end](../.github/workflows/cooling-linux-e2e.yml)
-runs on disposable GitHub-hosted Ubuntu:
+runs on disposable GitHub-hosted Ubuntu on **x86-64 and ARM64**:
 
 1. Builds and verifies both package types, hashes and the strict release
    allowlist.
@@ -101,14 +102,17 @@ runs on disposable GitHub-hosted Ubuntu:
    query. Confirms the SensorDash dashboard was provisioned.
 7. Stops/restarts only cooling containers and re-queries the **earlier** sample
    to verify named-volume persistence.
-8. Removes the Debian application package and verifies runtime config/secrets
-   remain. CI-only data is destroyed when the ephemeral runner exits.
-9. Publishes the two packages and checksums as short-lived CI artifacts.
+8. Installs an updated 0.1.1 package over the 0.1.0 test install, asserts
+   no container was recreated or restarted, and queries the earlier sample.
+   This is a same-payload package upgrade check, **not** a schema-migration test.
+9. Removes the Debian package and verifies runtime config/secrets remain.
+   CI-only state is destroyed when the ephemeral runner exits.
+10. Publishes the original 0.1.0 packages and checksums as short-lived,
+    architecture-labeled CI artifacts.
 
 This validates Linux packaging, networking, gateway TLS, auth and the actual
 telemetry query path. It **does not** prove Windows MSI/collector compatibility,
-fan-control fail-safe continuity, production DNS/VPN behavior, Pi ARM64 image
-compatibility, certificate rotation, upgrades involving schema migrations, or
+fan-control fail-safe continuity, production DNS/VPN behavior, physical Pi hardware compatibility, certificate rotation, upgrades involving schema migrations, or
 full backup/restore. Those remain explicit acceptance gates.
 
 No workflow deploys to a home Pi, publishes a package repository, opens
