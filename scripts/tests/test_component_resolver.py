@@ -68,6 +68,12 @@ class ComponentResolverTests(unittest.TestCase):
         self.assertIn("dns-metrics", plan["planned_components"])
         self.assertIn("vpn-metrics", plan["planned_components"])
 
+    def test_linux_host_monitoring_requires_shared_storage(self):
+        plan = components.resolve(self.catalog, ("linux-host-monitoring",), design=True)
+        self.assertEqual(plan["automatically_added"], ["metrics-storage"])
+        self.assertEqual(plan["services"].count("victoria-metrics"), 1)
+        self.assertFalse(plan["deployable"])
+
     def test_plan_never_installs_suggested_modules(self):
         plan = components.resolve(self.catalog, ("dns-filtering",), design=True)
         self.assertIn("dns-metrics", plan["suggestions_not_selected"])
