@@ -17,7 +17,13 @@ STATUSES = {"prototype", "planned"}
 DEPLOYABLE_BUNDLES = {
     frozenset({"cooling-monitoring"}): frozenset(
         {"gateway", "grafana", "telemetry-ingest", "victoria-metrics"}
-    )
+    ),
+    frozenset({"linux-host-monitoring"}): frozenset(
+        {"gateway", "grafana", "node-exporter", "victoria-metrics"}
+    ),
+    frozenset({"cooling-monitoring", "linux-host-monitoring"}): frozenset(
+        {"gateway", "grafana", "node-exporter", "telemetry-ingest", "victoria-metrics"}
+    ),
 }
 
 
@@ -169,7 +175,7 @@ def resolve(
         "suggestions_not_selected": suggested,
         "planned_components": unavailable,
         "deployable": deployable,
-        "deployment": "compose.cooling-only.yaml" if deployable else None,
+        "deployment": "compose.generated.json" if deployable else None,
     }
     if not deployable and not design:
         if unavailable:
