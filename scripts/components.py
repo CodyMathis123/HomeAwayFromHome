@@ -12,19 +12,36 @@ import re
 CATALOG = Path(__file__).resolve().parents[1] / "deploy/components/catalog.json"
 ID = re.compile(r"^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$")
 STATUSES = {"prototype", "planned"}
-# A resolver graph is not proof that a service is installable. This allowlist
-# is the actual, CI-tested Compose bundle supported by the current release.
-DEPLOYABLE_BUNDLES = {
-    frozenset({"cooling-monitoring"}): frozenset(
-        {"gateway", "grafana", "telemetry-ingest", "victoria-metrics"}
-    ),
-    frozenset({"linux-host-monitoring"}): frozenset(
-        {"gateway", "grafana", "node-exporter", "victoria-metrics"}
-    ),
-    frozenset({"cooling-monitoring", "linux-host-monitoring"}): frozenset(
-        {"gateway", "grafana", "node-exporter", "telemetry-ingest", "victoria-metrics"}
-    ),
+# Only reviewed modules may be converted to deployable Compose services.
+# Explicit expectations prevent a catalog edit from silently adding a
+# privileged service or pulling an unreviewed container into a release.
+MONITORING_FEATURES = frozenset({"cooling-monitoring", "linux-host-monitoring"})
+OPTIONAL_FEATURES = frozenset({"monitoring-diagnostics", "home-portal"})
+SUPPORTED_FEATURES = MONITORING_FEATURES | OPTIONAL_FEATURES
+SHARED_SERVICES = frozenset({"gateway", "grafana", "victoria-metrics"})
+FEATURE_SERVICES = {
+    "cooling-monitoring": frozenset({"telemetry-ingest"}),
+    "linux-host-monitoring": frozenset({"node-exporter"}),
+    "monitoring-diagnostics": frozenset({"metrics-diagnostics"}),
+    "home-portal": frozenset({"portal"}),
 }
+
+def _expected_services(closure: set[str], selected: set[str]) -> frozenset[str] | None:
+    if not selected & MONITORING_FEATURES:
+        return None
+    if not selected <= SUPPORTED_FEATURES:
+        return None
+    if not closure <= (SUPPORTED_FEATURES | {"metrics-storage", "observability-ui"}):
+        return None
+    expected = set(SHARED_SERVICES)
+    for feature in selected:
+        expected.update(FEATURE_SERVICES[feature])
+    # An optional portal can only be deployed with read-only diagnostics.
+    if "home-portal" in selected and "monitoring-diagnostics" not in closure:
+        return None
+    if "monitoring-diagnostics" in closure:
+        expected.update(FEATURE_SERVICES["monitoring-diagnostics"])
+    return frozenset(expected)
 
 
 class SelectionError(ValueError):
@@ -113,7 +130,7 @@ def describe(components: dict[str, dict]) -> list[dict]:
             "installable_now": (
                 item.get("selectable", True)
                 and item["status"] == "prototype"
-                and frozenset({cid}) in DEPLOYABLE_BUNDLES
+                and cid in SUPPORTED_FEATURES
             ),
             "requires": sorted(item["requires"]),
             "suggests": sorted(item["suggests"]),
@@ -163,8 +180,8 @@ def resolve(
         if cid not in seen and components[cid].get("selectable", True)
     })
     unavailable = sorted(cid for cid in closure if components[cid]["status"] != "prototype")
-    supported = DEPLOYABLE_BUNDLES.get(frozenset(requested))
-    deployable = not unavailable and supported == frozenset(services)
+    expected = _expected_services(set(closure), set(requested))
+    deployable = not unavailable and expected is not None and expected == frozenset(services)
     plan = {
         "schema_version": 1,
         "selected_features": list(requested),
