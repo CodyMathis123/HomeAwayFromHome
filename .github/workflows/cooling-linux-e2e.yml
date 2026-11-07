@@ -113,6 +113,14 @@ jobs:
             exit 1
           fi
 
+      - name: Validate generated Caddyfile before starting containers
+        run: |
+          sudo docker run --rm \
+            --env-file /etc/homeaway-cooling/cooling.env \
+            -v /var/lib/homeaway-cooling/generated/Caddyfile.generated:/etc/caddy/Caddyfile:ro \
+            caddy:2.11.7-alpine caddy adapt --config /etc/caddy/Caddyfile >/dev/null
+          echo 'PASS: generated HTTPS Caddyfile parses for selected components'
+
       - name: Boot released containers, verify actual HTTPS and ingestion
         run: |
           printf 'START MONITORING\n' |
