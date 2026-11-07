@@ -13,6 +13,9 @@ from components import (
     plan_json, plan_text, resolve,
 )
 import compose_generator
+import backup_service
+from component_changes import transition
+import reconfigure_service
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGED = ROOT == Path("/opt/homeaway-cooling")
@@ -94,11 +97,16 @@ def main(argv: list[str] | None = None) -> int:
     )
     p.add_argument("command", choices=(
         "version", "components", "plan", "init", "start", "status", "stop",
+        "change", "backup",
     ))
     p.add_argument("--components", metavar="IDS", help="Comma-separated user features.")
     p.add_argument("--design", action="store_true",
                    help="Read-only planning for future modules; never permits apply.")
     p.add_argument("--json", action="store_true", help="Structured components or plan output.")
+    p.add_argument("--apply", action="store_true", help="Explicitly apply backup/change actions.")
+    p.add_argument("--recipient", help="Age encryption recipient for private full-state backup.")
+    p.add_argument("--backup-file", type=Path,
+                   help="Recent full-state .age archive required to apply component changes.")
     p.add_argument("--bind-ip", help="Host LAN IPv4, required on first init.")
     p.add_argument("--tls-name", help="Client-facing IP/DNS name.")
     p.add_argument("--https-port", type=int, default=9443)
@@ -155,6 +163,66 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.design:
             raise SelectionError("--design is read-only and only valid with 'plan'.")
+        if args.apply and args.command not in {"backup", "change"}:
+            raise SelectionError("--apply only supports 'backup' and 'change'.")
+        if args.command == "change":
+            if installed is None or requested is None:
+                raise SelectionError("Change requires an installed selection and --components.")
+            old_plan, old_render = validate_saved(catalog, installed)
+            change_plan = transition(catalog, installed, requested)
+            stale = compose_generator.differences(old_render, STATE)
+            if stale:
+                raise SelectionError("Managed configuration differs; use normal plan/start first.")
+            if not args.apply:
+                if args.json:
+                    print(json.dumps(change_plan, indent=2, sort_keys=True))
+                else:
+                    print("READ-ONLY component change preview:")
+                    print(json.dumps(change_plan, indent=2, sort_keys=True))
+                    print("Apply requires a recent, verified age-encrypted backup.")
+                    print("Nothing has changed.")
+                return 0
+            if args.backup_file is None:
+                raise SelectionError(
+                    "Applying a component change requires --backup-file from "
+                    "a successful 'backup --apply' operation."
+                )
+            confirmation("APPLY COMPONENT CHANGE",
+                         "Updates only scoped monitoring containers. "
+                         "Retains all named volumes and secrets; brief downtime possible.")
+            with reconfigure_service.operation_lock(STATE):
+                result = reconfigure_service.change(
+                    CONFIG, STATE, ROOT, catalog, installed, requested,
+                    args.backup_file, docker, run,
+                )
+            print(json.dumps(result, indent=2, sort_keys=True))
+            return 0
+        if args.command == "backup":
+            old_plan, old_render = validate_saved(catalog, None)
+            stale = compose_generator.differences(old_render, STATE)
+            if stale:
+                raise SelectionError("Managed configuration differs; backup preflight refused.")
+            if not args.apply:
+                print("READ-ONLY backup plan: stop only this Compose project; ")
+                print("stream config, secrets, generated Compose, and four named volumes")
+                print("through age encryption. No plaintext backup file is created.")
+                print("All scoped containers are restarted after the capture.")
+                print("Requires: age recipient, docker, age CLI, and explicit --apply.")
+                return 0
+            if not args.recipient:
+                raise SelectionError("Backup requires --recipient age1... and --apply.")
+            if reconfigure_service.running_services(docker, run) != set(old_plan["services"]):
+                raise SelectionError("All selected monitoring services must be running.")
+            confirmation("BACKUP MONITORING",
+                         "Temporarily stops the selected monitoring containers to "
+                         "make a consistent encrypted backup of config and all volumes.")
+            with reconfigure_service.operation_lock(STATE):
+                archive = backup_service.capture(
+                    CONFIG, STATE, installed, args.recipient, docker, run,
+                )
+            print(f"Age-encrypted full-state backup saved: {archive}")
+            print("Keep the corresponding .json checksum manifest and decryption key safe.")
+            return 0
         if args.command == "init":
             selection = requested or DEFAULT_SELECTION
             plan = resolve(catalog, selection)
@@ -213,7 +281,8 @@ def main(argv: list[str] | None = None) -> int:
             verify_compose(plan)
             run(docker("down"))
         return 0
-    except (SelectionError, ValueError, OSError, subprocess.CalledProcessError) as exc:
+    except (SelectionError, ValueError, RuntimeError, OSError,
+            subprocess.CalledProcessError) as exc:
         return fail(str(exc))
 
 
