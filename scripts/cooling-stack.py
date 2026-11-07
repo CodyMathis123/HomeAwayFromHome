@@ -135,6 +135,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "plan":
             selection = requested or installed or DEFAULT_SELECTION
             plan = resolve(catalog, selection, design=args.design)
+            if installed is not None and selection == installed and not args.design:
+                validate_existing(catalog, selection)
             if args.json:
                 print(plan_json({
                     **plan,
