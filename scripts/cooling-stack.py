@@ -191,6 +191,8 @@ def main(argv: list[str] | None = None) -> int:
                          "Updates only scoped monitoring containers. "
                          "Retains all named volumes and secrets; brief downtime possible.")
             with reconfigure_service.operation_lock(STATE):
+                if configured_selection() != installed:
+                    raise SelectionError("Installed selection changed while awaiting confirmation.")
                 result = reconfigure_service.change(
                     CONFIG, STATE, ROOT, catalog, installed, requested,
                     args.backup_file, docker, run,
@@ -211,12 +213,15 @@ def main(argv: list[str] | None = None) -> int:
                 return 0
             if not args.recipient:
                 raise SelectionError("Backup requires --recipient age1... and --apply.")
-            if reconfigure_service.running_services(docker, run) != set(old_plan["services"]):
-                raise SelectionError("All selected monitoring services must be running.")
             confirmation("BACKUP MONITORING",
                          "Temporarily stops the selected monitoring containers to "
                          "make a consistent encrypted backup of config and all volumes.")
             with reconfigure_service.operation_lock(STATE):
+                locked_plan, locked_render = validate_saved(catalog, installed)
+                if compose_generator.differences(locked_render, STATE):
+                    raise SelectionError("Configuration changed while awaiting backup confirmation.")
+                if reconfigure_service.running_services(docker, run) != set(locked_plan["services"]):
+                    raise SelectionError("All selected monitoring services must be running.")
                 archive = backup_service.capture(
                     CONFIG, STATE, installed, args.recipient, docker, run,
                 )
@@ -264,27 +269,32 @@ def main(argv: list[str] | None = None) -> int:
                 "HTTPS binds to the configured local IP. "
                 f"Managed configuration changes: {', '.join(changed) or '(none)'}.",
             )
-            compose_generator.write(rendered, STATE)
-            verify_compose(plan)
-            if changed:
-                # Atomic replacement changes the inode of bind-mounted files;
-                # re-create containers so Caddy and VictoriaMetrics see them.
-                run(docker("up", "-d", "--build", "--force-recreate"))
-            else:
-                run(docker("up", "-d", "--build"))
-            run(docker("ps"))
+            with reconfigure_service.operation_lock(STATE):
+                locked_plan, locked_render = validate_saved(catalog, requested)
+                locked_changed = compose_generator.differences(locked_render, STATE)
+                compose_generator.write(locked_render, STATE)
+                verify_compose(locked_plan)
+                if locked_changed:
+                    # Atomic replacement changes bind-mount inodes; recreate
+                    # containers so Caddy and VictoriaMetrics see new configs.
+                    run(docker("up", "-d", "--build", "--force-recreate"))
+                else:
+                    run(docker("up", "-d", "--build"))
+                run(docker("ps"))
         elif args.command == "stop":
             confirmation(
                 "STOP MONITORING",
                 "Stops the installed monitoring bundle; metrics, keys and Docker volumes remain.",
             )
-            if changed:
-                raise SelectionError(
-                    "Generated deployment files differ from installed definition. "
-                    "Refusing to stop with an unreviewed service graph."
-                )
-            verify_compose(plan)
-            run(docker("down"))
+            with reconfigure_service.operation_lock(STATE):
+                locked_plan, locked_render = validate_saved(catalog, requested)
+                if compose_generator.differences(locked_render, STATE):
+                    raise SelectionError(
+                        "Generated deployment files differ from installed definition. "
+                        "Refusing to stop with an unreviewed service graph."
+                    )
+                verify_compose(locked_plan)
+                run(docker("down"))
         return 0
     except (SelectionError, ValueError, RuntimeError, OSError,
             subprocess.CalledProcessError) as exc:
