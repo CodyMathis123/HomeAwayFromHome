@@ -7,12 +7,13 @@
       "label": "Hardware & cooling monitoring",
       "status": "prototype",
       "selected_by_default": false,
-      "requires": [],
+      "requires": [
+        "metrics-storage"
+      ],
       "suggests": [
         "linux-host-monitoring"
       ],
       "services": [
-        "victoria-metrics",
         "grafana",
         "telemetry-ingest",
         "gateway"
@@ -108,7 +109,7 @@
     {
       "id": "metrics-storage",
       "label": "Shared metric storage",
-      "status": "planned",
+      "status": "prototype",
       "requires": [],
       "suggests": [],
       "services": [
@@ -118,7 +119,8 @@
         "Docker Engine",
         "Docker Compose v2"
       ],
-      "notes": "Internal capability shared by optional observability modules; deduplicate when resolving."
+      "notes": "Internal capability shared by optional observability modules; deduplicate when resolving.",
+      "selectable": false
     },
     {
       "id": "identity",
