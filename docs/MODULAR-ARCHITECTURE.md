@@ -157,6 +157,16 @@ intentionally creates separate storage and a separate Caddy local CA.
   while retaining the historical VictoriaMetrics/Grafana data?
 - What is the stable long-term API from SensorDash to optional backends?
 
+## Experimental package/release validation
+
+The initial pipeline now builds portable `.tar.gz` and Debian `.deb`
+artifacts from one immutable asset list and tests them on a disposable Linux
+runner, including actual Docker deployment and synthetic SensorDash-format
+HTTPS ingestion. See [Cooling Releases](COOLING-RELEASES.md).
+This is not a finished component-aware Linux installer. RPM packaging,
+ARM64 runtime validation, and migration/rollback for the existing full Pi
+remain separate milestones.
+
 ## Acceptance gates before packaging
 
 - Fresh Debian/ARM64 and generic amd64 Linux install of cooling alone, with
