@@ -104,6 +104,11 @@ def describe(components: dict[str, dict]) -> list[dict]:
             "label": item["label"],
             "status": item["status"],
             "selectable": item.get("selectable", True),
+            "installable_now": (
+                item.get("selectable", True)
+                and item["status"] == "prototype"
+                and frozenset({cid}) in DEPLOYABLE_BUNDLES
+            ),
             "requires": sorted(item["requires"]),
             "suggests": sorted(item["suggests"]),
         }
