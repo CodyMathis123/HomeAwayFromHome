@@ -34,8 +34,8 @@ runtime for the initial Linux implementation.
   [deploy/components/catalog.json](../deploy/components/catalog.json) declares
   IDs, required and suggested dependencies, host requirements and status.
   It is now validated by an executable, read-only dependency resolver
-  (`scripts/components.py`); only the explicitly tested cooling bundle
-  has an installer/deployment mapping. Planned features cannot be installed.
+  (`scripts/components.py`); only the three tested combinations (cooling only, host only, both) have
+  installer/deployment mappings. Planned features cannot be installed.
 
 ### Suggested feature bundles
 
@@ -160,6 +160,17 @@ intentionally creates separate storage and a separate Caddy local CA.
 - What is the stable long-term API from SensorDash to optional backends?
 
 ## Component selection and dependency resolution
+
+The feature catalog and generator now support Linux host monitoring
+independently of cooling telemetry, or both on one shared backend.
+The initial Linux monitoring module uses a read-only node-exporter
+(/proc and /sys only; no Docker socket, host devices or exposed exporter
+port), with its own Grafana dashboard and optional scrape job. Host-only
+installations do not create SensorDash ingest keys or routes.
+
+The generated Compose, VictoriaMetrics scrape config and Caddyfile depend
+strictly on the chosen features; package installation itself never creates
+any runtime files. See [Linux Host and Compose](LINUX-HOST-AND-COMPOSE.md).
 
 The release CLI now supports `homeaway-cooling components` and
 `homeaway-cooling plan --components cooling-monitoring`. It shows implicit
