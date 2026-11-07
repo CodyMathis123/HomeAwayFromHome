@@ -158,7 +158,7 @@ class ComponentLifecycleTests(unittest.TestCase):
                     return subprocess.CompletedProcess(
                         command, 0, "\n".join(graph["services"]) + "\n"
                     )
-                if "up -d --build --remove-orphans" in cmd:
+                if "up -d --build --force-recreate --remove-orphans" in cmd:
                     attempt[0] += 1
                     if attempt[0] == 1:
                         raise subprocess.CalledProcessError(1, command)
