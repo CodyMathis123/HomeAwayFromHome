@@ -33,6 +33,8 @@ class ComponentResolverTests(unittest.TestCase):
         items = components.describe(self.catalog)
         self.assertEqual(len(items), len(self.catalog))
         self.assertFalse(next(x for x in items if x["id"] == "metrics-storage")["selectable"])
+        self.assertTrue(next(x for x in items if x["id"] == "cooling-monitoring")["installable_now"])
+        self.assertFalse(next(x for x in items if x["id"] == "vpn")["installable_now"])
         with self.assertRaisesRegex(components.SelectionError, "internal capability"):
             components.resolve(self.catalog, ("metrics-storage",))
 
