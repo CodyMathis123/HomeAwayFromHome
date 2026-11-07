@@ -23,6 +23,14 @@ PROJECT = "homeaway-cooling"
 RECIPIENT = re.compile(r"^age1[023456789acdefghjklmnpqrstuvwxyz]{55,85}$")
 
 
+def digest_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as source:
+        for block in iter(lambda: source.read(1024 * 1024), b""):
+            h.update(block)
+    return h.hexdigest()
+
+
 def capture(config: Path, state: Path, selection: tuple[str, ...],
             recipient: str, docker_command, run) -> Path:
     """Stop the scoped project, stream snapshot to age, start again in finally."""
@@ -36,7 +44,7 @@ def capture(config: Path, state: Path, selection: tuple[str, ...],
     for name in PRESERVED_VOLUMES:
         volume = f"{PROJECT}_{name}"
         run(["docker", "volume", "inspect", volume], capture=True)
-    run(["docker", "image", "inspect", IMAGE], capture=True)
+    run(["docker", "pull", "--quiet", IMAGE], capture=True)
     backups = state / "backups"
     if backups.is_symlink():
         raise SelectionError("Refusing symlinked backup destination.")
@@ -93,7 +101,7 @@ def capture(config: Path, state: Path, selection: tuple[str, ...],
             "project": PROJECT,
             "selection": list(selection),
             "config_sha256": hashlib.sha256(config.read_bytes()).hexdigest(),
-            "archive_sha256": hashlib.sha256(destination.read_bytes()).hexdigest(),
+            "archive_sha256": digest_file(destination),
             "archive_name": destination.name,
             "volumes": list(PRESERVED_VOLUMES),
             "encryption": "age",
@@ -124,13 +132,20 @@ def capture(config: Path, state: Path, selection: tuple[str, ...],
 
 
 def validate_reference(path: Path, config: Path,
-                       selection: tuple[str, ...], *, max_age_seconds=3600) -> None:
+                       selection: tuple[str, ...], *, backup_root: Path,
+                       max_age_seconds=3600) -> None:
+    if (path.parent != backup_root / "backups" or path.is_symlink()
+            or not path.is_file() or path.suffix != ".age"):
+        raise SelectionError("Backup must be a file under this installation's backups directory.")
     if path.is_symlink() or not path.is_file():
         raise SelectionError("Encrypted backup file does not exist or is symlinked.")
     info = path.with_suffix(path.suffix + ".json")
     if info.is_symlink() or not info.is_file():
         raise SelectionError("Signed-off backup metadata is unavailable.")
     metadata = json.loads(info.read_text(encoding="utf-8"))
+    with path.open("rb") as stream:
+        if not stream.read(22).startswith(b"age-encryption.org/v1"):
+            raise SelectionError("Backup does not have an age encrypted-file header.")
     if metadata.get("project") != PROJECT or metadata.get("schema_version") != 1:
         raise SelectionError("Backup belongs to an incompatible project.")
     if metadata.get("selection") != list(selection):
@@ -145,5 +160,5 @@ def validate_reference(path: Path, config: Path,
         raise SelectionError("Backup is older than the one-hour migration window.")
     if hashlib.sha256(config.read_bytes()).hexdigest() != metadata["config_sha256"]:
         raise SelectionError("Installed config changed since backup.")
-    if hashlib.sha256(path.read_bytes()).hexdigest() != metadata["archive_sha256"]:
+    if digest_file(path) != metadata["archive_sha256"]:
         raise SelectionError("Backup checksum mismatch.")
