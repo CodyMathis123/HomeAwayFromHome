@@ -122,6 +122,26 @@ The non-secret Caddyfile bound by `compose.account-recovery.yaml` is
 by non-root Caddy. Keep tokens and private credentials restricted.
 See [production operations](docs/OPERATIONS.md) for preflight commands.
 
+## Unified management command (opt-in)
+
+A single, read-only-by-default `homeaway` command now wraps guarded
+new-install preparation, existing deployment status, targeted UI/Grafana
+updates, and the encrypted full-state backup. Install the command on an
+existing Pi only after reviewing the branch and merging it into Production:
+
+```bash
+bash scripts/install-homeaway-command.sh --plan
+sudo bash scripts/install-homeaway-command.sh --apply
+homeaway status
+homeaway update --target dashboards --plan
+```
+
+No containers, secrets, host units or network settings change when the
+command is installed. Apply actions require explicit confirmation.
+**Core DNS/VPN updates are intentionally not automated by this interface.**
+See [the management guide](docs/HOMEAWAY-MANAGER.md) for safety boundaries,
+limitations, rollback, and commands.
+
 ## Operator commands
 
 ```bash
