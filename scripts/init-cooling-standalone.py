@@ -128,6 +128,10 @@ def initialize(address: str, name: str, port: int, selected: tuple[str, ...]) ->
         (staging / "grafana_admin_password").write_text(
             secrets.token_urlsafe(32) + "\n", encoding="ascii"
         )
+        if "home-portal" in selected:
+            (staging / "portal_password").write_text(
+                secrets.token_urlsafe(32) + "\n", encoding="ascii"
+            )
         # Recheck immediately before writing to protect existing installations.
         check_fresh_state()
         SECRET_DIR.mkdir(parents=True, mode=0o700)
@@ -148,6 +152,11 @@ def initialize(address: str, name: str, port: int, selected: tuple[str, ...]) ->
             staging / "grafana_admin_password",
             SECRET_DIR / "grafana_admin_password", 472, 0o600,
         )
+        if "home-portal" in selected:
+            write_secret(
+                staging / "portal_password",
+                SECRET_DIR / "portal_password", 65534, 0o600,
+            )
         ENV_FILE.parent.mkdir(parents=True, exist_ok=True)
         fd = os.open(ENV_FILE, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         with os.fdopen(fd, "w", encoding="ascii") as stream:
