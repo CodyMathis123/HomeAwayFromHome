@@ -29,6 +29,11 @@ Pi hardware acceptance test.
 
 ## Installed layout
 
+The package includes the optional private diagnostics service and a separate,
+component-aware read-only Portal. When selected, Portal authentication uses
+its own password, not Grafana's, and exposes only /portal/ over the same HTTPS
+gateway. See [Optional Diagnostics and Portal](MODULAR-DIAGNOSTICS-PORTAL.md).
+
 The .deb installs code under `/opt/homeaway-cooling` and an entry point at
 `/usr/bin/homeaway-cooling`. At first-run initialization (not at package
 install) the CLI creates:
