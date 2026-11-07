@@ -34,7 +34,7 @@ separate from the Linux server being backed up**. Use its public recipient
 (`age1...`) for encryption.
 
 ```bash
-homeaway-cooling backup
+sudo homeaway-cooling backup
 
 # Follow your age tool's instructions to make and securely store a recipient.
 sudo homeaway-cooling backup --recipient age1YOUR_PUBLIC_RECIPIENT --apply
@@ -62,11 +62,15 @@ and private key in independent locations, check disk space, and periodically
 practice a restore. The backup does **not** capture all full-household Pi
 containers, host systemd agents or your router settings.
 
+Because the installed runtime configuration is deliberately root-only,
+run plan, backup, status and change commands with `sudo` after initialization.
+The static `components` command can run without elevated privileges.
+
 ## Safe, explicitly confirmed change
 
 ```bash
 # Dry-run: no file, secret, container or service changes.
-homeaway-cooling change \
+sudo homeaway-cooling change \
   --components cooling-monitoring,linux-host-monitoring,home-portal --json
 
 # Use the latest successful backup returned by the preceding backup command:
