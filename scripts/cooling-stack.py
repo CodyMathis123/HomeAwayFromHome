@@ -166,7 +166,7 @@ def main(argv: list[str] | None = None) -> int:
             if not args.bind_ip:
                 raise ValueError("init requires --bind-ip.")
             command = [
-                sys.executable, str(ROOT / "scripts/init-cooling-standalone.py"),
+                sys.executable, "-B", str(ROOT / "scripts/init-cooling-standalone.py"),
                 "--init", "--config-file", str(CONFIG),
                 "--state-dir", str(STATE), "--bind-ip", args.bind_ip,
                 "--https-port", str(args.https_port),
