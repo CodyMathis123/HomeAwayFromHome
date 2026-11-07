@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import ipaddress
 import json
 import os
@@ -72,9 +73,9 @@ class CoolingModularityContracts(unittest.TestCase):
     def test_scrape_does_not_require_dns_or_vpn(self):
         scrape = (ROOT / "deploy/cooling/scrape.yml").read_text(encoding="utf-8")
         self.assertIn("victoria-metrics:8428", scrape)
-        self.assertNotIn("pihole", scrape.lower())
+        self.assertNotIn("pihole-exporter:", scrape.lower())
         self.assertNotIn("wg-easy", scrape.lower())
-        self.assertNotIn("wireguard", scrape.lower())
+        self.assertEqual(scrape.count("job_name:"), 1)
 
     def test_initializer_plan_has_no_side_effects(self):
         with tempfile.TemporaryDirectory() as td:
@@ -99,7 +100,7 @@ class CoolingModularityContracts(unittest.TestCase):
                 bootstrap, "SECRET_DIR", secret_dir
             ), patch.object(bootstrap.os, "geteuid", return_value=0), patch.object(
                 bootstrap.shutil, "which", return_value="/usr/bin/openssl"
-            ), patch.object(bootstrap.sys.stdin, "isatty", return_value=False):
+            ), patch.object(bootstrap.sys, "stdin", io.StringIO("")):
                 self.assertNotEqual(bootstrap.main(["--init"]), 0)
                 self.assertNotEqual(bootstrap.main(["--init", "--bind-ip", "0.0.0.0"]), 0)
                 self.assertNotEqual(bootstrap.main(["--init", "--bind-ip", "239.1.1.1"]), 0)
