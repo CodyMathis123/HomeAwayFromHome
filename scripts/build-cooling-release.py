@@ -52,6 +52,11 @@ FILES = (
     "grafana/dashboards/events.json",
     "docs/COOLING-STANDALONE.md",
     "docs/COMPONENT-SELECTION.md",
+    "docs/MODULAR-LIFECYCLE.md",
+    "docs/DEVELOPER-ARCHITECTURE.md",
+    "docs/MODULAR-DIAGNOSTICS-PORTAL.md",
+    "docs/LINUX-HOST-AND-COMPOSE.md",
+    "docs/COOLING-RELEASES.md",
     "docs/MODULAR-ARCHITECTURE.md",
 )
 
