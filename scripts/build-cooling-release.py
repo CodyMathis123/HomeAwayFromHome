@@ -44,6 +44,7 @@ FILES = (
     "portal/modular.js",
     "portal/modular.css",
     "grafana/provisioning/dashboards/dashboards.yaml",
+    "grafana/provisioning/dashboards/modular.yaml",
     "grafana/provisioning/datasources/victoriametrics.yaml",
     "grafana/dashboards/sensordash.json",
     "grafana/dashboards/cooling-systems.json",
