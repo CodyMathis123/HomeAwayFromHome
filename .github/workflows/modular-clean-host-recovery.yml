@@ -57,7 +57,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: synthetic-monitoring-restore-fixture
-          path: \${{ runner.temp }}/synthetic-only/
+          path: ${{ runner.temp }}/synthetic-only/
           if-no-files-found: error
           retention-days: 1
           compression-level: 0
@@ -75,13 +75,13 @@ jobs:
           rm -f "$RUNNER_TEMP/ci-identity.txt"
 
   clean-target:
-    name: Recover on new runner (\${{ matrix.os }})
+    name: Recover on new runner (${{ matrix.os }})
     needs: synthetic-source
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, ubuntu-24.04-arm]
-    runs-on: \${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
@@ -91,7 +91,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: synthetic-monitoring-restore-fixture
-          path: \${{ runner.temp }}/synthetic-only/
+          path: ${{ runner.temp }}/synthetic-only/
 
       - name: Check the runner is empty and test strict recovery boundaries
         run: |
