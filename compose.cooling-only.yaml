@@ -29,7 +29,7 @@ services:
       GF_SERVER_ROOT_URL: "https://${COOLING_TLS_NAME:?Set COOLING_TLS_NAME}:${COOLING_HTTPS_PORT:?Set COOLING_HTTPS_PORT}"
     volumes:
       - cooling-grafana:/var/lib/grafana
-      - ./data/cooling/secrets/grafana_admin_password:/run/secrets/grafana_admin_password:ro
+      - ${COOLING_STATE_DIR:-./data/cooling}/secrets/grafana_admin_password:/run/secrets/grafana_admin_password:ro
       - ./grafana/provisioning/dashboards/dashboards.yaml:/etc/grafana/provisioning/dashboards/homeaway.yaml:ro
       - ./grafana/provisioning/datasources/victoriametrics.yaml:/etc/grafana/provisioning/datasources/homeaway.yaml:ro
       - ./grafana/dashboards/sensordash.json:/etc/grafana/dashboards/sensordash.json:ro
@@ -48,7 +48,7 @@ services:
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     volumes:
-      - ./data/cooling/secrets/telemetry:/run/tls:ro
+      - ${COOLING_STATE_DIR:-./data/cooling}/secrets/telemetry:/run/tls:ro
     networks: [cooling-private]
 
   gateway:
@@ -64,7 +64,7 @@ services:
     security_opt: [no-new-privileges:true]
     volumes:
       - ./deploy/cooling/Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./data/cooling/secrets/telemetry/ca.crt:/run/telemetry-ca.crt:ro
+      - ${COOLING_STATE_DIR:-./data/cooling}/secrets/telemetry/ca.crt:/run/telemetry-ca.crt:ro
       - cooling-caddy-data:/data
       - cooling-caddy-config:/config
     networks: [cooling-public, cooling-private]
