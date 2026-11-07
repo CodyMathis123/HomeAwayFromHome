@@ -264,27 +264,30 @@ def main() -> None:
         else:
             print("PASS: no diagnostics observer in minimal monitoring installations.")
 
-        dashboard_status, raw = request(
-            url + "/api/search?type=dash-db", ca, basic=password
-        )
-        assert dashboard_status == 200, f"Grafana dashboard search HTTP {dashboard_status}"
-        dashboards = json.loads(raw)
-        titles = [item.get("title", "") for item in dashboards]
-        if cooling:
-            assert any("SensorDash" in title for title in titles), (
-                f"SensorDash dashboard was not provisioned; returned {titles}"
+        # Grafana's provisioning scanner is asynchronous. In particular,
+        # deselecting host monitoring must remove the old dashboard definition
+        # after a container change without erasing retained metric history.
+        deadline = time.monotonic() + 65
+        titles = []
+        while True:
+            dashboard_status, raw = request(
+                url + "/api/search?type=dash-db", ca, basic=password
             )
-        else:
-            assert not any("SensorDash" in title for title in titles), (
-                f"Unselected SensorDash dashboard was provisioned: {titles}"
+            assert dashboard_status == 200, (
+                f"Grafana dashboard search HTTP {dashboard_status}"
             )
-        if linux_host:
-            assert "Linux Host Monitoring" in titles, (
-                f"Linux host dashboard was not provisioned: {titles}"
-            )
-        else:
-            assert "Linux Host Monitoring" not in titles
-        print("PASS: Grafana provisioned only selected feature dashboards.")
+            dashboards = json.loads(raw)
+            titles = [item.get("title", "") for item in dashboards]
+            has_cooling = any("SensorDash" in title for title in titles)
+            has_host = "Linux Host Monitoring" in titles
+            if has_cooling == cooling and has_host == linux_host:
+                break
+            if time.monotonic() >= deadline:
+                raise AssertionError(
+                    f"Grafana retained stale or omitted selected dashboards: {titles}"
+                )
+            time.sleep(2)
+        print("PASS: Grafana reflects selected dashboards, including removed features.")
         if args.check_existing:
             print("PASS: cooling data persisted across container stop/start.")
 
