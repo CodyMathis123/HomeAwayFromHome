@@ -28,7 +28,9 @@
       "id": "linux-host-monitoring",
       "label": "Linux host diagnostics",
       "status": "planned",
-      "requires": [],
+      "requires": [
+        "metrics-storage"
+      ],
       "suggests": [
         "cooling-monitoring"
       ],
