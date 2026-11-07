@@ -125,6 +125,8 @@ def main() -> None:
     selected = set(conf.get("COOLING_COMPONENTS", "cooling-monitoring").split(","))
     cooling = "cooling-monitoring" in selected
     linux_host = "linux-host-monitoring" in selected
+    portal = "home-portal" in selected
+    diagnostics = "monitoring-diagnostics" in selected or portal
     token = (secret / "telemetry/token").read_text().strip() if cooling else None
     password = (secret / "grafana_admin_password").read_text().strip()
     assert conf["COOLING_STATE_DIR"] == str(state)
@@ -135,6 +137,39 @@ def main() -> None:
         anonymous, _ = request(url + "/api/org", ca)
         assert anonymous in (401, 403), f"Grafana org endpoint unauthenticated: {anonymous}"
         print("PASS: trusted TLS connects, Grafana requires independent authentication.")
+
+        if portal:
+            anonymous_portal, _ = request(url + "/portal/", ca)
+            assert anonymous_portal == 401, (
+                f"Portal must reject requests without credentials: {anonymous_portal}"
+            )
+            password_file = secret / "portal_password"
+            portal_password = password_file.read_text().strip()
+            page, content = request(url + "/portal/", ca, basic=portal_password)
+            assert page == 200 and b"Your monitoring" in content, (
+                f"Authenticated component-aware portal failed: {page}"
+            )
+            code, payload = request(
+                url + "/portal/api/features", ca, basic=portal_password
+            )
+            assert code == 200
+            items = json.loads(payload)["selectedFeatures"]
+            names = {item["id"] for item in items}
+            assert selected <= names, (selected, names)
+            assert not names & {"dns-filtering", "vpn", "computer-management"}
+            code, payload = request(
+                url + "/portal/api/diagnostics", ca, basic=portal_password
+            )
+            assert code == 200, f"Portal diagnostics unavailable: HTTP {code}"
+            diag_summary = json.loads(payload)
+            assert diag_summary.get("schemaVersion") == 1
+            assert diag_summary.get("checks") or diag_summary.get("serviceChecks")
+            print("PASS: separate portal login, selected-only features and diagnostics API.")
+        else:
+            absent, _ = request(url + "/portal/", ca)
+            assert absent == 404, f"Unselected portal route was exposed: HTTP {absent}"
+            assert not (secret / "portal_password").exists()
+            print("PASS: unselected portal has no public HTTPS route or credentials.")
 
         if cooling:
             bad_auth, _ = request(
@@ -198,6 +233,35 @@ def main() -> None:
                 f"Grafana datasource did not return selected metric {metric}: HTTP {stat}"
             )
         print("PASS: every selected monitoring feature is queryable through Grafana.")
+        if diagnostics:
+            # Fixed diagnostics observer is reachable only on the private
+            # Compose network. It must not probe absent household services.
+            inspector = (
+                "import json,urllib.request;"
+                "u='http://metrics-diagnostics:8095/v1/summary';"
+                "print(urllib.request.urlopen(u,timeout=6).read().decode())"
+            )
+            result = subprocess.run(
+                docker(root, env, "exec", "-T", "metrics-diagnostics",
+                       "python", "-B", "-c", inspector),
+                cwd=root, check=True, capture_output=True, text=True, timeout=15,
+            )
+            evidence = json.loads(result.stdout)
+            checks = (evidence.get("checks", []) +
+                      evidence.get("serviceChecks", []))
+            names = {item["id"] for item in checks}
+            assert "service.victoria" in names
+            if linux_host:
+                assert "service.linux-host" in names
+            else:
+                assert "service.linux-host" not in names
+            assert not names & {"service.pihole", "service.wireguard", "pi.cpu"}
+            if cooling:
+                assert evidence.get("telemetry") is not None
+            print("PASS: internal diagnostics probes include selected monitoring only.")
+        else:
+            assert not (secret / "portal_password").exists()
+            print("PASS: no diagnostics observer in minimal monitoring installations.")
 
         dashboard_status, raw = request(
             url + "/api/search?type=dash-db", ca, basic=password
@@ -228,7 +292,7 @@ def main() -> None:
          "--format", "{{.Names}}"],
         check=True, capture_output=True, text=True,
     )
-    expected = 3 + int(cooling) + int(linux_host)
+    expected = 3 + int(cooling) + int(linux_host) + int(diagnostics) + int(portal)
     assert len(ps.stdout.splitlines()) == expected, (
         f"Expected {expected} component-selected containers, got {ps.stdout}"
     )
