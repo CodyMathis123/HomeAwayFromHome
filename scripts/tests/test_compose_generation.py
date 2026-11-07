@@ -72,6 +72,10 @@ class ComposeGenerationTests(unittest.TestCase):
         self.assertIn('job_name: linux-host', rendered["scrape.generated.yml"])
         self.assertIn('targets: ["node-exporter:9100"]', rendered["scrape.generated.yml"])
         self.assertIn("linux-host.json", json.dumps(data["services"]["grafana"]))
+        self.assertIn("disableDeletion: false", rendered["dashboards.generated.yml"])
+        self.assertIn(
+            "/var/lib/grafana", json.dumps(data["services"]["grafana"])
+        )
         self.assertNotIn("sensordash.json", json.dumps(data["services"]["grafana"]))
         exporter = data["services"]["node-exporter"]
         self.assertTrue(exporter["read_only"])
