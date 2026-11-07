@@ -1,0 +1,137 @@
+name: Modular monitoring backup and component lifecycle
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [Production]
+    paths:
+      - '.github/workflows/component-lifecycle-e2e.yml'
+      - 'scripts/component_changes.py'
+      - 'scripts/backup_service.py'
+      - 'scripts/reconfigure_service.py'
+      - 'scripts/cooling-stack.py'
+      - 'scripts/build-cooling-release.py'
+      - 'scripts/tests/test_component_lifecycle.py'
+      - 'scripts/compose_generator.py'
+      - 'deploy/components/**'
+      - 'portal/modular.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lifecycle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install age and run transition unit contracts
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y age
+          python3 -m unittest discover -s scripts/tests -p test_component_lifecycle.py -v
+          python3 -m compileall -q scripts/backup_service.py scripts/reconfigure_service.py scripts/component_changes.py
+
+      - name: Install modular package and start minimum cooling backend
+        run: |
+          python3 scripts/build-cooling-release.py --version 0.1.0
+          python3 scripts/verify-cooling-package.py --version 0.1.0
+          sudo dpkg -i dist/homeaway-cooling_0.1.0_all.deb
+          printf 'INITIALIZE COOLING\n' |
+            sudo script -q -e -c 'homeaway-cooling init --components cooling-monitoring --bind-ip 127.0.0.1 --https-port 19443' /dev/null
+          printf 'START MONITORING\n' |
+            sudo script -q -e -c 'homeaway-cooling start' /dev/null
+          sudo python3 scripts/integration-cooling-linux.py
+
+      - name: Prove change preview does not mutate installation
+        run: |
+          before="$(sudo sha256sum /etc/homeaway-cooling/cooling.env)"
+          sudo homeaway-cooling change \
+            --components cooling-monitoring,linux-host-monitoring,home-portal --json |
+            python3 -c 'import sys,json; p=json.load(sys.stdin); assert p["add_services"]==["metrics-diagnostics","node-exporter","portal"] and p["eligible"]'
+          test "$before" = "$(sudo sha256sum /etc/homeaway-cooling/cooling.env)"
+          if sudo homeaway-cooling change \
+            --components cooling-monitoring,linux-host-monitoring,home-portal \
+            --apply >/dev/null 2>&1; then
+            echo 'ERROR: component change applied without backup and confirmation'
+            exit 1
+          fi
+
+      - name: Create and decrypt scoped age-encrypted stopped-state snapshot
+        run: |
+          age-keygen -o "$RUNNER_TEMP/age-ci-key.txt"
+          recipient="$(age-keygen -y "$RUNNER_TEMP/age-ci-key.txt")"
+          echo "AGE_CI_RECIPIENT=$recipient" >> "$GITHUB_ENV"
+          printf 'BACKUP MONITORING\n' |
+            sudo script -q -e -c "homeaway-cooling backup --recipient $recipient --apply" /dev/null
+          archive="$(sudo find /var/lib/homeaway-cooling/backups -maxdepth 1 -name '*.tar.age' -print | sort | tail -1)"
+          test -n "$archive"
+          sudo test -s "$archive.json"
+          sudo age -d -i "$RUNNER_TEMP/age-ci-key.txt" "$archive" |
+            tar -tf - > "$RUNNER_TEMP/backup-contents.txt"
+          grep -Fq './config/cooling.env' "$RUNNER_TEMP/backup-contents.txt"
+          grep -Fq './volumes/cooling-metrics/' "$RUNNER_TEMP/backup-contents.txt"
+          grep -Fq './volumes/cooling-grafana/' "$RUNNER_TEMP/backup-contents.txt"
+          grep -Fq './volumes/cooling-caddy-data/' "$RUNNER_TEMP/backup-contents.txt"
+          echo "FIRST_BACKUP=$archive" >> "$GITHUB_ENV"
+          sudo python3 scripts/integration-cooling-linux.py --check-existing
+
+      - name: Add host monitoring and authenticated portal
+        run: |
+          printf 'APPLY COMPONENT CHANGE\n' |
+            sudo script -q -e -c "homeaway-cooling change --components cooling-monitoring,linux-host-monitoring,home-portal --backup-file $FIRST_BACKUP --apply" /dev/null
+          sudo homeaway-cooling status
+          sudo test -s /var/lib/homeaway-cooling/secrets/portal_password
+          sudo python3 scripts/integration-cooling-linux.py --check-existing
+          test "$(sudo docker ps -q --filter label=com.docker.compose.project=homeaway-cooling | wc -l)" -eq 7
+
+      - name: Reject mismatched stale-selection backup
+        run: |
+          expected="$(sudo sha256sum /etc/homeaway-cooling/cooling.env)"
+          if printf 'APPLY COMPONENT CHANGE\n' |
+            sudo script -q -e -c "homeaway-cooling change --components cooling-monitoring --backup-file $FIRST_BACKUP --apply" /dev/null; then
+            echo 'ERROR: old-selection backup incorrectly accepted'
+            exit 1
+          fi
+          test "$expected" = "$(sudo sha256sum /etc/homeaway-cooling/cooling.env)"
+          sudo python3 scripts/integration-cooling-linux.py --check-existing
+
+      - name: Back up new selection; remove options without deleting history
+        run: |
+          printf 'BACKUP MONITORING\n' |
+            sudo script -q -e -c "homeaway-cooling backup --recipient $AGE_CI_RECIPIENT --apply" /dev/null
+          second="$(sudo find /var/lib/homeaway-cooling/backups -maxdepth 1 -name '*.tar.age' -print | sort | tail -1)"
+          test -n "$second"
+          test "$second" != "$FIRST_BACKUP"
+          printf 'APPLY COMPONENT CHANGE\n' |
+            sudo script -q -e -c "homeaway-cooling change --components cooling-monitoring --backup-file $second --apply" /dev/null
+          sudo test -s /var/lib/homeaway-cooling/secrets/portal_password
+          sudo docker volume inspect homeaway-cooling_cooling-metrics >/dev/null
+          sudo docker volume inspect homeaway-cooling_cooling-grafana >/dev/null
+          sudo python3 scripts/integration-cooling-linux.py --check-existing
+          test "$(sudo docker ps -q --filter label=com.docker.compose.project=homeaway-cooling | wc -l)" -eq 4
+          echo 'PASS: optional add/remove preserved archive, keys and historical metrics'
+
+      - name: Scoped diagnostics on failure
+        if: failure()
+        run: |
+          sudo docker ps -a --filter label=com.docker.compose.project=homeaway-cooling || true
+          sudo docker logs --tail=45 homeaway-cooling-gateway-1 2>&1 || true
+          sudo docker logs --tail=45 homeaway-cooling-metrics-diagnostics-1 2>&1 || true
+          sudo docker logs --tail=45 homeaway-cooling-portal-1 2>&1 || true
+
+      - name: Destroy ephemeral CI-only project
+        if: always()
+        run: |
+          if sudo test -f /etc/homeaway-cooling/cooling.env && sudo test -f /var/lib/homeaway-cooling/generated/compose.generated.json; then
+            sudo docker compose --env-file /etc/homeaway-cooling/cooling.env \
+              --project-directory /opt/homeaway-cooling \
+              -f /var/lib/homeaway-cooling/generated/compose.generated.json \
+              down -v --remove-orphans || true
+          fi
+          sudo rm -rf -- /etc/homeaway-cooling /var/lib/homeaway-cooling
+          rm -f "$RUNNER_TEMP/age-ci-key.txt"
