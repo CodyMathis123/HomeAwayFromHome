@@ -164,8 +164,10 @@ artifacts from one immutable asset list and tests them on a disposable Linux
 runner, including actual Docker deployment and synthetic SensorDash-format
 HTTPS ingestion. See [Cooling Releases](COOLING-RELEASES.md).
 This is not a finished component-aware Linux installer. RPM packaging,
-ARM64 runtime validation, and migration/rollback for the existing full Pi
-remain separate milestones.
+physical Raspberry Pi validation, and migration/rollback for the existing
+full Pi remain separate milestones. Package and live-backend CI now passes
+on GitHub-hosted x86-64 and ARM64 Linux runners, but does not validate
+actual Pi networking, boot persistence or Windows MSI compatibility.
 
 ## Acceptance gates before packaging
 
