@@ -32,6 +32,14 @@ FILES = (
     "grafana/dashboards/linux-host.json",
     "ingest/Dockerfile",
     "ingest/app.py",
+    "monitoring/diagnostics/Dockerfile",
+    "monitoring/diagnostics/app.py",
+    "monitoring/diagnostics/certificates.py",
+    "portal/Dockerfile.modular",
+    "portal/modular.py",
+    "portal/modular.html",
+    "portal/modular.js",
+    "portal/modular.css",
     "grafana/provisioning/dashboards/dashboards.yaml",
     "grafana/provisioning/datasources/victoriametrics.yaml",
     "grafana/dashboards/sensordash.json",
@@ -68,6 +76,11 @@ def copy_payload(destination: Path, version: str) -> dict[str, str]:
         ("cooling-monitoring",),
         ("linux-host-monitoring",),
         ("cooling-monitoring", "linux-host-monitoring"),
+        ("cooling-monitoring", "monitoring-diagnostics"),
+        ("linux-host-monitoring", "monitoring-diagnostics"),
+        ("cooling-monitoring", "home-portal"),
+        ("linux-host-monitoring", "home-portal"),
+        ("cooling-monitoring", "linux-host-monitoring", "home-portal"),
     ):
         outcome = resolve(catalog, choice)
         supported.append({
