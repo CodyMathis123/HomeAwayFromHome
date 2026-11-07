@@ -266,7 +266,12 @@ def main(argv: list[str] | None = None) -> int:
             )
             compose_generator.write(rendered, STATE)
             verify_compose(plan)
-            run(docker("up", "-d", "--build"))
+            if changed:
+                # Atomic replacement changes the inode of bind-mounted files;
+                # re-create containers so Caddy and VictoriaMetrics see them.
+                run(docker("up", "-d", "--build", "--force-recreate"))
+            else:
+                run(docker("up", "-d", "--build"))
             run(docker("ps"))
         elif args.command == "stop":
             confirmation(
