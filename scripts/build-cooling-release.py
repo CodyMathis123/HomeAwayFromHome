@@ -16,14 +16,18 @@ import subprocess
 import tarfile
 import tempfile
 
+from components import load_catalog, resolve
+
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = "homeaway-cooling"
 FILES = (
     "compose.cooling-only.yaml",
     "deploy/cooling/Caddyfile",
+    "deploy/components/catalog.json",
     "deploy/cooling/scrape.yml",
     "scripts/init-cooling-standalone.py",
     "scripts/cooling-stack.py",
+    "scripts/components.py",
     "ingest/Dockerfile",
     "ingest/app.py",
     "grafana/provisioning/dashboards/dashboards.yaml",
@@ -55,10 +59,15 @@ def copy_payload(destination: Path, version: str) -> dict[str, str]:
         hashes[rel] = digest(target)
     (destination / "VERSION").write_text(version + "\n", encoding="ascii")
     hashes["VERSION"] = digest(destination / "VERSION")
+    resolved = resolve(
+        load_catalog(ROOT / "deploy/components/catalog.json"), ("cooling-monitoring",)
+    )
     manifest = {
         "name": PACKAGE,
         "version": version,
-        "components": ["cooling-monitoring", "metrics-storage"],
+        "selected_features": resolved["selected_features"],
+        "resolved_components": resolved["component_order"],
+        "services": resolved["services"],
         "files_sha256": hashes,
         "config_policy": "runtime config and credentials never shipped",
         "runtime": "Docker Compose v2",

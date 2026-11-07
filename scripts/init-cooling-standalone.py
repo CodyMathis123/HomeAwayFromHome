@@ -17,6 +17,8 @@ import subprocess
 import sys
 import tempfile
 
+from components import load_catalog, parse_selection, resolve
+
 ROOT = Path(__file__).resolve().parents[1]
 ENV_FILE = ROOT / "deploy/cooling/.env"
 SECRET_DIR = ROOT / "data/cooling/secrets"
@@ -100,7 +102,7 @@ def write_secret(src: Path, dest: Path, uid: int, mode: int) -> None:
     dest.chmod(mode)
 
 
-def initialize(address: str, name: str, port: int) -> None:
+def initialize(address: str, name: str, port: int, selected: tuple[str, ...]) -> None:
     check_fresh_state()
     if shutil.which("openssl") is None:
         raise ValueError("OpenSSL is required to generate a scoped local TLS identity.")
@@ -151,6 +153,7 @@ def initialize(address: str, name: str, port: int) -> None:
                 f"COOLING_TLS_NAME={name}\n"
                 f"COOLING_HTTPS_PORT={port}\n"
                 f"COOLING_STATE_DIR={SECRET_DIR.parent.resolve()}\n"
+                f"COOLING_COMPONENTS={','.join(selected)}\n"
             )
     print("Cooling-only credentials generated. No containers were started.")
     print("Next: validate Compose and review docs/COOLING-STANDALONE.md.")
@@ -167,6 +170,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--bind-ip", help="Specific LAN IPv4 address of this Linux host.")
     p.add_argument("--tls-name", help="IP or DNS name clients use; defaults to --bind-ip.")
     p.add_argument("--https-port", type=int, default=9443, help="Host port (default 9443).")
+    p.add_argument("--components", default="cooling-monitoring",
+                   help="Selected feature IDs; only cooling-monitoring is presently deployable.")
     p.add_argument("--config-file", type=Path, help="Absolute runtime configuration path.")
     p.add_argument("--state-dir", type=Path, help="Absolute persistent data directory.")
     args = p.parse_args(argv)
@@ -180,6 +185,8 @@ def main(argv: list[str] | None = None) -> int:
             if not args.state_dir.is_absolute():
                 raise ValueError("--state-dir must be absolute.")
             SECRET_DIR = args.state_dir / "secrets"
+        selected = parse_selection(args.components)
+        resolve(load_catalog(), selected)
         if args.https_port < 1024 or args.https_port > 65535:
             raise ValueError("Use an unprivileged HTTPS port between 1024 and 65535.")
         address = bind_ip(args.bind_ip) if args.bind_ip else None
@@ -187,10 +194,11 @@ def main(argv: list[str] | None = None) -> int:
         if args.init:
             if address is None:
                 raise ValueError("--init requires --bind-ip.")
-            initialize(address, name, args.https_port)
+            initialize(address, name, args.https_port, selected)
         else:
             check_fresh_state()
-            print("PLAN ONLY — cooling-only installation; no Pi-hole or WireGuard.")
+            print("PLAN ONLY — selected features: " + ", ".join(selected))
+            print("Required shared metrics-storage added automatically; no Pi-hole or WireGuard.")
             print("Prerequisites: Docker Engine, Compose v2, Python 3, OpenSSL, a LAN IP.")
             print(f"Will create isolated {SECRET_DIR} and {ENV_FILE}.")
             print("Will NOT start containers, publish a WAN port or change existing services.")
