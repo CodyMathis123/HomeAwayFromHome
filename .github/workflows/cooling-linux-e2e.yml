@@ -14,6 +14,13 @@ on:
       - 'scripts/components.py'
       - 'scripts/compose_generator.py'
       - 'scripts/tests/test_compose_generation.py'
+      - 'scripts/tests/test_modular_addons.py'
+      - 'monitoring/diagnostics/**'
+      - 'portal/modular.py'
+      - 'portal/modular.html'
+      - 'portal/modular.js'
+      - 'portal/modular.css'
+      - 'portal/Dockerfile.modular'
       - 'scripts/tests/test_component_resolver.py'
       - 'scripts/build-cooling-release.py'
       - 'scripts/verify-cooling-package.py'
@@ -50,6 +57,18 @@ jobs:
           - os: ubuntu-24.04-arm
             components: cooling-monitoring,linux-host-monitoring
             variant: combined
+          - os: ubuntu-24.04
+            components: cooling-monitoring,monitoring-diagnostics
+            variant: diagnostics
+          - os: ubuntu-24.04
+            components: cooling-monitoring,home-portal
+            variant: portal-cooling
+          - os: ubuntu-24.04-arm
+            components: linux-host-monitoring,home-portal
+            variant: portal-host
+          - os: ubuntu-24.04-arm
+            components: cooling-monitoring,linux-host-monitoring,home-portal
+            variant: portal-combined
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
@@ -65,6 +84,7 @@ jobs:
           python3 -m unittest discover -s scripts/tests -p test_cooling_modularity.py -v
           python3 -m unittest discover -s scripts/tests -p test_component_resolver.py -v
           python3 -m unittest discover -s scripts/tests -p test_compose_generation.py -v
+          python3 -m unittest discover -s scripts/tests -p test_modular_addons.py -v
           python3 scripts/build-cooling-release.py --version 0.1.0
           python3 scripts/verify-cooling-package.py --version 0.1.0
 
@@ -79,7 +99,7 @@ jobs:
           sudo homeaway-cooling components --json |
             python3 -c 'import sys,json; c=json.load(sys.stdin); assert any(x["id"]=="cooling-monitoring" and x["status"]=="prototype" for x in c)'
           sudo homeaway-cooling plan --components "${{ matrix.components }}" --json |
-            python3 -c 'import sys,json; p=json.load(sys.stdin); assert p["deployable"] and p["automatically_added"]==["metrics-storage","observability-ui"]'
+            python3 -c 'import sys,json; p=json.load(sys.stdin); assert p["deployable"] and {"metrics-storage","observability-ui"}<=set(p["automatically_added"])'
           sudo homeaway-cooling plan --components cooling-monitoring,dns-metrics --design --json |
             python3 -c 'import sys,json; p=json.load(sys.stdin); assert not p["deployable"] and p["services"].count("victoria-metrics")==1 and "dns-filtering" in p["automatically_added"]'
           if sudo homeaway-cooling plan --components dns-metrics >/dev/null 2>&1; then
@@ -97,12 +117,18 @@ jobs:
           printf 'INITIALIZE COOLING\n' |
             sudo script -q -e -c 'homeaway-cooling init --components ${{ matrix.components }} --bind-ip 127.0.0.1 --https-port 19443' /dev/null
           sudo test -f /etc/homeaway-cooling/cooling.env
-          if [ "${{ matrix.variant }}" = "host" ]; then
-            sudo test ! -e /var/lib/homeaway-cooling/secrets/telemetry
-          else
+          if [[ "${{ matrix.components }}" == *cooling-monitoring* ]]; then
             sudo test -f /var/lib/homeaway-cooling/secrets/telemetry/token
+          else
+            sudo test ! -e /var/lib/homeaway-cooling/secrets/telemetry
           fi
-          sudo grep -Fxq 'COOLING_COMPONENTS=${{ matrix.components }}' /etc/homeaway-cooling/cooling.env
+          if [[ "${{ matrix.components }}" == *home-portal* ]]; then
+            sudo test -s /var/lib/homeaway-cooling/secrets/portal_password
+          else
+            sudo test ! -e /var/lib/homeaway-cooling/secrets/portal_password
+          fi
+          sorted_components="$(printf '%s' '${{ matrix.components }}' | tr ',' '\n' | sort | paste -sd, -)"
+          sudo grep -Fxq "COOLING_COMPONENTS=$sorted_components" /etc/homeaway-cooling/cooling.env
           sudo test -f /var/lib/homeaway-cooling/generated/compose.generated.json
           sudo docker compose --env-file /etc/homeaway-cooling/cooling.env --project-directory /opt/homeaway-cooling -f /var/lib/homeaway-cooling/generated/compose.generated.json config -q
           sudo homeaway-cooling plan
@@ -146,7 +172,7 @@ jobs:
           after="$(sudo docker ps -q --filter label=com.docker.compose.project=homeaway-cooling | sort)"
           test "$before" = "$after"
           sudo test -s /etc/homeaway-cooling/cooling.env
-          if [ "${{ matrix.variant }}" != "host" ]; then
+          if [[ "${{ matrix.components }}" == *cooling-monitoring* ]]; then
             sudo test -s /var/lib/homeaway-cooling/secrets/telemetry/token
           fi
           sudo python3 scripts/integration-cooling-linux.py --check-existing
@@ -182,6 +208,8 @@ jobs:
           sudo docker logs --tail=50 homeaway-cooling-grafana-1 2>&1 || true
           sudo docker logs --tail=50 homeaway-cooling-telemetry-ingest-1 2>&1 || true
           sudo docker logs --tail=50 homeaway-cooling-node-exporter-1 2>&1 || true
+          sudo docker logs --tail=50 homeaway-cooling-metrics-diagnostics-1 2>&1 || true
+          sudo docker logs --tail=50 homeaway-cooling-portal-1 2>&1 || true
 
       - name: Teardown disposable CI-only project
         if: always()
