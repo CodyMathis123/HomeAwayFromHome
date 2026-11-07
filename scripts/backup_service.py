@@ -64,7 +64,8 @@ def capture(config: Path, state: Path, selection: tuple[str, ...],
         ]
     archive = [
         "docker", "run", "--rm", "--pull=never", "--network", "none",
-        "--read-only", "--cap-drop=ALL", "--security-opt=no-new-privileges",
+        "--read-only", "--cap-drop=ALL", "--cap-add=DAC_OVERRIDE",
+        "--security-opt=no-new-privileges",
         *mounts, IMAGE, "tar", "-cf", "-", "-C", "/snapshot", ".",
     ]
     # This stops all writers for a consistent point-in-time volume capture.
@@ -134,7 +135,8 @@ def capture(config: Path, state: Path, selection: tuple[str, ...],
 def validate_reference(path: Path, config: Path,
                        selection: tuple[str, ...], *, backup_root: Path,
                        max_age_seconds=3600) -> None:
-    if (path.parent != backup_root / "backups" or path.is_symlink()
+    if (path.parent != backup_root / "backups" or path.parent.is_symlink()
+            or path.is_symlink()
             or not path.is_file() or path.suffix != ".age"):
         raise SelectionError("Backup must be a file under this installation's backups directory.")
     if path.is_symlink() or not path.is_file():
