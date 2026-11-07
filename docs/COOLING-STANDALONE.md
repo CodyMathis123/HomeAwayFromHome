@@ -1,6 +1,8 @@
 # Cooling-only Linux backend — isolated proof of concept
 
 **Status: prototype on a review branch. Not production validated.**
+The CI package, HTTPS and ingestion tests pass on GitHub-hosted x86-64 and
+ARM64 Linux; no real Raspberry Pi or Windows collector has been tested.
 For the package-managed variant, see [Cooling Releases](COOLING-RELEASES.md).
 The `.deb` and portable release artifacts share the same application assets;
 package installation itself creates no runtime configuration or containers.
