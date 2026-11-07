@@ -145,7 +145,8 @@ def change(config: Path, state: Path, root: Path, catalog: dict[str, dict],
             if time.monotonic() >= deadline:
                 raise RuntimeError("Selected services did not all reach running state.")
             time.sleep(3)
-    except Exception as error:
+    except BaseException as error:
+        # Ctrl+C during a live change must also attempt the old topology.
         try:
             replace_file(config, old_config)
             compose_generator.write(prior, state)
