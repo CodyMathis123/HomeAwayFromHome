@@ -7,6 +7,7 @@ The adapter never performs configuration changes or scrapes network peers.
 from __future__ import annotations
 
 import json
+import os
 import math
 import re
 import threading
@@ -46,6 +47,37 @@ PROBES = (
     ("telemetry.last", "Last SensorDash samples by host",
      'max by (host) (timestamp(sensordash_reading_value[24h]))', "unix"),
 )
+# Modular installations probe only explicitly selected observability sources.
+# The original full-household set above remains untouched in Production.
+MODULAR = os.environ.get("HOMEAWAY_DIAGNOSTICS_MODE") == "modular"
+SELECTED = frozenset(
+    x.strip() for x in os.environ.get("HOMEAWAY_SELECTED_FEATURES", "").split(",")
+    if x.strip()
+)
+if MODULAR:
+    probes = [
+        ("service.victoria", "VictoriaMetrics scrape", 'up{job="victoria-metrics"}', "boolean"),
+        ("vm.free", "VictoriaMetrics storage available", "vm_free_disk_space_bytes", "bytes"),
+    ]
+    if "linux-host-monitoring" in SELECTED:
+        probes.extend([
+            ("service.linux-host", "Linux exporter scrape",
+             'up{job="linux-host"}', "boolean"),
+            ("host.cpu", "Linux CPU utilization (five-minute rate)",
+             '100 * (1 - avg(rate(node_cpu_seconds_total{job="linux-host",mode="idle"}[5m])))', "percent"),
+            ("host.memory", "Linux memory utilization",
+             '100 * (1 - node_memory_MemAvailable_bytes{job="linux-host"} / node_memory_MemTotal_bytes{job="linux-host"})', "percent"),
+            ("host.load", "Linux 1-minute load", 'node_load1{job="linux-host"}', "load"),
+            ("host.thermal", "Highest Linux thermal zone",
+             'max(node_thermal_zone_temp{job="linux-host"})', "celsius"),
+        ])
+    if "cooling-monitoring" in SELECTED:
+        probes.append(
+            ("telemetry.last", "Last SensorDash samples by host",
+             'max by (host) (timestamp(sensordash_reading_value[24h]))', "unix")
+        )
+    PROBES = tuple(probes)
+
 CACHE_LOCK = threading.Lock()
 CACHE_UNTIL = 0.0
 CACHE_RESULT: dict | None = None
@@ -229,8 +261,10 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/v1/summary":
             source = cached_snapshot()
-        elif self.path == "/v1/certificates":
+        elif self.path == "/v1/certificates" and not MODULAR:
             source = cached_certificates()
+        elif self.path == "/healthz" and MODULAR:
+            source = {"ok": True}
         else:
             self.send_error(404, "Not found")
             return
