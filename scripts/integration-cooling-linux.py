@@ -18,7 +18,7 @@ import tempfile
 import time
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
-from urllib.request import Request, urlopen
+from urllib.request import Request, build_opener, HTTPSHandler, ProxyHandler, urlopen
 
 HOST = "ci-synthetic-cooling"
 METRIC = f'sensordash_reading_value{{host="{HOST}"}}'
@@ -40,8 +40,11 @@ def request(url: str, ca: Path, *, method="GET", body=None, token=None, basic=No
         headers["Authorization"] = "Basic " + credentials
     req = Request(url, data=body, method=method, headers=headers)
     context = ssl.create_default_context(cafile=str(ca))
+    # The target is a local loopback test listener. Never route this
+    # internal integration request through runner-provided HTTP(S) proxies.
+    opener = build_opener(ProxyHandler({}), HTTPSHandler(context=context))
     try:
-        with urlopen(req, timeout=8, context=context) as response:
+        with opener.open(req, timeout=8) as response:
             return response.status, response.read()
     except HTTPError as ex:
         return ex.code, ex.read(8192)
@@ -92,7 +95,7 @@ def wait_for_service(url: str, ca: Path, basic: str) -> None:
                 return
             last = f"Grafana authenticated API returned HTTP {status}"
         except (OSError, URLError) as exc:
-            last = type(exc).__name__
+            last = f"{type(exc).__name__}: {getattr(exc, 'reason', str(exc))}"
         time.sleep(2)
     raise AssertionError(f"HTTPS Grafana never became ready: {last}")
 
