@@ -108,8 +108,9 @@ class DashboardContracts(unittest.TestCase):
             p = panels[number]
             self.assertEqual(p["type"], "stat")
             target = p["targets"][0]
-            self.assertTrue(target["instant"])
-            self.assertFalse(target["range"])
+            self.assertFalse(target["instant"])
+            self.assertTrue(target["range"])
+            self.assertEqual(p["options"]["graphMode"], "area")
             expr = target["expr"]
             self.assertIn('kind="'+kind+'"', expr)
             self.assertIn('device="high_flow_NEXT"', expr)
@@ -135,7 +136,9 @@ class DashboardContracts(unittest.TestCase):
             self.assertEqual(panel["type"], "stat")
             self.assertEqual(panel["fieldConfig"]["defaults"]["unit"], unit)
             target = panel["targets"][0]
-            self.assertTrue(target["instant"])
+            self.assertFalse(target["instant"])
+            self.assertTrue(target["range"])
+            self.assertEqual(panel["options"]["graphMode"], "area")
             self.assertIn("avg_over_time(", target["expr"])
             self.assertIn("[$__range]", target["expr"])
             self.assertIn('device="high_flow_NEXT"', target["expr"])
@@ -802,10 +805,17 @@ class DashboardContracts(unittest.TestCase):
         cp = {p["id"]: p for p in all_dash_panels(cooling)}
         row = cp[104]
         self.assertEqual(row["type"], "row")
-        self.assertTrue(row["collapsed"])
-        self.assertEqual({p["id"] for p in row["panels"]}, {7, 8, 9})
-        self.assertEqual(len([p for p in cooling["panels"] if p["id"] in (7, 8, 9)]), 0)
-        for probe in row["panels"]:
+        self.assertFalse(row["collapsed"])
+        self.assertEqual(row["panels"], [])
+        self.assertIn("COOLANT CIRCULATION", row["title"])
+        self.assertEqual({p["id"] for p in cooling["panels"] if p["id"] in (7, 8, 9)}, {7, 8})
+        self.assertEqual(cp[7]["gridPos"]["y"], 49)
+        self.assertEqual(cp[8]["gridPos"]["y"], 49)
+        air = cp[105]
+        self.assertTrue(air["collapsed"])
+        self.assertEqual({p["id"] for p in air["panels"]}, {9})
+        self.assertIn("Optional ambient", air["title"])
+        for probe in (cp[7], cp[8], cp[9]):
             self.assertIn("sensordash_reading_value", probe["targets"][0]["expr"])
             self.assertFalse(probe["fieldConfig"]["defaults"]["custom"]["spanNulls"])
 
@@ -868,6 +878,13 @@ class DashboardContracts(unittest.TestCase):
             self.assertGreaterEqual(len(headers), 2, filename)
             self.assertTrue(all(p["options"]["mode"] == "markdown"
                                 and p.get("transparent") is True for p in headers))
+            # Collapsed Grafana rows retain child grid positions even while
+            # hidden; their coordinates must not be checked against visible
+            # top-level panels until Grafana expands and reflows that row.
+            collapsed_children = {child["id"]
+                                  for row in d["panels"]
+                                  if row["type"] == "row" and row.get("collapsed")
+                                  for child in row.get("panels", [])}
             for p in all_dash_panels(d):
                 a = p["gridPos"]
                 self.assertGreater(a["h"], 0)
@@ -875,6 +892,8 @@ class DashboardContracts(unittest.TestCase):
                 self.assertGreaterEqual(a["x"], 0)
                 self.assertLessEqual(a["x"] + a["w"], 24)
                 for q in d["panels"]:
+                    if p["id"] in collapsed_children:
+                        continue
                     if p["id"] >= q["id"]:
                         continue
                     b = q["gridPos"]
