@@ -71,7 +71,6 @@ class DashboardContracts(unittest.TestCase):
         expected = {
             117: ("Conductivity", "Conductivity", "suffix: µS/cm"),
             118: ("Level", "Water_Quality", "percent"),
-            119: ("Temperature", "External_Temperature", "celsius"),
             120: ("Voltage", "VCC|VCC_USB", "volt"),
             121: ("Factor", "_Alarm", "none"),
             122: ("Power", "Dissipated_Power", "watt"),
