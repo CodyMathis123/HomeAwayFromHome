@@ -531,7 +531,7 @@ def main() -> None:
                 )
     with urllib.request.urlopen(urllib.request.Request(
         BASE + "/api/v2/write?precision=ms",
-        data=("\\n".join(samples) + "\\n").encode("ascii"),
+        data=("\n".join(samples) + "\n").encode("ascii"),
         headers={"Content-Type": "text/plain"}, method="POST"
     ), timeout=10) as response:
         assert 200 <= response.status < 300
