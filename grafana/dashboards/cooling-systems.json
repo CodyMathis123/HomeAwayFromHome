@@ -950,10 +950,10 @@
             "w": 12,
             "h": 9
           },
-          "description": "Measurements are recorded on Windows; cooling assignments remain controlled by SensorDash. Gaps are not filled. Series names come from the SensorDash sensor catalog; stable sensor IDs and the raw measurement values are unchanged. Alias/label changes do not rewrite archived samples. Visible name labels are normalized at query time; the stored series and join identity labels are unchanged.",
+          "description": "Measurements are recorded on Windows; cooling assignments remain controlled by SensorDash. Gaps are not filled. Series names come from the SensorDash sensor catalog; stable sensor IDs and the raw measurement values are unchanged. Alias/label changes do not rewrite archived samples. Visible name labels are normalized at query time; the stored series and join identity labels are unchanged. Source LibreHardwareMonitor Flow values are L/h, not L/min.",
           "fieldConfig": {
             "defaults": {
-              "unit": "flowlpm",
+              "unit": "litreh",
               "custom": {
                 "drawStyle": "line",
                 "lineInterpolation": "smooth",
@@ -1088,6 +1088,513 @@
         "w": 24,
         "h": 1
       }
+    },
+    {
+      "id": 114,
+      "title": "high flow NEXT · direct USB measurements",
+      "type": "row",
+      "collapsed": true,
+      "gridPos": {
+        "x": 0,
+        "y": 68,
+        "w": 24,
+        "h": 1
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "targets": [],
+      "panels": [
+        {
+          "id": 115,
+          "title": "NEXT · coolant temperature",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 69,
+            "w": 12,
+            "h": 8
+          },
+          "description": "Physical water temperature from high flow NEXT over USB; gaps represent missing measurements, not zero.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "celsius",
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "smooth",
+                "spanNulls": false,
+                "showPoints": "never",
+                "lineWidth": 2,
+                "fillOpacity": 14,
+                "axisBorderShow": false
+              },
+              "color": {
+                "mode": "palette-classic-by-name"
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "lastNotNull",
+                "max"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "homeaway-vm"
+              },
+              "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(name,device) (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=~\"Water_Temperature\"} == 1)",
+              "legendFormat": "{{name}}",
+              "range": true
+            }
+          ],
+          "transformations": [
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "/_/g",
+                "renamePattern": " "
+              }
+            }
+          ]
+        },
+        {
+          "id": 116,
+          "title": "NEXT · flow rate",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "gridPos": {
+            "x": 12,
+            "y": 69,
+            "w": 12,
+            "h": 8
+          },
+          "description": "L/h measured by high flow NEXT. SensorDash records raw measurements without converting to L/min.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "litreh",
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "smooth",
+                "spanNulls": false,
+                "showPoints": "never",
+                "lineWidth": 2,
+                "fillOpacity": 14,
+                "axisBorderShow": false
+              },
+              "color": {
+                "mode": "palette-classic-by-name"
+              },
+              "min": 0
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "lastNotNull",
+                "max"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "homeaway-vm"
+              },
+              "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Flow\"} * on(host,sensor) group_left(name,device) (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Flow\",name=~\"Flow\"} == 1)",
+              "legendFormat": "{{name}}",
+              "range": true
+            }
+          ],
+          "transformations": [
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "/_/g",
+                "renamePattern": " "
+              }
+            }
+          ]
+        },
+        {
+          "id": 117,
+          "title": "NEXT · coolant conductivity",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 77,
+            "w": 12,
+            "h": 8
+          },
+          "description": "Conductivity measures dissolved-ion effects and additive chemistry; it does not directly test corrosion or pH.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "suffix: µS/cm",
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "smooth",
+                "spanNulls": false,
+                "showPoints": "never",
+                "lineWidth": 2,
+                "fillOpacity": 14,
+                "axisBorderShow": false
+              },
+              "color": {
+                "mode": "palette-classic-by-name"
+              },
+              "min": 0
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "lastNotNull",
+                "max"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "homeaway-vm"
+              },
+              "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Conductivity\"} * on(host,sensor) group_left(name,device) (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Conductivity\",name=~\"Conductivity\"} == 1)",
+              "legendFormat": "{{name}}",
+              "range": true
+            }
+          ],
+          "transformations": [
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "/_/g",
+                "renamePattern": " "
+              }
+            }
+          ]
+        },
+        {
+          "id": 118,
+          "title": "NEXT · water quality estimate",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "gridPos": {
+            "x": 12,
+            "y": 77,
+            "w": 12,
+            "h": 8
+          },
+          "description": "Manufacturer-calculated percentage based on conductivity thresholds; not an independent chemical water-quality test.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "smooth",
+                "spanNulls": false,
+                "showPoints": "never",
+                "lineWidth": 2,
+                "fillOpacity": 14,
+                "axisBorderShow": false
+              },
+              "color": {
+                "mode": "palette-classic-by-name"
+              },
+              "min": 0
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "lastNotNull",
+                "max"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "homeaway-vm"
+              },
+              "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Level\"} * on(host,sensor) group_left(name,device) (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Level\",name=~\"Water_Quality\"} == 1)",
+              "legendFormat": "{{name}}",
+              "range": true
+            }
+          ],
+          "transformations": [
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "/_/g",
+                "renamePattern": " "
+              }
+            }
+          ]
+        },
+        {
+          "id": 119,
+          "title": "NEXT · external temperature",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 85,
+            "w": 12,
+            "h": 8
+          },
+          "description": "Optional external thermistor, e.g. case intake ambient. No data until a physical probe is attached.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "celsius",
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "smooth",
+                "spanNulls": false,
+                "showPoints": "never",
+                "lineWidth": 2,
+                "fillOpacity": 14,
+                "axisBorderShow": false
+              },
+              "color": {
+                "mode": "palette-classic-by-name"
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "lastNotNull",
+                "max"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "homeaway-vm"
+              },
+              "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(name,device) (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=~\"External_Temperature\"} == 1)",
+              "legendFormat": "{{name}}",
+              "range": true
+            }
+          ],
+          "transformations": [
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "/_/g",
+                "renamePattern": " "
+              }
+            }
+          ]
+        },
+        {
+          "id": 120,
+          "title": "NEXT · supply voltages",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "gridPos": {
+            "x": 12,
+            "y": 85,
+            "w": 12,
+            "h": 8
+          },
+          "description": "USB/device supply voltage monitoring, recorded only when present.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "volt",
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "smooth",
+                "spanNulls": false,
+                "showPoints": "never",
+                "lineWidth": 2,
+                "fillOpacity": 14,
+                "axisBorderShow": false
+              },
+              "color": {
+                "mode": "palette-classic-by-name"
+              },
+              "min": 0
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "lastNotNull",
+                "max"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "homeaway-vm"
+              },
+              "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Voltage\"} * on(host,sensor) group_left(name,device) (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Voltage\",name=~\"VCC|VCC_USB\"} == 1)",
+              "legendFormat": "{{name}}",
+              "range": true
+            }
+          ],
+          "transformations": [
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "/_/g",
+                "renamePattern": " "
+              }
+            }
+          ]
+        },
+        {
+          "id": 121,
+          "title": "NEXT · alarm flags (1 = active)",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 93,
+            "w": 24,
+            "h": 7
+          },
+          "description": "Native device alarm flags. 1 indicates an active NEXT alarm, 0 means inactive; gaps indicate no valid observation.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "none",
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "smooth",
+                "spanNulls": false,
+                "showPoints": "never",
+                "lineWidth": 2,
+                "fillOpacity": 14,
+                "axisBorderShow": false
+              },
+              "color": {
+                "mode": "palette-classic-by-name"
+              },
+              "min": 0
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "lastNotNull",
+                "max"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "homeaway-vm"
+              },
+              "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Factor\"} * on(host,sensor) group_left(name,device) (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Factor\",name=~\"(Flow|Water_Temperature|External_Temperature|Water_Quality)_Alarm\"} == 1)",
+              "legendFormat": "{{name}}",
+              "range": true
+            }
+          ],
+          "transformations": [
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "/_/g",
+                "renamePattern": " "
+              }
+            }
+          ]
+        }
+      ]
     }
   ],
   "links": [
