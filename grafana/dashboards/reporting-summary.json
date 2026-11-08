@@ -643,7 +643,7 @@
       "gridPos": {
         "x": 0,
         "y": 16,
-        "w": 6,
+        "w": 4,
         "h": 5
       },
       "targets": [
@@ -710,9 +710,9 @@
       },
       "description": "Peak recorded pump tachometer reading for pump-bound cooling components. The DDC remains fixed-speed/tach-only; this is not a controllable PWM output. Highest individual sensor in the selected time range, with the originating sensor identified below the value; not an aggregate of multiple sensors. Highest individual reading in the selected range. Displays the originating SensorDash alias or sensor name, with underscores normalized for display. Missing current sensor catalog can make this card unavailable.",
       "gridPos": {
-        "x": 6,
+        "x": 4,
         "y": 16,
-        "w": 6,
+        "w": 4,
         "h": 5
       },
       "targets": [
@@ -779,9 +779,9 @@
       },
       "description": "Number of numeric temperature samples, not wall-clock coverage. More sensors or faster sampling increases this count.",
       "gridPos": {
-        "x": 12,
+        "x": 8,
         "y": 16,
-        "w": 6,
+        "w": 4,
         "h": 5
       },
       "targets": [
@@ -840,9 +840,9 @@
       },
       "description": "Latest exported local SQLite buffer footprint. This is not per-device VictoriaMetrics disk usage.",
       "gridPos": {
-        "x": 18,
+        "x": 12,
         "y": 16,
-        "w": 6,
+        "w": 4,
         "h": 5
       },
       "targets": [
@@ -864,6 +864,128 @@
           "color": {
             "mode": "fixed",
             "fixedColor": "#62d5ce"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area"
+      }
+    },
+    {
+      "id": 205,
+      "title": "Coolant · avg temp",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Average of recorded high flow NEXT coolant temperature observations during the selected reporting period. Missing intervals are excluded; this is a sampled average rather than a time-weighted estimate.",
+      "gridPos": {
+        "x": 16,
+        "y": 16,
+        "w": 4,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "avg(avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1))",
+          "instant": true,
+          "legendFormat": "Coolant · avg temp"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "noValue": "—",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#62d5ce"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area"
+      }
+    },
+    {
+      "id": 206,
+      "title": "Flow · avg L/h",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Average of recorded high flow NEXT flow readings in L/h during the selected reporting period. Missing intervals are excluded; the DDC pump operates at a fixed speed.",
+      "gridPos": {
+        "x": 20,
+        "y": 16,
+        "w": 4,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "avg(avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Flow\"}[$__range]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Flow\",name=\"Flow\"} == 1))",
+          "instant": true,
+          "legendFormat": "Flow · avg L/h"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "litreh",
+          "noValue": "—",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#6fa7ed"
           },
           "thresholds": {
             "mode": "absolute",
@@ -948,6 +1070,160 @@
           "custom": {
             "drawStyle": "line",
             "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
+    },
+    {
+      "id": 37,
+      "title": "Windows local telemetry buffer · disk footprint",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Current SQLite main database, WAL and SHM file bytes sampled through time. Not the size of individual sensors in VictoriaMetrics.",
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "sum by(host)(sensordash_spool_value{host=~\"$host\"})",
+          "range": true,
+          "legendFormat": "{{host}} · SQLite buffer",
+          "maxDataPoints": 360,
+          "interval": "5m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
+    },
+    {
+      "id": 36,
+      "title": "Temperature sensors reporting within 1 hour",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Per-computer count of CPU temperature sensor streams with observations in the prior hour. GPU is a separate series, never an average.",
+      "gridPos": {
+        "x": 0,
+        "y": 34,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "count by(host)(count_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[1h]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device_type=\"Cpu\",name!~\"(?i).*(warning|critical).*\"} == 1))",
+          "range": true,
+          "legendFormat": "{{host}} · CPU sensor streams",
+          "maxDataPoints": 360,
+          "interval": "5m"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "count by(host)(count_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[1h]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name!~\"(?i).*(warning|critical).*\"} == 1))",
+          "range": true,
+          "legendFormat": "{{host}} · GPU sensor streams",
+          "maxDataPoints": 360,
+          "interval": "5m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
             "lineWidth": 2,
             "fillOpacity": 12,
             "showPoints": "never",
@@ -1370,160 +1646,6 @@
       "fieldConfig": {
         "defaults": {
           "unit": "celsius",
-          "color": {
-            "mode": "palette-classic-by-name"
-          },
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "fillOpacity": 12,
-            "showPoints": "never",
-            "spanNulls": false
-          },
-          "min": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ]
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "transformations": [
-        {
-          "id": "renameByRegex",
-          "options": {
-            "regex": "/_/g",
-            "renamePattern": " "
-          }
-        }
-      ]
-    },
-    {
-      "id": 36,
-      "title": "Temperature sensors reporting within 1 hour",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "homeaway-vm"
-      },
-      "description": "Per-computer count of CPU temperature sensor streams with observations in the prior hour. GPU is a separate series, never an average.",
-      "gridPos": {
-        "x": 0,
-        "y": 34,
-        "w": 24,
-        "h": 8
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "homeaway-vm"
-          },
-          "expr": "count by(host)(count_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[1h]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device_type=\"Cpu\",name!~\"(?i).*(warning|critical).*\"} == 1))",
-          "range": true,
-          "legendFormat": "{{host}} · CPU sensor streams",
-          "maxDataPoints": 360,
-          "interval": "5m"
-        },
-        {
-          "refId": "B",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "homeaway-vm"
-          },
-          "expr": "count by(host)(count_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[1h]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name!~\"(?i).*(warning|critical).*\"} == 1))",
-          "range": true,
-          "legendFormat": "{{host}} · GPU sensor streams",
-          "maxDataPoints": 360,
-          "interval": "5m"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "color": {
-            "mode": "palette-classic-by-name"
-          },
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "fillOpacity": 12,
-            "showPoints": "never",
-            "spanNulls": false
-          },
-          "min": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ]
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "transformations": [
-        {
-          "id": "renameByRegex",
-          "options": {
-            "regex": "/_/g",
-            "renamePattern": " "
-          }
-        }
-      ]
-    },
-    {
-      "id": 37,
-      "title": "Windows local telemetry buffer · disk footprint",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "homeaway-vm"
-      },
-      "description": "Current SQLite main database, WAL and SHM file bytes sampled through time. Not the size of individual sensors in VictoriaMetrics.",
-      "gridPos": {
-        "x": 12,
-        "y": 24,
-        "w": 12,
-        "h": 10
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "homeaway-vm"
-          },
-          "expr": "sum by(host)(sensordash_spool_value{host=~\"$host\"})",
-          "range": true,
-          "legendFormat": "{{host}} · SQLite buffer",
-          "maxDataPoints": 360,
-          "interval": "5m"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "bytes",
           "color": {
             "mode": "palette-classic-by-name"
           },
