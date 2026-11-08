@@ -8,7 +8,7 @@
     "read-only",
     "embedded"
   ],
-  "description": "Compact shared dashboard for LAN/VPN HomeAway iframe. No template variables or control APIs. All Windows hosts are included (max values on summary tiles). Compact read-only metrics for the Portal's Grafana embed; intentionally repeats small summaries but is not intended to be the primary diagnostic dashboard.",
+  "description": "Compact shared dashboard for LAN/VPN HomeAway iframe. No template variables or control APIs. All Windows hosts are included (max values on summary tiles). Compact read-only metrics for the Portal's Grafana embed; intentionally repeats small summaries but is not intended to be the primary diagnostic dashboard. Includes live high flow NEXT coolant temperature (°C) and circulation (L/h) panels, matched by device/name/type catalog metadata rather than USB sensor paths.",
   "schemaVersion": 40,
   "version": 2,
   "editable": false,
@@ -272,6 +272,130 @@
       }
     },
     {
+      "id": 11,
+      "title": "Coolant temperature",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Actual high flow NEXT coolant temperature from the SensorDash USB sensor catalog. Latest reported value across Windows hosts; missing/stale readings show no data.",
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 12,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "max(sensordash_reading_value{host=~\".+\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\".+\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1))",
+          "range": false,
+          "legendFormat": "Coolant temperature",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "noValue": "—",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#62d5ce"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 12,
+      "title": "Coolant flow",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Actual high flow NEXT flow rate in liters per hour, read by SensorDash over USB. No inferred flow or zero-filling during missing observations.",
+      "gridPos": {
+        "x": 12,
+        "y": 5,
+        "w": 12,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "max(sensordash_reading_value{host=~\".+\",kind=\"Flow\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\".+\",device=\"high_flow_NEXT\",kind=\"Flow\",name=\"Flow\"} == 1))",
+          "range": false,
+          "legendFormat": "Coolant flow",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "litreh",
+          "noValue": "—",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#6fa7ed"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
       "id": 5,
       "title": "Pi CPU activity",
       "type": "stat",
@@ -282,7 +406,7 @@
       "description": "Five-minute busy CPU ratio across host cores. Not a container CPU quota.",
       "gridPos": {
         "x": 0,
-        "y": 5,
+        "y": 10,
         "w": 6,
         "h": 5
       },
@@ -343,7 +467,7 @@
       "description": "Host MemAvailable-based usage from /proc/meminfo, not container memory.",
       "gridPos": {
         "x": 6,
-        "y": 5,
+        "y": 10,
         "w": 6,
         "h": 5
       },
@@ -404,7 +528,7 @@
       "description": "Percent blocked in Pi-hole's current summary window.",
       "gridPos": {
         "x": 12,
-        "y": 5,
+        "y": 10,
         "w": 6,
         "h": 5
       },
@@ -464,7 +588,7 @@
       "description": "wg-easy's connected-peer heuristic.",
       "gridPos": {
         "x": 18,
-        "y": 5,
+        "y": 10,
         "w": 6,
         "h": 5
       },
@@ -524,7 +648,7 @@
       "description": "Real temperature readings only. Sleep/resume gaps remain gaps; no hidden interpolation.",
       "gridPos": {
         "x": 0,
-        "y": 10,
+        "y": 15,
         "w": 12,
         "h": 10
       },
@@ -593,7 +717,7 @@
       "description": "A five-minute moving rate; spikes shorter than the window are smoothed.",
       "gridPos": {
         "x": 12,
-        "y": 10,
+        "y": 15,
         "w": 12,
         "h": 10
       },
