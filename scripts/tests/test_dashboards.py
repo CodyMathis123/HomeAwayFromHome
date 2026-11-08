@@ -823,8 +823,8 @@ class DashboardContracts(unittest.TestCase):
         self.assertEqual(row["panels"], [])
         self.assertIn("COOLANT CIRCULATION", row["title"])
         self.assertEqual({p["id"] for p in cooling["panels"] if p["id"] in (7, 8, 9)}, {7, 8})
-        self.assertEqual(cp[7]["gridPos"]["y"], 49)
-        self.assertEqual(cp[8]["gridPos"]["y"], 49)
+        self.assertEqual(cp[7]["gridPos"]["y"], 20)
+        self.assertEqual(cp[8]["gridPos"]["y"], 20)
         air = cp[105]
         self.assertTrue(air["collapsed"])
         self.assertEqual({p["id"] for p in air["panels"]}, {9})
