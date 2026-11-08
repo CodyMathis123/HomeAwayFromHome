@@ -913,7 +913,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "avg(avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1))",
+          "expr": "avg(avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range] @ end()) * on(host,sensor) group_left() (last_over_time(sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"}[$__range] @ end()) == 1))",
           "instant": true,
           "legendFormat": "Coolant · avg temp"
         }
@@ -974,7 +974,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "avg(avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Flow\"}[$__range]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Flow\",name=\"Flow\"} == 1))",
+          "expr": "avg(avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Flow\"}[$__range] @ end()) * on(host,sensor) group_left() (last_over_time(sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Flow\",name=\"Flow\"}[$__range] @ end()) == 1))",
           "instant": true,
           "legendFormat": "Flow · avg L/h"
         }
