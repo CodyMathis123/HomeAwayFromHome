@@ -9,7 +9,7 @@
     "overview",
     "analysis"
   ],
-  "description": "Daily, weekly and monthly telemetry summaries. Choose Last 24 hours, Last 7 days or Last 30 days in the Grafana time picker. Values reflect only recorded samples; offline intervals are not imputed. Hardware identity uses SensorDash metadata, not sensor ID patterns. Estimated accessory watts are not metered energy. GPU device families include GpuAmd, GpuNvidia and GpuIntel. Fan RPM statistics use role-bound radiator and pump sensors separately. Period-over-period comparisons use an equal duration and yield no value when either period is absent; rolling 24h peaks are not calendar-day aggregates. Sensor-stream presence is an observation indicator, not a percentage of PC uptime. Detailed temperature/power history and cooling accessory/fan timelines are provided on the dedicated Hardware Telemetry, Cooling and Electricity dashboards rather than duplicated here. Historical analysis refreshes every five minutes rather than polling a 30-day window every 15 seconds.",
+  "description": "Daily, weekly and monthly telemetry summaries. Choose Last 24 hours, Last 7 days or Last 30 days in the Grafana time picker. Values reflect only recorded samples; offline intervals are not imputed. Hardware identity uses SensorDash metadata, not sensor ID patterns. Estimated accessory watts are not metered energy. GPU device families include GpuAmd, GpuNvidia and GpuIntel. Fan RPM statistics use role-bound radiator and pump sensors separately. Period-over-period comparisons use an equal duration and yield no value when either period is absent; rolling 24h peaks are not calendar-day aggregates. Sensor-stream presence is an observation indicator, not a percentage of PC uptime. Detailed temperature/power history and cooling accessory/fan timelines are provided on the dedicated Hardware Telemetry, Cooling and Electricity dashboards rather than duplicated here. Historical analysis refreshes every five minutes rather than polling a 30-day window every 15 seconds. The cooling summary shows four readable cards (radiator/pump tach peaks plus average coolant temperature and flow). Recording density and buffer health remain in the detailed coverage charts rather than duplicating cards.",
   "schemaVersion": 40,
   "version": 5,
   "editable": false,
@@ -628,7 +628,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "### COOLING · SEPARATE HARDWARE ROLES\nRadiator fan-group and fixed-speed DDC pump readings are shown separately using the cooling bindings configured in SensorDash. NVMe fan readings are **not** mixed in. Tachometer RPM is actual feedback; PWM duty is not proof of physical speed."
+        "content": "### COOLING · FAN, PUMP & COOLANT BEHAVIORn-group and fixed-speed DDC pump readings are shown separately using the cooling bindings configured in SensorDash. NVMe fan readings are **not** mixed in. Tachometer RPM is actual feedback; PWM duty is not proof of physical speed."
       }
     },
     {
@@ -643,7 +643,7 @@
       "gridPos": {
         "x": 0,
         "y": 16,
-        "w": 4,
+        "w": 6,
         "h": 5
       },
       "targets": [
@@ -710,9 +710,9 @@
       },
       "description": "Peak recorded pump tachometer reading for pump-bound cooling components. The DDC remains fixed-speed/tach-only; this is not a controllable PWM output. Highest individual sensor in the selected time range, with the originating sensor identified below the value; not an aggregate of multiple sensors. Highest individual reading in the selected range. Displays the originating SensorDash alias or sensor name, with underscores normalized for display. Missing current sensor catalog can make this card unavailable.",
       "gridPos": {
-        "x": 4,
+        "x": 6,
         "y": 16,
-        "w": 4,
+        "w": 6,
         "h": 5
       },
       "targets": [
@@ -770,128 +770,6 @@
       }
     },
     {
-      "id": 11,
-      "title": "Temperature observations",
-      "type": "stat",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "homeaway-vm"
-      },
-      "description": "Number of numeric temperature samples, not wall-clock coverage. More sensors or faster sampling increases this count.",
-      "gridPos": {
-        "x": 8,
-        "y": 16,
-        "w": 4,
-        "h": 5
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "homeaway-vm"
-          },
-          "expr": "sum(count_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range]))",
-          "range": true,
-          "legendFormat": "Temperature observations"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "noValue": "—",
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "#62d5ce"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "values": false,
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": ""
-        },
-        "orientation": "auto",
-        "textMode": "auto",
-        "colorMode": "value",
-        "graphMode": "area"
-      }
-    },
-    {
-      "id": 12,
-      "title": "Windows telemetry buffer",
-      "type": "stat",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "homeaway-vm"
-      },
-      "description": "Latest exported local SQLite buffer footprint. This is not per-device VictoriaMetrics disk usage.",
-      "gridPos": {
-        "x": 12,
-        "y": 16,
-        "w": 4,
-        "h": 5
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "homeaway-vm"
-          },
-          "expr": "sum(sensordash_spool_value{host=~\"$host\"})",
-          "range": true,
-          "legendFormat": "Windows telemetry buffer"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "bytes",
-          "noValue": "—",
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "#62d5ce"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "values": false,
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": ""
-        },
-        "orientation": "auto",
-        "textMode": "auto",
-        "colorMode": "value",
-        "graphMode": "area"
-      }
-    },
-    {
       "id": 205,
       "title": "Coolant · avg temp",
       "type": "stat",
@@ -901,9 +779,9 @@
       },
       "description": "Average of recorded high flow NEXT coolant temperature observations during the selected reporting period. Missing intervals are excluded; this is a sampled average rather than a time-weighted estimate. Sparkline shows a moving average over the selected time range, like the other Reporting Summary average cards; the large value is the average ending at the dashboard's current time.",
       "gridPos": {
-        "x": 16,
+        "x": 12,
         "y": 16,
-        "w": 4,
+        "w": 6,
         "h": 5
       },
       "targets": [
@@ -963,9 +841,9 @@
       },
       "description": "Average of recorded high flow NEXT flow readings in L/h during the selected reporting period. Missing intervals are excluded; the DDC pump operates at a fixed speed. Sparkline shows a moving average over the selected time range, like the other Reporting Summary average cards; the large value is the average ending at the dashboard's current time.",
       "gridPos": {
-        "x": 20,
+        "x": 18,
         "y": 16,
-        "w": 4,
+        "w": 6,
         "h": 5
       },
       "targets": [
