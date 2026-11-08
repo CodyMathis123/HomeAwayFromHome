@@ -113,7 +113,7 @@ class WorkloadReportingTests(unittest.TestCase):
         self.assertIn("* 5", stats[221]["targets"][0]["expr"])
         # Load-band shares must account for missing samples, not silently
         # treat a sleeping PC as 0% activity or assume gaming by GPU usage.
-        for id, expected in ((227, "< 10"), (228, "< 60"), (229, ">= 60")):
+        for id, expected in ((227, "< bool 10"), (228, "< bool 60"), (229, ">= bool 60")):
             panel = stats[id]
             self.assertEqual(panel["fieldConfig"]["defaults"]["unit"], "percent")
             self.assertEqual(panel["fieldConfig"]["defaults"]["min"], 0)
@@ -128,7 +128,7 @@ class WorkloadReportingTests(unittest.TestCase):
             self.assertIn("and on(host)", expr)
             self.assertIn("[$__range:5m]", expr)
             self.assertNotIn("vector(0)", expr)
-        self.assertIn(">= 10", stats[228]["targets"][0]["expr"])
+        self.assertIn(">= bool 10", stats[228]["targets"][0]["expr"])
         self.assertIn("observed", stats[227]["description"].lower())
 
         # Missing one of the two physical load sensors -> no idle series.
