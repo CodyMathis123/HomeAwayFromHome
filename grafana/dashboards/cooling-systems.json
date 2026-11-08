@@ -862,150 +862,179 @@
     {
       "id": 104,
       "type": "row",
-      "title": "Optional probes · coolant, flow and room ambient (expand when installed)",
+      "title": "COOLANT CIRCULATION · installed temperature and flow sensors",
       "description": "These read-only charts populate only after actual probes are installed, named and assigned in SensorDash. No virtual or inferred coolant temperatures, flow or room ambient values.",
+      "collapsed": false,
+      "panels": [],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "targets": [],
+      "gridPos": {
+        "x": 0,
+        "y": 48,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 7,
+      "title": "Coolant temperature",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 49,
+        "w": 12,
+        "h": 9
+      },
+      "description": "Measurements are recorded on Windows; cooling assignments remain controlled by SensorDash. Gaps are not filled. Series names come from the SensorDash sensor catalog; stable sensor IDs and the raw measurement values are unchanged. Alias/label changes do not rewrite archived samples. Visible name labels are normalized at query time; the stored series and join identity labels are unchanged.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "spanNulls": false,
+            "showPoints": "never",
+            "lineWidth": 2,
+            "fillOpacity": 14,
+            "axisBorderShow": false
+          },
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=~\"coolant-probe\"} == 1)) * on(host,sensor) group_left(name,alias,device) (label_replace(sensordash_sensor_info_value{host=~\"$host\",name!~\"(?i).*(warning|critical).*\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",name!~\"(?i).*(warning|critical).*\",alias=\"unassigned\"} == 1)), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
+          "legendFormat": "{{component_name}} · {{name}}",
+          "range": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Flow rate",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 49,
+        "w": 12,
+        "h": 9
+      },
+      "description": "Measurements are recorded on Windows; cooling assignments remain controlled by SensorDash. Gaps are not filled. Series names come from the SensorDash sensor catalog; stable sensor IDs and the raw measurement values are unchanged. Alias/label changes do not rewrite archived samples. Visible name labels are normalized at query time; the stored series and join identity labels are unchanged. Source LibreHardwareMonitor Flow values are L/h, not L/min.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "litreh",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "spanNulls": false,
+            "showPoints": "never",
+            "lineWidth": 2,
+            "fillOpacity": 14,
+            "axisBorderShow": false
+          },
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace((sensordash_reading_value{host=~\"$host\",kind=\"Flow\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Flow\",role=~\"flow-meter\"} == 1)) * on(host,sensor) group_left(name,alias,device) (label_replace(sensordash_sensor_info_value{host=~\"$host\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",alias=\"unassigned\"} == 1)), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
+          "legendFormat": "{{component_name}} · {{name}}",
+          "range": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
+    },
+    {
+      "id": 105,
+      "title": "Optional ambient air probe · connect when installed",
+      "type": "row",
       "collapsed": true,
+      "gridPos": {
+        "x": 0,
+        "y": 58,
+        "w": 24,
+        "h": 1
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "targets": [],
       "panels": [
-        {
-          "id": 7,
-          "title": "Coolant temperature",
-          "type": "timeseries",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "homeaway-vm"
-          },
-          "gridPos": {
-            "x": 0,
-            "y": 49,
-            "w": 12,
-            "h": 9
-          },
-          "description": "Measurements are recorded on Windows; cooling assignments remain controlled by SensorDash. Gaps are not filled. Series names come from the SensorDash sensor catalog; stable sensor IDs and the raw measurement values are unchanged. Alias/label changes do not rewrite archived samples. Visible name labels are normalized at query time; the stored series and join identity labels are unchanged.",
-          "fieldConfig": {
-            "defaults": {
-              "unit": "celsius",
-              "custom": {
-                "drawStyle": "line",
-                "lineInterpolation": "smooth",
-                "spanNulls": false,
-                "showPoints": "never",
-                "lineWidth": 2,
-                "fillOpacity": 14,
-                "axisBorderShow": false
-              },
-              "color": {
-                "mode": "palette-classic-by-name"
-              },
-              "min": 0
-            },
-            "overrides": []
-          },
-          "options": {
-            "legend": {
-              "displayMode": "table",
-              "placement": "bottom",
-              "calcs": [
-                "lastNotNull",
-                "max"
-              ]
-            },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
-          "targets": [
-            {
-              "refId": "A",
-              "datasource": {
-                "type": "prometheus",
-                "uid": "homeaway-vm"
-              },
-              "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=~\"coolant-probe\"} == 1)) * on(host,sensor) group_left(name,alias,device) (label_replace(sensordash_sensor_info_value{host=~\"$host\",name!~\"(?i).*(warning|critical).*\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",name!~\"(?i).*(warning|critical).*\",alias=\"unassigned\"} == 1)), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
-              "legendFormat": "{{component_name}} · {{name}}",
-              "range": true
-            }
-          ],
-          "transformations": [
-            {
-              "id": "renameByRegex",
-              "options": {
-                "regex": "/_/g",
-                "renamePattern": " "
-              }
-            }
-          ]
-        },
-        {
-          "id": 8,
-          "title": "Flow rate",
-          "type": "timeseries",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "homeaway-vm"
-          },
-          "gridPos": {
-            "x": 12,
-            "y": 49,
-            "w": 12,
-            "h": 9
-          },
-          "description": "Measurements are recorded on Windows; cooling assignments remain controlled by SensorDash. Gaps are not filled. Series names come from the SensorDash sensor catalog; stable sensor IDs and the raw measurement values are unchanged. Alias/label changes do not rewrite archived samples. Visible name labels are normalized at query time; the stored series and join identity labels are unchanged. Source LibreHardwareMonitor Flow values are L/h, not L/min.",
-          "fieldConfig": {
-            "defaults": {
-              "unit": "litreh",
-              "custom": {
-                "drawStyle": "line",
-                "lineInterpolation": "smooth",
-                "spanNulls": false,
-                "showPoints": "never",
-                "lineWidth": 2,
-                "fillOpacity": 14,
-                "axisBorderShow": false
-              },
-              "color": {
-                "mode": "palette-classic-by-name"
-              },
-              "min": 0
-            },
-            "overrides": []
-          },
-          "options": {
-            "legend": {
-              "displayMode": "table",
-              "placement": "bottom",
-              "calcs": [
-                "lastNotNull",
-                "max"
-              ]
-            },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
-          "targets": [
-            {
-              "refId": "A",
-              "datasource": {
-                "type": "prometheus",
-                "uid": "homeaway-vm"
-              },
-              "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace((sensordash_reading_value{host=~\"$host\",kind=\"Flow\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Flow\",role=~\"flow-meter\"} == 1)) * on(host,sensor) group_left(name,alias,device) (label_replace(sensordash_sensor_info_value{host=~\"$host\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",alias=\"unassigned\"} == 1)), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
-              "legendFormat": "{{component_name}} · {{name}}",
-              "range": true
-            }
-          ],
-          "transformations": [
-            {
-              "id": "renameByRegex",
-              "options": {
-                "regex": "/_/g",
-                "renamePattern": " "
-              }
-            }
-          ]
-        },
         {
           "id": 9,
           "title": "Room ambient temperature",
@@ -1016,7 +1045,7 @@
           },
           "gridPos": {
             "x": 0,
-            "y": 58,
+            "y": 59,
             "w": 12,
             "h": 9
           },
@@ -1076,18 +1105,7 @@
             }
           ]
         }
-      ],
-      "datasource": {
-        "type": "prometheus",
-        "uid": "homeaway-vm"
-      },
-      "targets": [],
-      "gridPos": {
-        "x": 0,
-        "y": 48,
-        "w": 24,
-        "h": 1
-      }
+      ]
     },
     {
       "id": 114,
@@ -1096,7 +1114,7 @@
       "collapsed": true,
       "gridPos": {
         "x": 0,
-        "y": 68,
+        "y": 59,
         "w": 24,
         "h": 1
       },
@@ -1116,7 +1134,7 @@
           },
           "gridPos": {
             "x": 0,
-            "y": 69,
+            "y": 60,
             "w": 12,
             "h": 8
           },
@@ -1185,7 +1203,7 @@
           },
           "gridPos": {
             "x": 12,
-            "y": 69,
+            "y": 60,
             "w": 12,
             "h": 8
           },
@@ -1255,7 +1273,7 @@
           },
           "gridPos": {
             "x": 0,
-            "y": 77,
+            "y": 68,
             "w": 12,
             "h": 8
           },
@@ -1325,7 +1343,7 @@
           },
           "gridPos": {
             "x": 12,
-            "y": 77,
+            "y": 68,
             "w": 12,
             "h": 8
           },
@@ -1395,7 +1413,7 @@
           },
           "gridPos": {
             "x": 0,
-            "y": 85,
+            "y": 76,
             "w": 12,
             "h": 8
           },
@@ -1464,7 +1482,7 @@
           },
           "gridPos": {
             "x": 12,
-            "y": 85,
+            "y": 76,
             "w": 12,
             "h": 8
           },
@@ -1534,7 +1552,7 @@
           },
           "gridPos": {
             "x": 0,
-            "y": 93,
+            "y": 84,
             "w": 24,
             "h": 7
           },
@@ -1604,7 +1622,7 @@
           },
           "gridPos": {
             "x": 0,
-            "y": 100,
+            "y": 91,
             "w": 12,
             "h": 8
           },
