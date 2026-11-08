@@ -899,7 +899,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Average of recorded high flow NEXT coolant temperature observations during the selected reporting period. Missing intervals are excluded; this is a sampled average rather than a time-weighted estimate.",
+      "description": "Average of recorded high flow NEXT coolant temperature observations during the selected reporting period. Missing intervals are excluded; this is a sampled average rather than a time-weighted estimate. Sparkline shows a moving average over the selected time range, like the other Reporting Summary average cards; the large value is the average ending at the dashboard's current time.",
       "gridPos": {
         "x": 16,
         "y": 16,
@@ -913,9 +913,10 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "avg(avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range] @ end()) * on(host,sensor) group_left() (last_over_time(sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"}[$__range] @ end()) == 1))",
-          "instant": true,
-          "legendFormat": "Coolant · avg temp"
+          "expr": "avg(avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[$__range]) * on(host,sensor) group_left() (last_over_time(sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"}[$__range] @ end()) == 1))",
+          "instant": false,
+          "legendFormat": "Coolant · avg temp",
+          "range": true
         }
       ],
       "fieldConfig": {
@@ -960,7 +961,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Average of recorded high flow NEXT flow readings in L/h during the selected reporting period. Missing intervals are excluded; the DDC pump operates at a fixed speed.",
+      "description": "Average of recorded high flow NEXT flow readings in L/h during the selected reporting period. Missing intervals are excluded; the DDC pump operates at a fixed speed. Sparkline shows a moving average over the selected time range, like the other Reporting Summary average cards; the large value is the average ending at the dashboard's current time.",
       "gridPos": {
         "x": 20,
         "y": 16,
@@ -974,9 +975,10 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "avg(avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Flow\"}[$__range] @ end()) * on(host,sensor) group_left() (last_over_time(sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Flow\",name=\"Flow\"}[$__range] @ end()) == 1))",
-          "instant": true,
-          "legendFormat": "Flow · avg L/h"
+          "expr": "avg(avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Flow\"}[$__range]) * on(host,sensor) group_left() (last_over_time(sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Flow\",name=\"Flow\"}[$__range] @ end()) == 1))",
+          "instant": false,
+          "legendFormat": "Flow · avg L/h",
+          "range": true
         }
       ],
       "fieldConfig": {
