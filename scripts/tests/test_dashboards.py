@@ -62,6 +62,36 @@ class DashboardContracts(unittest.TestCase):
                 self.assertNotIn("sensordash_", target["legendFormat"])
                 self.assertLessEqual(len(target["legendFormat"]), 80)
 
+    def test_next_sensor_panels_use_physical_metadata_and_real_units(self):
+        cooling = json.loads((PANELS / "cooling-systems.json").read_text(encoding="utf-8"))
+        reports = json.loads((PANELS / "reporting-summary.json").read_text(encoding="utf-8"))
+        cp = {p["id"]: p for p in all_dash_panels(cooling)}
+        rp = {p["id"]: p for p in all_dash_panels(reports)}
+        self.assertEqual(cp[8]["fieldConfig"]["defaults"]["unit"], "litreh")
+        expected = {
+            115: ("Temperature", "Water_Temperature", "celsius"),
+            116: ("Flow", "Flow", "litreh"),
+            117: ("Conductivity", "Conductivity", "suffix: µS/cm"),
+            118: ("Level", "Water_Quality", "percent"),
+            119: ("Temperature", "External_Temperature", "celsius"),
+            120: ("Voltage", "VCC|VCC_USB", "volt"),
+            121: ("Factor", "_Alarm", "none"),
+        }
+        for number, (kind, name, unit) in expected.items():
+            panel = cp[number]
+            query = panel["targets"][0]["expr"]
+            self.assertIn('kind="'+kind+'"', query)
+            self.assertIn(name, query)
+            self.assertIn('device="high_flow_NEXT"', query)
+            self.assertIn("on(host,sensor) group_left(name,device)", query)
+            self.assertEqual(panel["fieldConfig"]["defaults"]["unit"], unit)
+            self.assertNotIn('sensor=~"/', query)
+        for number, kind in ((201, "Temperature"), (202, "Flow"),
+                             (203, "Conductivity"), (204, "Level")):
+            self.assertIn('device="high_flow_NEXT"', rp[number]["targets"][0]["expr"])
+            self.assertIn('kind="'+kind+'"', rp[number]["targets"][0]["expr"])
+        self.assertEqual(rp[202]["fieldConfig"]["defaults"]["unit"], "litreh")
+
     def test_cooling_panels_use_binding_metadata_not_copied_raw_series(self):
         d = json.loads((PANELS / "cooling-systems.json").read_text(encoding="utf-8"))
         panels = {p["id"]: p for p in all_dash_panels(d)}
