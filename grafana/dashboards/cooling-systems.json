@@ -1593,6 +1593,76 @@
               }
             }
           ]
+        },
+        {
+          "id": 122,
+          "title": "NEXT · dissipated power",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 100,
+            "w": 12,
+            "h": 8
+          },
+          "description": "Estimated heat dissipation calculated by the NEXT when its required coolant temperature probes are available. No data is expected with an ambient-air probe or without the second coolant measurement.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "watt",
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "smooth",
+                "spanNulls": false,
+                "showPoints": "never",
+                "lineWidth": 2,
+                "fillOpacity": 14,
+                "axisBorderShow": false
+              },
+              "color": {
+                "mode": "palette-classic-by-name"
+              },
+              "min": 0
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "lastNotNull",
+                "max"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "homeaway-vm"
+              },
+              "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Power\"} * on(host,sensor) group_left(name,device) (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Power\",name=\"Dissipated_Power\"} == 1)",
+              "legendFormat": "{{name}}",
+              "range": true
+            }
+          ],
+          "transformations": [
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "/_/g",
+                "renamePattern": " "
+              }
+            }
+          ]
         }
       ]
     }
