@@ -40,6 +40,61 @@ power readings; radiator hub tach and PWM; fixed-speed DDC tach; NVMe/storage
 temperature. Never conflate GPU memory **temperature** with utilization, nor
 sum overlapping power sensors from the same device.
 
+## Utilization-aware thermal reporting
+
+SensorDash already receives CPU Total, CPU Core Max, GPU Core and GPU Memory
+activity via LibreHardwareMonitor. Under Balanced history these aggregate
+Load sensors are retained, while individual CPU thread and D3D engine Load
+series remain excluded. Selected dedicated-GPU Data counters (`GPU Memory Used`,
+`GPU Memory Total`, and `D3D Dedicated Memory Used` when present) are now
+archived as **bytes** at a 30-second interval unless explicitly referenced or
+pinned. This does not alter LHM physical scanning, live polling, GPU clocks,
+pump feedback or PWM decisions.
+
+- **Overview:** 0–100% CPU Total/Max Core and GPU Core/Memory activity charts,
+  distinct from the temperature (°C) and electrical power (W) plots.
+- **Hardware Telemetry:** raw aggregate Load curves and dedicated GPU VRAM
+  occupancy in bytes. Memory-controller activity (%) is **not** how full VRAM is.
+  An AMD GPU may expose both direct VRAM and D3D dedicated sources, which
+  should be labeled separately and never summed.
+- **Reporting Summary:** deliberately collapsed `Qualified low-load baselines`
+  section. No extra always-on Dashboard panels or background collectors.
+
+### Qualifying an idle thermal baseline
+
+At every 5-minute evaluation point, the reporting query requires **all** of
+the following for the same Windows host:
+
+1. CPU Total and GPU Core average utilization **below 5%** over 15 minutes;
+2. neither CPU Total nor GPU Core exceeds **15%** at any recorded point in the
+   preceding 15 minutes;
+3. at least **30 real archived samples per device** in those 15 minutes;
+4. each source's most recent observed sample is **under 90 seconds** old.
+
+This approximates sustained low activity and a 15-minute cooling-off interval.
+It does not establish that coolant is thermally equilibrated or that all
+background tasks are stopped. With no qualifying samples, the baseline is
+**absent**, not 0°C / 0 W. Qualifying 5-minute windows are converted to
+**sampled minutes**, not PC uptime. Observed medians are per host: CPU die,
+GPU core, CPU Package watts, GPU Package watts, and NEXT coolant temperature.
+The original physical GPU Core and memory sensors are not conflated.
+
+### Load-state distribution
+
+For observed 5-minute windows where both CPU and GPU have at least 10 actual
+samples and have reported within 90 seconds, use the larger of their
+5-minute mean utilizations. Interpret the three mutually exclusive bands as
+**low (under 10%)**, **moderate (10–59%)**, and **high (at least 60%)**.
+Percentages use only qualifying observed windows as denominator. Missing data
+is **not** 0% utilization, and high load is **not** automatically gaming.
+These bands are independent of the stricter 15-minute idle baseline.
+
+All computations are Grafana/VictoriaMetrics queries on historical data and
+run only when the low-load section is expanded. At 30-day range the subquery
+step is 5 minutes, not a synthetic per-second metric. Real-world sensor
+names, source availability and VM query performance need validation on the
+Windows/Pi deployment before treating the baselines as production benchmarks.
+
 ## Derived measurements worth adding later
 
 1. **Coolant-to-air delta-T** = coolant temperature minus separately measured
