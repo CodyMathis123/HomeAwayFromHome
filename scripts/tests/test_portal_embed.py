@@ -60,7 +60,7 @@ class EmbeddedMetricsTests(unittest.TestCase):
         self.assertFalse(dashboard["editable"])
         self.assertEqual(dashboard["refresh"], "30s")
         self.assertEqual(dashboard["templating"]["list"], [])
-        self.assertEqual(len(dashboard["panels"]), 10)
+        self.assertEqual(len(dashboard["panels"]), 12)\n        self.assertEqual({p["id"] for p in dashboard["panels"]}, set(range(1, 13)))
         self.assertTrue(all(p["datasource"]["uid"] == "homeaway-vm" for p in dashboard["panels"]))
         for p in dashboard["panels"]:
             for target in p.get("targets", []):
