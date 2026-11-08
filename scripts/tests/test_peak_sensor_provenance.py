@@ -46,7 +46,7 @@ class PeakSensorProvenanceTests(unittest.TestCase):
             self.assertFalse(panel["options"]["wideLayout"], panel_id)
             self.assertEqual(panel["options"]["justifyMode"], "center", panel_id)
             self.assertEqual(panel["targets"][0]["legendFormat"], "{{" + label + "}}", panel_id)
-        for panel_id in (3, 4, 7, 8, 11, 12):
+        for panel_id in (3, 4, 7, 8, 205, 206):
             self.assertNotIn("topk(1, ", panels[panel_id]["targets"][0]["expr"], panel_id)
 
 
