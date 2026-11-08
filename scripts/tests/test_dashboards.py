@@ -124,6 +124,29 @@ class DashboardContracts(unittest.TestCase):
                           panels[12]["gridPos"]["y"]), (5, 5))
         self.assertEqual(panels[9]["gridPos"]["y"], 15)
 
+    def test_reporting_summary_features_selected_period_next_averages(self):
+        dashboard = json.loads((PANELS / "reporting-summary.json").read_text(encoding="utf-8"))
+        panels = {p["id"]: p for p in all_dash_panels(dashboard)}
+        expected = ((205, "Temperature", "Water_Temperature", "celsius"),
+                    (206, "Flow", "Flow", "litreh"))
+        for number, kind, name, unit in expected:
+            panel = panels[number]
+            self.assertEqual(panel["gridPos"]["y"], 16)
+            self.assertEqual(panel["type"], "stat")
+            self.assertEqual(panel["fieldConfig"]["defaults"]["unit"], unit)
+            target = panel["targets"][0]
+            self.assertTrue(target["instant"])
+            self.assertIn("avg_over_time(", target["expr"])
+            self.assertIn("[$__range]", target["expr"])
+            self.assertIn('device="high_flow_NEXT"', target["expr"])
+            self.assertIn('kind="'+kind+'"', target["expr"])
+            self.assertIn('name="'+name+'"', target["expr"])
+            self.assertIn("on(host,sensor) group_left()", target["expr"])
+            self.assertNotIn("vector(0)", target["expr"])
+        self.assertTrue(panels[200]["collapsed"])
+        self.assertIn(201, panels)
+        self.assertIn(202, panels)
+
     def test_cooling_panels_use_binding_metadata_not_copied_raw_series(self):
         d = json.loads((PANELS / "cooling-systems.json").read_text(encoding="utf-8"))
         panels = {p["id"]: p for p in all_dash_panels(d)}
