@@ -9,7 +9,7 @@
     "overview",
     "analysis"
   ],
-  "description": "Daily, weekly and monthly telemetry summaries. Choose Last 24 hours, Last 7 days or Last 30 days in the Grafana time picker. Values reflect only recorded samples; offline intervals are not imputed. Hardware identity uses SensorDash metadata, not sensor ID patterns. Estimated accessory watts are not metered energy. GPU device families include GpuAmd, GpuNvidia and GpuIntel. Fan RPM statistics use role-bound radiator and pump sensors separately. Period-over-period comparisons use an equal duration and yield no value when either period is absent; rolling 24h peaks are not calendar-day aggregates. Sensor-stream presence is an observation indicator, not a percentage of PC uptime. Detailed temperature/power history and cooling accessory/fan timelines are provided on the dedicated Hardware Telemetry, Cooling and Electricity dashboards rather than duplicated here. Historical analysis refreshes every five minutes rather than polling a 30-day window every 15 seconds. The cooling summary shows four readable cards (radiator/pump tach peaks plus average coolant temperature and flow). Recording density and buffer health remain in the detailed coverage charts rather than duplicating cards. Optional quiet-period baselines use CPU Total and GPU Core utilization with a 15-minute qualification window, real-sample coverage and current-sample freshness; blank values are intentional when no samples qualify.",
+  "description": "Daily, weekly and monthly telemetry summaries. Choose Last 24 hours, Last 7 days or Last 30 days in the Grafana time picker. Values reflect only recorded samples; offline intervals are not imputed. Hardware identity uses SensorDash metadata, not sensor ID patterns. Estimated accessory watts are not metered energy. GPU device families include GpuAmd, GpuNvidia and GpuIntel. Fan RPM statistics use role-bound radiator and pump sensors separately. Period-over-period comparisons use an equal duration and yield no value when either period is absent; rolling 24h peaks are not calendar-day aggregates. Sensor-stream presence is an observation indicator, not a percentage of PC uptime. Detailed temperature/power history and cooling accessory/fan timelines are provided on the dedicated Hardware Telemetry, Cooling and Electricity dashboards rather than duplicated here. Historical analysis refreshes every five minutes rather than polling a 30-day window every 15 seconds. The cooling summary shows four readable cards (radiator/pump tach peaks plus average coolant temperature and flow). Recording density and buffer health remain in the detailed coverage charts rather than duplicating cards. Optional quiet-period baselines use CPU Total and GPU Core utilization with a 15-minute qualification window, real-sample coverage and current-sample freshness; blank values are intentional when no samples qualify. Workload shares are percentages of observed CPU+GPU windows, not uptime. Classification uses the larger of the two 5-minute mean loads: low under 10%, moderate 10–59%, high 60%+. Idle baseline is separately qualified with 15 minutes of low activity.",
   "schemaVersion": 40,
   "version": 5,
   "editable": false,
@@ -2223,6 +2223,198 @@
                   }
                 ]
               }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "values": false,
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": ""
+            },
+            "orientation": "auto",
+            "textMode": "auto",
+            "colorMode": "value",
+            "graphMode": "none"
+          }
+        },
+        {
+          "id": 227,
+          "title": "Low workload · observed share",
+          "type": "stat",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "description": "CPU Total and GPU Core 5-minute average utilization are both below 10%. This is a load band, not thermally settled idle. Percentage of the observed 5-minute load windows with both CPU/GPU available and at least ten physical samples each. Gaps are excluded, not counted as idle.",
+          "gridPos": {
+            "x": 0,
+            "y": 75,
+            "w": 8,
+            "h": 5
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "homeaway-vm"
+              },
+              "expr": "100 * (sum_over_time((((max by(host) (avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[5m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Cpu|Gpu(Amd|Nvidia|Intel)?\",name=~\"CPU_Total|GPU_Core\"} == 1)) < 10) and on(host) ((max by(host) (count_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[5m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) >= 10) and on(host) (max by(host) (count_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[5m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) >= 10) and on(host) (max by(host) ((time() - timestamp(sensordash_reading_value{host=~\"$host\",kind=\"Load\"})) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) < 90) and on(host) (max by(host) ((time() - timestamp(sensordash_reading_value{host=~\"$host\",kind=\"Load\"})) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) < 90))) >= bool 0)[$__range:5m])) / (count_over_time((((max by(host) (count_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[5m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) >= 10) and on(host) (max by(host) (count_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[5m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) >= 10) and on(host) (max by(host) ((time() - timestamp(sensordash_reading_value{host=~\"$host\",kind=\"Load\"})) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) < 90) and on(host) (max by(host) ((time() - timestamp(sensordash_reading_value{host=~\"$host\",kind=\"Load\"})) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) < 90)))[$__range:5m]))",
+              "instant": true,
+              "range": false,
+              "legendFormat": "{{host}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "noValue": "No qualifying samples",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "#62d5ce"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "min": 0,
+              "max": 100
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "values": false,
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": ""
+            },
+            "orientation": "auto",
+            "textMode": "auto",
+            "colorMode": "value",
+            "graphMode": "none"
+          }
+        },
+        {
+          "id": 228,
+          "title": "Moderate workload · observed share",
+          "type": "stat",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "description": "Highest of CPU Total and GPU Core five-minute utilization is 10–59%. Missing either device excludes that interval. Percentage of the observed 5-minute load windows with both CPU/GPU available and at least ten physical samples each. Gaps are excluded, not counted as idle.",
+          "gridPos": {
+            "x": 8,
+            "y": 75,
+            "w": 8,
+            "h": 5
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "homeaway-vm"
+              },
+              "expr": "100 * (sum_over_time((((max by(host) (avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[5m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Cpu|Gpu(Amd|Nvidia|Intel)?\",name=~\"CPU_Total|GPU_Core\"} == 1)) >= 10) and on(host) (max by(host) (avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[5m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Cpu|Gpu(Amd|Nvidia|Intel)?\",name=~\"CPU_Total|GPU_Core\"} == 1)) < 60) and on(host) ((max by(host) (count_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[5m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) >= 10) and on(host) (max by(host) (count_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[5m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) >= 10) and on(host) (max by(host) ((time() - timestamp(sensordash_reading_value{host=~\"$host\",kind=\"Load\"})) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) < 90) and on(host) (max by(host) ((time() - timestamp(sensordash_reading_value{host=~\"$host\",kind=\"Load\"})) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) < 90))) >= bool 0)[$__range:5m])) / (count_over_time((((max by(host) (count_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[5m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) >= 10) and on(host) (max by(host) (count_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[5m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) >= 10) and on(host) (max by(host) ((time() - timestamp(sensordash_reading_value{host=~\"$host\",kind=\"Load\"})) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) < 90) and on(host) (max by(host) ((time() - timestamp(sensordash_reading_value{host=~\"$host\",kind=\"Load\"})) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) < 90)))[$__range:5m]))",
+              "instant": true,
+              "range": false,
+              "legendFormat": "{{host}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "noValue": "No qualifying samples",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "#62d5ce"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "min": 0,
+              "max": 100
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "values": false,
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": ""
+            },
+            "orientation": "auto",
+            "textMode": "auto",
+            "colorMode": "value",
+            "graphMode": "none"
+          }
+        },
+        {
+          "id": 229,
+          "title": "High workload · observed share",
+          "type": "stat",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "description": "Either CPU Total or GPU Core five-minute average utilization is 60% or higher; no assumption that this was gaming. Percentage of the observed 5-minute load windows with both CPU/GPU available and at least ten physical samples each. Gaps are excluded, not counted as idle.",
+          "gridPos": {
+            "x": 16,
+            "y": 75,
+            "w": 8,
+            "h": 5
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "homeaway-vm"
+              },
+              "expr": "100 * (sum_over_time((((max by(host) (avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[5m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Cpu|Gpu(Amd|Nvidia|Intel)?\",name=~\"CPU_Total|GPU_Core\"} == 1)) >= 60) and on(host) ((max by(host) (count_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[5m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) >= 10) and on(host) (max by(host) (count_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[5m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) >= 10) and on(host) (max by(host) ((time() - timestamp(sensordash_reading_value{host=~\"$host\",kind=\"Load\"})) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) < 90) and on(host) (max by(host) ((time() - timestamp(sensordash_reading_value{host=~\"$host\",kind=\"Load\"})) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) < 90))) >= bool 0)[$__range:5m])) / (count_over_time((((max by(host) (count_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[5m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) >= 10) and on(host) (max by(host) (count_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[5m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) >= 10) and on(host) (max by(host) ((time() - timestamp(sensordash_reading_value{host=~\"$host\",kind=\"Load\"})) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) < 90) and on(host) (max by(host) ((time() - timestamp(sensordash_reading_value{host=~\"$host\",kind=\"Load\"})) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) < 90)))[$__range:5m]))",
+              "instant": true,
+              "range": false,
+              "legendFormat": "{{host}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "noValue": "No qualifying samples",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "#62d5ce"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "min": 0,
+              "max": 100
             },
             "overrides": []
           },
