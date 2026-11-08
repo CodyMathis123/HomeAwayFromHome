@@ -279,7 +279,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Actual high flow NEXT coolant temperature from the SensorDash USB sensor catalog. Latest reported value across Windows hosts; missing/stale readings show no data.",
+      "description": "Actual high flow NEXT coolant temperature from the SensorDash USB sensor catalog. Latest reported value across Windows hosts; missing/stale readings show no data. The small shaded trace is the observed history over the dashboard period, not a synthetic curve.",
       "gridPos": {
         "x": 0,
         "y": 5,
@@ -294,9 +294,9 @@
             "uid": "homeaway-vm"
           },
           "expr": "max(sensordash_reading_value{host=~\".+\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\".+\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1))",
-          "range": false,
+          "range": true,
           "legendFormat": "Coolant temperature",
-          "instant": true
+          "instant": false
         }
       ],
       "fieldConfig": {
@@ -330,7 +330,7 @@
         "orientation": "auto",
         "textMode": "auto",
         "colorMode": "value",
-        "graphMode": "none"
+        "graphMode": "area"
       }
     },
     {
@@ -341,7 +341,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Actual high flow NEXT flow rate in liters per hour, read by SensorDash over USB. No inferred flow or zero-filling during missing observations.",
+      "description": "Actual high flow NEXT flow rate in liters per hour, read by SensorDash over USB. No inferred flow or zero-filling during missing observations. The small shaded trace is the observed history over the dashboard period, not a synthetic curve.",
       "gridPos": {
         "x": 12,
         "y": 5,
@@ -356,9 +356,9 @@
             "uid": "homeaway-vm"
           },
           "expr": "max(sensordash_reading_value{host=~\".+\",kind=\"Flow\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\".+\",device=\"high_flow_NEXT\",kind=\"Flow\",name=\"Flow\"} == 1))",
-          "range": false,
+          "range": true,
           "legendFormat": "Coolant flow",
-          "instant": true
+          "instant": false
         }
       ],
       "fieldConfig": {
@@ -392,7 +392,7 @@
         "orientation": "auto",
         "textMode": "auto",
         "colorMode": "value",
-        "graphMode": "none"
+        "graphMode": "area"
       }
     },
     {
