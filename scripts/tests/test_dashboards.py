@@ -69,8 +69,6 @@ class DashboardContracts(unittest.TestCase):
         rp = {p["id"]: p for p in all_dash_panels(reports)}
         self.assertEqual(cp[8]["fieldConfig"]["defaults"]["unit"], "litreh")
         expected = {
-            115: ("Temperature", "Water_Temperature", "celsius"),
-            116: ("Flow", "Flow", "litreh"),
             117: ("Conductivity", "Conductivity", "suffix: µS/cm"),
             118: ("Level", "Water_Quality", "percent"),
             119: ("Temperature", "External_Temperature", "celsius"),
@@ -92,6 +90,18 @@ class DashboardContracts(unittest.TestCase):
             self.assertIn('device="high_flow_NEXT"', rp[number]["targets"][0]["expr"])
             self.assertIn('kind="'+kind+'"', rp[number]["targets"][0]["expr"])
         self.assertEqual(rp[202]["fieldConfig"]["defaults"]["unit"], "litreh")
+        # Installed coolant and flow are top-level curves, not duplicated
+        # in the advanced NEXT diagnostics section.
+        self.assertNotIn(115, cp)
+        self.assertNotIn(116, cp)
+        self.assertNotIn(119, cp)
+        self.assertFalse(cp[104]["collapsed"])
+        self.assertEqual((cp[7]["gridPos"]["y"], cp[8]["gridPos"]["y"]),(20,20))
+        self.assertTrue(cp[105]["collapsed"])
+        self.assertEqual([p["id"] for p in cp[105]["panels"]],[9])
+        self.assertTrue(cp[114]["collapsed"])
+        self.assertEqual({p["id"] for p in cp[114]["panels"]},{117,118,120,121,122})
+        self.assertIn('role="heat-source"',cp[2]["targets"][0]["expr"])
 
     def test_portal_metrics_includes_current_next_coolant_and_flow(self):
         portal = json.loads((PANELS / "portal-metrics.json").read_text(encoding="utf-8"))
@@ -124,6 +134,10 @@ class DashboardContracts(unittest.TestCase):
         self.assertEqual((panels[11]["gridPos"]["y"],
                           panels[12]["gridPos"]["y"]), (5, 5))
         self.assertEqual(panels[9]["gridPos"]["y"], 15)
+        for ref,name in (("B","Water_Temperature"),("C","External_Temperature")):
+            t=next(v for v in panels[9]["targets"] if v["refId"]==ref)
+            self.assertIn('device="high_flow_NEXT"',t["expr"])
+            self.assertIn('name="'+name+'"',t["expr"])
 
     def test_reporting_summary_features_selected_period_next_averages(self):
         dashboard = json.loads((PANELS / "reporting-summary.json").read_text(encoding="utf-8"))
