@@ -9,7 +9,7 @@
     "overview",
     "analysis"
   ],
-  "description": "Daily, weekly and monthly telemetry summaries. Choose Last 24 hours, Last 7 days or Last 30 days in the Grafana time picker. Values reflect only recorded samples; offline intervals are not imputed. Hardware identity uses SensorDash metadata, not sensor ID patterns. Estimated accessory watts are not metered energy. GPU device families include GpuAmd, GpuNvidia and GpuIntel. Fan RPM statistics use role-bound radiator and pump sensors separately. Period-over-period comparisons use an equal duration and yield no value when either period is absent; rolling 24h peaks are not calendar-day aggregates. Sensor-stream presence is an observation indicator, not a percentage of PC uptime. Detailed temperature/power history and cooling accessory/fan timelines are provided on the dedicated Hardware Telemetry, Cooling and Electricity dashboards rather than duplicated here. Historical analysis refreshes every five minutes rather than polling a 30-day window every 15 seconds. The cooling summary shows four readable cards (radiator/pump tach peaks plus average coolant temperature and flow). Recording density and buffer health remain in the detailed coverage charts rather than duplicating cards.",
+  "description": "Daily, weekly and monthly telemetry summaries. Choose Last 24 hours, Last 7 days or Last 30 days in the Grafana time picker. Values reflect only recorded samples; offline intervals are not imputed. Hardware identity uses SensorDash metadata, not sensor ID patterns. Estimated accessory watts are not metered energy. GPU device families include GpuAmd, GpuNvidia and GpuIntel. Fan RPM statistics use role-bound radiator and pump sensors separately. Period-over-period comparisons use an equal duration and yield no value when either period is absent; rolling 24h peaks are not calendar-day aggregates. Sensor-stream presence is an observation indicator, not a percentage of PC uptime. Detailed temperature/power history and cooling accessory/fan timelines are provided on the dedicated Hardware Telemetry, Cooling and Electricity dashboards rather than duplicated here. Historical analysis refreshes every five minutes rather than polling a 30-day window every 15 seconds. The cooling summary shows four readable cards (radiator/pump tach peaks plus average coolant temperature and flow). Recording density and buffer health remain in the detailed coverage charts rather than duplicating cards. Optional quiet-period baselines use CPU Total and GPU Core utilization with a 15-minute qualification window, real-sample coverage and current-sample freshness; blank values are intentional when no samples qualify.",
   "schemaVersion": 40,
   "version": 5,
   "editable": false,
@@ -1855,6 +1855,397 @@
           ]
         }
       ]
+    },
+    {
+      "id": 220,
+      "title": "Qualified low-load baselines · optional report",
+      "type": "row",
+      "collapsed": true,
+      "gridPos": {
+        "x": 0,
+        "y": 64,
+        "w": 24,
+        "h": 1
+      },
+      "panels": [
+        {
+          "id": 221,
+          "title": "Qualified low-load time · sampled",
+          "type": "stat",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "description": "Estimated total number of 5-minute evaluation windows with qualifying low load, multiplied by 5 minutes. Requires 15 minutes of low activity, no >15% CPU/GPU spikes, at least 30 real load samples per device in 15 minutes, and a recent sample under 90 seconds old. Not PC uptime or wall-clock idle time.",
+          "gridPos": {
+            "x": 0,
+            "y": 65,
+            "w": 8,
+            "h": 5
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "homeaway-vm"
+              },
+              "expr": "sum_over_time(((((max by(host) (avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) < 5) and on(host) (max by(host) (avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) < 5) and on(host) (max by(host) (max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) < 15) and on(host) (max by(host) (max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) < 15) and on(host) (max by(host) (count_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) >= 30) and on(host) (max by(host) (count_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) >= 30) and on(host) (max by(host) ((time() - timestamp(sensordash_reading_value{host=~\"$host\",kind=\"Load\"})) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) < 90) and on(host) (max by(host) ((time() - timestamp(sensordash_reading_value{host=~\"$host\",kind=\"Load\"})) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) < 90)) >= bool 0))[$__range:5m]) * 5",
+              "instant": true,
+              "range": false,
+              "legendFormat": "{{host}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "m",
+              "noValue": "No qualified samples",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "#62d5ce"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "values": false,
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": ""
+            },
+            "orientation": "auto",
+            "textMode": "auto",
+            "colorMode": "value",
+            "graphMode": "none"
+          }
+        },
+        {
+          "id": 222,
+          "title": "Idle baseline · CPU die temp",
+          "type": "stat",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "description": "Median of the selected physical CPU Core Tdie/Tctl-Tdie reading during qualified low-load periods; no value when either load input or the CPU temperature is missing. 15-minute thermal settling proxy, not a guarantee of perfect thermal equilibrium.",
+          "gridPos": {
+            "x": 8,
+            "y": 65,
+            "w": 8,
+            "h": 5
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "homeaway-vm"
+              },
+              "expr": "quantile_over_time(0.5, ((max by(host) (sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device_type=\"Cpu\",name=~\"Core__Tdie_|Core__Tctl/Tdie_\"} == 1))) and on(host) ((max by(host) (avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) < 5) and on(host) (max by(host) (avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) < 5) and on(host) (max by(host) (max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) < 15) and on(host) (max by(host) (max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) < 15) and on(host) (max by(host) (count_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) >= 30) and on(host) (max by(host) (count_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) >= 30) and on(host) (max by(host) ((time() - timestamp(sensordash_reading_value{host=~\"$host\",kind=\"Load\"})) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) < 90) and on(host) (max by(host) ((time() - timestamp(sensordash_reading_value{host=~\"$host\",kind=\"Load\"})) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) < 90)))[$__range:5m])",
+              "instant": true,
+              "range": false,
+              "legendFormat": "{{host}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "celsius",
+              "noValue": "No qualified samples",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "#62d5ce"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "values": false,
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": ""
+            },
+            "orientation": "auto",
+            "textMode": "auto",
+            "colorMode": "value",
+            "graphMode": "none"
+          }
+        },
+        {
+          "id": 223,
+          "title": "Idle baseline · GPU core temp",
+          "type": "stat",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "description": "Median of the physical GPU Core temperature during qualified low-load periods. Does not substitute memory, hotspot, or motherboard sensors.",
+          "gridPos": {
+            "x": 16,
+            "y": 65,
+            "w": 8,
+            "h": 5
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "homeaway-vm"
+              },
+              "expr": "quantile_over_time(0.5, ((max by(host) (sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1))) and on(host) ((max by(host) (avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) < 5) and on(host) (max by(host) (avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) < 5) and on(host) (max by(host) (max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) < 15) and on(host) (max by(host) (max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) < 15) and on(host) (max by(host) (count_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) >= 30) and on(host) (max by(host) (count_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) >= 30) and on(host) (max by(host) ((time() - timestamp(sensordash_reading_value{host=~\"$host\",kind=\"Load\"})) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) < 90) and on(host) (max by(host) ((time() - timestamp(sensordash_reading_value{host=~\"$host\",kind=\"Load\"})) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) < 90)))[$__range:5m])",
+              "instant": true,
+              "range": false,
+              "legendFormat": "{{host}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "celsius",
+              "noValue": "No qualified samples",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "#62d5ce"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "values": false,
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": ""
+            },
+            "orientation": "auto",
+            "textMode": "auto",
+            "colorMode": "value",
+            "graphMode": "none"
+          }
+        },
+        {
+          "id": 224,
+          "title": "Idle baseline · CPU package watts",
+          "type": "stat",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "description": "Median of the CPU Package electrical power reading during qualifying low-load periods. Does not sum overlapping CPU core rails.",
+          "gridPos": {
+            "x": 0,
+            "y": 70,
+            "w": 8,
+            "h": 5
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "homeaway-vm"
+              },
+              "expr": "quantile_over_time(0.5, ((max by(host) (sensordash_reading_value{host=~\"$host\",kind=\"Power\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Power\",device_type=\"Cpu\",name=\"Package\"} == 1))) and on(host) ((max by(host) (avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) < 5) and on(host) (max by(host) (avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) < 5) and on(host) (max by(host) (max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) < 15) and on(host) (max by(host) (max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) < 15) and on(host) (max by(host) (count_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) >= 30) and on(host) (max by(host) (count_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) >= 30) and on(host) (max by(host) ((time() - timestamp(sensordash_reading_value{host=~\"$host\",kind=\"Load\"})) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) < 90) and on(host) (max by(host) ((time() - timestamp(sensordash_reading_value{host=~\"$host\",kind=\"Load\"})) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) < 90)))[$__range:5m])",
+              "instant": true,
+              "range": false,
+              "legendFormat": "{{host}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "watt",
+              "noValue": "No qualified samples",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "#62d5ce"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "values": false,
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": ""
+            },
+            "orientation": "auto",
+            "textMode": "auto",
+            "colorMode": "value",
+            "graphMode": "none"
+          }
+        },
+        {
+          "id": 225,
+          "title": "Idle baseline · GPU package watts",
+          "type": "stat",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "description": "Median of GPU Package power (AMD board/package reported sensor) during qualifying low-load periods. Not a measured wall-plug value.",
+          "gridPos": {
+            "x": 8,
+            "y": 70,
+            "w": 8,
+            "h": 5
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "homeaway-vm"
+              },
+              "expr": "quantile_over_time(0.5, ((max by(host) (sensordash_reading_value{host=~\"$host\",kind=\"Power\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Power\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Package\"} == 1))) and on(host) ((max by(host) (avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) < 5) and on(host) (max by(host) (avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) < 5) and on(host) (max by(host) (max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) < 15) and on(host) (max by(host) (max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) < 15) and on(host) (max by(host) (count_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) >= 30) and on(host) (max by(host) (count_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) >= 30) and on(host) (max by(host) ((time() - timestamp(sensordash_reading_value{host=~\"$host\",kind=\"Load\"})) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) < 90) and on(host) (max by(host) ((time() - timestamp(sensordash_reading_value{host=~\"$host\",kind=\"Load\"})) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) < 90)))[$__range:5m])",
+              "instant": true,
+              "range": false,
+              "legendFormat": "{{host}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "watt",
+              "noValue": "No qualified samples",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "#62d5ce"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "values": false,
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": ""
+            },
+            "orientation": "auto",
+            "textMode": "auto",
+            "colorMode": "value",
+            "graphMode": "none"
+          }
+        },
+        {
+          "id": 226,
+          "title": "Idle baseline · coolant temp",
+          "type": "stat",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "description": "Median of high flow NEXT water temperature during qualifying low-load periods. Without an ambient intake sensor, cannot normalize differences in room temperature.",
+          "gridPos": {
+            "x": 16,
+            "y": 70,
+            "w": 8,
+            "h": 5
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "homeaway-vm"
+              },
+              "expr": "quantile_over_time(0.5, ((max by(host) (sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device=\"high_flow_NEXT\",name=\"Water_Temperature\"} == 1))) and on(host) ((max by(host) (avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) < 5) and on(host) (max by(host) (avg_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) < 5) and on(host) (max by(host) (max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) < 15) and on(host) (max by(host) (max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) < 15) and on(host) (max by(host) (count_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) >= 30) and on(host) (max by(host) (count_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Load\"}[15m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) >= 30) and on(host) (max by(host) ((time() - timestamp(sensordash_reading_value{host=~\"$host\",kind=\"Load\"})) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=\"Cpu\",name=\"CPU_Total\"} == 1)) < 90) and on(host) (max by(host) ((time() - timestamp(sensordash_reading_value{host=~\"$host\",kind=\"Load\"})) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Load\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name=\"GPU_Core\"} == 1)) < 90)))[$__range:5m])",
+              "instant": true,
+              "range": false,
+              "legendFormat": "{{host}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "celsius",
+              "noValue": "No qualified samples",
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "#62d5ce"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "values": false,
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": ""
+            },
+            "orientation": "auto",
+            "textMode": "auto",
+            "colorMode": "value",
+            "graphMode": "none"
+          }
+        }
+      ],
+      "targets": [],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      }
     }
   ],
   "timepicker": {
