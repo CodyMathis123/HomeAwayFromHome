@@ -7,7 +7,7 @@
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
-  "description": "Windows-owned cooling system mappings, visualized in Grafana. Associations only exist after metadata synchronization begins; no remote hardware control. Optional physical probes remain available in a collapsed row rather than taking space before installation.",
+  "description": "Cooling-focused read-only diagnostic dashboard. CPU/GPU heat-source temperatures are distinct from coolant; coolant temperature and flow are first-class trend charts. The separate advanced NEXT group is chemistry and device diagnostics only; absent ambient sensor remains optional.",
   "tags": [
     "homeaway",
     "sensordash",
@@ -381,7 +381,7 @@
     },
     {
       "id": 2,
-      "title": "Assigned temperatures",
+      "title": "CPU / GPU block temperatures",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -393,7 +393,7 @@
         "w": 12,
         "h": 9
       },
-      "description": "Measurements are recorded on Windows; cooling assignments remain controlled by SensorDash. Gaps are not filled. Series names come from the SensorDash sensor catalog; stable sensor IDs and the raw measurement values are unchanged. Alias/label changes do not rewrite archived samples. Visible name labels are normalized at query time; the stored series and join identity labels are unchanged.",
+      "description": "Temperature readings assigned to heat-source components (CPU and GPU), excluding the separate coolant and ambient probes. Compare block temperatures against the dedicated coolant chart below. Samples are not interpolated.",
       "fieldConfig": {
         "defaults": {
           "unit": "celsius",
@@ -434,7 +434,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\"} == 1)) * on(host,sensor) group_left(name,alias,device) (label_replace(sensordash_sensor_info_value{host=~\"$host\",name!~\"(?i).*(warning|critical).*\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",name!~\"(?i).*(warning|critical).*\",alias=\"unassigned\"} == 1)), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
+          "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"heat-source\"} == 1)) * on(host,sensor) group_left(name,alias,device) (label_replace(sensordash_sensor_info_value{host=~\"$host\",name!~\"(?i).*(warning|critical).*\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",name!~\"(?i).*(warning|critical).*\",alias=\"unassigned\"} == 1)), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
           "legendFormat": "{{component_name}} · {{name}}",
           "range": true
         }
@@ -520,6 +520,165 @@
       ]
     },
     {
+      "id": 104,
+      "type": "row",
+      "title": "COOLANT CIRCULATION · installed sensors",
+      "description": "These read-only charts populate only after actual probes are installed, named and assigned in SensorDash. No virtual or inferred coolant temperatures, flow or room ambient values.",
+      "collapsed": false,
+      "panels": [],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "targets": [],
+      "gridPos": {
+        "x": 0,
+        "y": 19,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 7,
+      "title": "Coolant temperature",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 12,
+        "h": 9
+      },
+      "description": "Measurements are recorded on Windows; cooling assignments remain controlled by SensorDash. Gaps are not filled. Series names come from the SensorDash sensor catalog; stable sensor IDs and the raw measurement values are unchanged. Alias/label changes do not rewrite archived samples. Visible name labels are normalized at query time; the stored series and join identity labels are unchanged.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "spanNulls": false,
+            "showPoints": "never",
+            "lineWidth": 2,
+            "fillOpacity": 14,
+            "axisBorderShow": false
+          },
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=~\"coolant-probe\"} == 1)) * on(host,sensor) group_left(name,alias,device) (label_replace(sensordash_sensor_info_value{host=~\"$host\",name!~\"(?i).*(warning|critical).*\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",name!~\"(?i).*(warning|critical).*\",alias=\"unassigned\"} == 1)), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
+          "legendFormat": "{{component_name}} · {{name}}",
+          "range": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Flow rate",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 20,
+        "w": 12,
+        "h": 9
+      },
+      "description": "Measurements are recorded on Windows; cooling assignments remain controlled by SensorDash. Gaps are not filled. Series names come from the SensorDash sensor catalog; stable sensor IDs and the raw measurement values are unchanged. Alias/label changes do not rewrite archived samples. Visible name labels are normalized at query time; the stored series and join identity labels are unchanged. Source LibreHardwareMonitor Flow values are L/h, not L/min.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "litreh",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "spanNulls": false,
+            "showPoints": "never",
+            "lineWidth": 2,
+            "fillOpacity": 14,
+            "axisBorderShow": false
+          },
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace((sensordash_reading_value{host=~\"$host\",kind=\"Flow\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Flow\",role=~\"flow-meter\"} == 1)) * on(host,sensor) group_left(name,alias,device) (label_replace(sensordash_sensor_info_value{host=~\"$host\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",alias=\"unassigned\"} == 1)), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
+          "legendFormat": "{{component_name}} · {{name}}",
+          "range": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
+    },
+    {
       "id": 4,
       "title": "Radiator fan-group RPM",
       "type": "timeseries",
@@ -529,7 +688,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 19,
+        "y": 29,
         "w": 12,
         "h": 9
       },
@@ -599,7 +758,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 19,
+        "y": 29,
         "w": 12,
         "h": 9
       },
@@ -669,7 +828,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 28,
+        "y": 38,
         "w": 24,
         "h": 9
       },
@@ -742,7 +901,7 @@
       "targets": [],
       "gridPos": {
         "x": 0,
-        "y": 37,
+        "y": 47,
         "w": 24,
         "h": 3
       },
@@ -762,7 +921,7 @@
       "description": "Current read-only assignments from SensorDash. Sensor names and aliases come from its sensor catalog; raw hardware IDs are hidden only in this table. This is metadata, not proof that every assigned sensor has recent measurements. Friendly labels are normalized at Grafana query time; the original measurement IDs remain unmodified.",
       "gridPos": {
         "x": 0,
-        "y": 40,
+        "y": 50,
         "w": 24,
         "h": 8
       },
@@ -860,167 +1019,8 @@
       ]
     },
     {
-      "id": 104,
-      "type": "row",
-      "title": "COOLANT CIRCULATION · installed temperature and flow sensors",
-      "description": "These read-only charts populate only after actual probes are installed, named and assigned in SensorDash. No virtual or inferred coolant temperatures, flow or room ambient values.",
-      "collapsed": false,
-      "panels": [],
-      "datasource": {
-        "type": "prometheus",
-        "uid": "homeaway-vm"
-      },
-      "targets": [],
-      "gridPos": {
-        "x": 0,
-        "y": 48,
-        "w": 24,
-        "h": 1
-      }
-    },
-    {
-      "id": 7,
-      "title": "Coolant temperature",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "homeaway-vm"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 49,
-        "w": 12,
-        "h": 9
-      },
-      "description": "Measurements are recorded on Windows; cooling assignments remain controlled by SensorDash. Gaps are not filled. Series names come from the SensorDash sensor catalog; stable sensor IDs and the raw measurement values are unchanged. Alias/label changes do not rewrite archived samples. Visible name labels are normalized at query time; the stored series and join identity labels are unchanged.",
-      "fieldConfig": {
-        "defaults": {
-          "unit": "celsius",
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "smooth",
-            "spanNulls": false,
-            "showPoints": "never",
-            "lineWidth": 2,
-            "fillOpacity": 14,
-            "axisBorderShow": false
-          },
-          "color": {
-            "mode": "palette-classic-by-name"
-          },
-          "min": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ]
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "homeaway-vm"
-          },
-          "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=~\"coolant-probe\"} == 1)) * on(host,sensor) group_left(name,alias,device) (label_replace(sensordash_sensor_info_value{host=~\"$host\",name!~\"(?i).*(warning|critical).*\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",name!~\"(?i).*(warning|critical).*\",alias=\"unassigned\"} == 1)), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
-          "legendFormat": "{{component_name}} · {{name}}",
-          "range": true
-        }
-      ],
-      "transformations": [
-        {
-          "id": "renameByRegex",
-          "options": {
-            "regex": "/_/g",
-            "renamePattern": " "
-          }
-        }
-      ]
-    },
-    {
-      "id": 8,
-      "title": "Flow rate",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "homeaway-vm"
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 49,
-        "w": 12,
-        "h": 9
-      },
-      "description": "Measurements are recorded on Windows; cooling assignments remain controlled by SensorDash. Gaps are not filled. Series names come from the SensorDash sensor catalog; stable sensor IDs and the raw measurement values are unchanged. Alias/label changes do not rewrite archived samples. Visible name labels are normalized at query time; the stored series and join identity labels are unchanged. Source LibreHardwareMonitor Flow values are L/h, not L/min.",
-      "fieldConfig": {
-        "defaults": {
-          "unit": "litreh",
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "smooth",
-            "spanNulls": false,
-            "showPoints": "never",
-            "lineWidth": 2,
-            "fillOpacity": 14,
-            "axisBorderShow": false
-          },
-          "color": {
-            "mode": "palette-classic-by-name"
-          },
-          "min": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ]
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "homeaway-vm"
-          },
-          "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace((sensordash_reading_value{host=~\"$host\",kind=\"Flow\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Flow\",role=~\"flow-meter\"} == 1)) * on(host,sensor) group_left(name,alias,device) (label_replace(sensordash_sensor_info_value{host=~\"$host\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",alias=\"unassigned\"} == 1)), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
-          "legendFormat": "{{component_name}} · {{name}}",
-          "range": true
-        }
-      ],
-      "transformations": [
-        {
-          "id": "renameByRegex",
-          "options": {
-            "regex": "/_/g",
-            "renamePattern": " "
-          }
-        }
-      ]
-    },
-    {
       "id": 105,
-      "title": "Optional ambient air probe · connect when installed",
+      "title": "Optional ambient air · no external probe reading yet",
       "type": "row",
       "collapsed": true,
       "gridPos": {
@@ -1109,7 +1109,7 @@
     },
     {
       "id": 114,
-      "title": "high flow NEXT · direct USB measurements",
+      "title": "Coolant chemistry & NEXT diagnostics · advanced",
       "type": "row",
       "collapsed": true,
       "gridPos": {
@@ -1125,147 +1125,8 @@
       "targets": [],
       "panels": [
         {
-          "id": 115,
-          "title": "NEXT · coolant temperature",
-          "type": "timeseries",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "homeaway-vm"
-          },
-          "gridPos": {
-            "x": 0,
-            "y": 60,
-            "w": 12,
-            "h": 8
-          },
-          "description": "Physical water temperature from high flow NEXT over USB; gaps represent missing measurements, not zero.",
-          "fieldConfig": {
-            "defaults": {
-              "unit": "celsius",
-              "custom": {
-                "drawStyle": "line",
-                "lineInterpolation": "smooth",
-                "spanNulls": false,
-                "showPoints": "never",
-                "lineWidth": 2,
-                "fillOpacity": 14,
-                "axisBorderShow": false
-              },
-              "color": {
-                "mode": "palette-classic-by-name"
-              }
-            },
-            "overrides": []
-          },
-          "options": {
-            "legend": {
-              "displayMode": "table",
-              "placement": "bottom",
-              "calcs": [
-                "lastNotNull",
-                "max"
-              ]
-            },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
-          "targets": [
-            {
-              "refId": "A",
-              "datasource": {
-                "type": "prometheus",
-                "uid": "homeaway-vm"
-              },
-              "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(name,device) (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=~\"Water_Temperature\"} == 1)",
-              "legendFormat": "{{name}}",
-              "range": true
-            }
-          ],
-          "transformations": [
-            {
-              "id": "renameByRegex",
-              "options": {
-                "regex": "/_/g",
-                "renamePattern": " "
-              }
-            }
-          ]
-        },
-        {
-          "id": 116,
-          "title": "NEXT · flow rate",
-          "type": "timeseries",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "homeaway-vm"
-          },
-          "gridPos": {
-            "x": 12,
-            "y": 60,
-            "w": 12,
-            "h": 8
-          },
-          "description": "L/h measured by high flow NEXT. SensorDash records raw measurements without converting to L/min.",
-          "fieldConfig": {
-            "defaults": {
-              "unit": "litreh",
-              "custom": {
-                "drawStyle": "line",
-                "lineInterpolation": "smooth",
-                "spanNulls": false,
-                "showPoints": "never",
-                "lineWidth": 2,
-                "fillOpacity": 14,
-                "axisBorderShow": false
-              },
-              "color": {
-                "mode": "palette-classic-by-name"
-              },
-              "min": 0
-            },
-            "overrides": []
-          },
-          "options": {
-            "legend": {
-              "displayMode": "table",
-              "placement": "bottom",
-              "calcs": [
-                "lastNotNull",
-                "max"
-              ]
-            },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
-          "targets": [
-            {
-              "refId": "A",
-              "datasource": {
-                "type": "prometheus",
-                "uid": "homeaway-vm"
-              },
-              "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Flow\"} * on(host,sensor) group_left(name,device) (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Flow\",name=~\"Flow\"} == 1)",
-              "legendFormat": "{{name}}",
-              "range": true
-            }
-          ],
-          "transformations": [
-            {
-              "id": "renameByRegex",
-              "options": {
-                "regex": "/_/g",
-                "renamePattern": " "
-              }
-            }
-          ]
-        },
-        {
           "id": 117,
-          "title": "NEXT · coolant conductivity",
+          "title": "Coolant conductivity · µS/cm",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -1273,7 +1134,7 @@
           },
           "gridPos": {
             "x": 0,
-            "y": 68,
+            "y": 60,
             "w": 12,
             "h": 8
           },
@@ -1335,7 +1196,7 @@
         },
         {
           "id": 118,
-          "title": "NEXT · water quality estimate",
+          "title": "Manufacturer water-quality estimate",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -1343,7 +1204,7 @@
           },
           "gridPos": {
             "x": 12,
-            "y": 68,
+            "y": 60,
             "w": 12,
             "h": 8
           },
@@ -1404,8 +1265,8 @@
           ]
         },
         {
-          "id": 119,
-          "title": "NEXT · external temperature",
+          "id": 120,
+          "title": "NEXT supply voltages",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -1413,76 +1274,7 @@
           },
           "gridPos": {
             "x": 0,
-            "y": 76,
-            "w": 12,
-            "h": 8
-          },
-          "description": "Optional external thermistor, e.g. case intake ambient. No data until a physical probe is attached.",
-          "fieldConfig": {
-            "defaults": {
-              "unit": "celsius",
-              "custom": {
-                "drawStyle": "line",
-                "lineInterpolation": "smooth",
-                "spanNulls": false,
-                "showPoints": "never",
-                "lineWidth": 2,
-                "fillOpacity": 14,
-                "axisBorderShow": false
-              },
-              "color": {
-                "mode": "palette-classic-by-name"
-              }
-            },
-            "overrides": []
-          },
-          "options": {
-            "legend": {
-              "displayMode": "table",
-              "placement": "bottom",
-              "calcs": [
-                "lastNotNull",
-                "max"
-              ]
-            },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
-          "targets": [
-            {
-              "refId": "A",
-              "datasource": {
-                "type": "prometheus",
-                "uid": "homeaway-vm"
-              },
-              "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(name,device) (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=~\"External_Temperature\"} == 1)",
-              "legendFormat": "{{name}}",
-              "range": true
-            }
-          ],
-          "transformations": [
-            {
-              "id": "renameByRegex",
-              "options": {
-                "regex": "/_/g",
-                "renamePattern": " "
-              }
-            }
-          ]
-        },
-        {
-          "id": 120,
-          "title": "NEXT · supply voltages",
-          "type": "timeseries",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "homeaway-vm"
-          },
-          "gridPos": {
-            "x": 12,
-            "y": 76,
+            "y": 68,
             "w": 12,
             "h": 8
           },
@@ -1544,17 +1336,17 @@
         },
         {
           "id": 121,
-          "title": "NEXT · alarm flags (1 = active)",
+          "title": "NEXT alarm state",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
           "gridPos": {
-            "x": 0,
-            "y": 84,
-            "w": 24,
-            "h": 7
+            "x": 12,
+            "y": 68,
+            "w": 12,
+            "h": 8
           },
           "description": "Native device alarm flags. 1 indicates an active NEXT alarm, 0 means inactive; gaps indicate no valid observation.",
           "fieldConfig": {
@@ -1614,7 +1406,7 @@
         },
         {
           "id": 122,
-          "title": "NEXT · dissipated power",
+          "title": "Calculated heat dissipation · optional",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -1622,7 +1414,7 @@
           },
           "gridPos": {
             "x": 0,
-            "y": 91,
+            "y": 76,
             "w": 12,
             "h": 8
           },
