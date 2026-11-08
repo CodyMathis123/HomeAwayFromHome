@@ -67,7 +67,7 @@ class WorkloadReportingTests(unittest.TestCase):
         row = rows[0]
         self.assertEqual(row["type"], "row")
         self.assertTrue(row["collapsed"], "Expensive 30-day rollups should be opt-in")
-        self.assertEqual({p["id"] for p in row["panels"]}, set(range(221, 227)))
+        self.assertEqual({p["id"] for p in row["panels"]}, set(range(221, 230)))
         stats = {p["id"]: p for p in row["panels"]}
         for id, unit in ((221, "m"), (222, "celsius"), (223, "celsius"),
                          (224, "watt"), (225, "watt"), (226, "celsius")):
@@ -111,6 +111,26 @@ class WorkloadReportingTests(unittest.TestCase):
             self.assertIn(ident, stats[id]["targets"][0]["expr"])
         self.assertIn("sum_over_time(", stats[221]["targets"][0]["expr"])
         self.assertIn("* 5", stats[221]["targets"][0]["expr"])
+        # Load-band shares must account for missing samples, not silently
+        # treat a sleeping PC as 0% activity or assume gaming by GPU usage.
+        for id, expected in ((227, "< 10"), (228, "< 60"), (229, ">= 60")):
+            panel = stats[id]
+            self.assertEqual(panel["fieldConfig"]["defaults"]["unit"], "percent")
+            self.assertEqual(panel["fieldConfig"]["defaults"]["min"], 0)
+            self.assertEqual(panel["fieldConfig"]["defaults"]["max"], 100)
+            expr = panel["targets"][0]["expr"]
+            self.assertIn(expected, expr)
+            self.assertIn('name=~"CPU_Total|GPU_Core"', expr)
+            self.assertIn("count_over_time(", expr)
+            self.assertIn(" >= 10", expr)
+            self.assertIn("time() - timestamp(", expr)
+            self.assertIn(" < 90", expr)
+            self.assertIn("and on(host)", expr)
+            self.assertIn("[$__range:5m]", expr)
+            self.assertNotIn("vector(0)", expr)
+        self.assertIn(">= 10", stats[228]["targets"][0]["expr"])
+        self.assertIn("observed", stats[227]["description"].lower())
+
         # Missing one of the two physical load sensors -> no idle series.
         self.assertIn(" and on(host) ", stats[221]["targets"][0]["expr"])
         # Existing reporting headline cards stay in the uncluttered main row.
