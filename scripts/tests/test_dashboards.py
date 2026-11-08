@@ -76,6 +76,7 @@ class DashboardContracts(unittest.TestCase):
             119: ("Temperature", "External_Temperature", "celsius"),
             120: ("Voltage", "VCC|VCC_USB", "volt"),
             121: ("Factor", "_Alarm", "none"),
+            122: ("Power", "Dissipated_Power", "watt"),
         }
         for number, (kind, name, unit) in expected.items():
             panel = cp[number]
