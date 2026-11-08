@@ -93,6 +93,37 @@ class DashboardContracts(unittest.TestCase):
             self.assertIn('kind="'+kind+'"', rp[number]["targets"][0]["expr"])
         self.assertEqual(rp[202]["fieldConfig"]["defaults"]["unit"], "litreh")
 
+    def test_portal_metrics_includes_current_next_coolant_and_flow(self):
+        portal = json.loads((PANELS / "portal-metrics.json").read_text(encoding="utf-8"))
+        panels = {p["id"]: p for p in all_dash_panels(portal)}
+        self.assertEqual(portal["refresh"], "30s")
+        self.assertEqual(portal["templating"]["list"], [])
+        self.assertEqual(panels[11]["title"], "Coolant temperature")
+        self.assertEqual(panels[12]["title"], "Coolant flow")
+        self.assertEqual(panels[11]["fieldConfig"]["defaults"]["unit"], "celsius")
+        self.assertEqual(panels[12]["fieldConfig"]["defaults"]["unit"], "litreh")
+        expected = ((11, "Temperature", "Water_Temperature"),
+                    (12, "Flow", "Flow"))
+        for number, kind, sensor_name in expected:
+            p = panels[number]
+            self.assertEqual(p["type"], "stat")
+            target = p["targets"][0]
+            self.assertTrue(target["instant"])
+            self.assertFalse(target["range"])
+            expr = target["expr"]
+            self.assertIn('kind="'+kind+'"', expr)
+            self.assertIn('device="high_flow_NEXT"', expr)
+            self.assertIn('name="'+sensor_name+'"', expr)
+            self.assertIn("on(host,sensor) group_left()", expr)
+            self.assertIn("sensordash_sensor_info_value", expr)
+            self.assertNotIn("vector(0)", expr)
+            self.assertNotIn("/usbhid/", expr)
+            self.assertEqual(target["legendFormat"], p["title"])
+            self.assertEqual(p["fieldConfig"]["defaults"]["noValue"], "—")
+        self.assertEqual((panels[11]["gridPos"]["y"],
+                          panels[12]["gridPos"]["y"]), (5, 5))
+        self.assertEqual(panels[9]["gridPos"]["y"], 15)
+
     def test_cooling_panels_use_binding_metadata_not_copied_raw_series(self):
         d = json.loads((PANELS / "cooling-systems.json").read_text(encoding="utf-8"))
         panels = {p["id"]: p for p in all_dash_panels(d)}
