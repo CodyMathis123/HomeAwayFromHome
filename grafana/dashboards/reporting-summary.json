@@ -1416,7 +1416,7 @@
         "x": 0,
         "y": 50,
         "w": 24,
-        "h": 3
+        "h": 2
       },
       "options": {
         "mode": "markdown",
@@ -1434,7 +1434,7 @@
       "description": "Rolling maximum of observed physical temperature readings in the preceding 24 hours. Offline gaps are not reconstructed.",
       "gridPos": {
         "x": 0,
-        "y": 53,
+        "y": 52,
         "w": 12,
         "h": 10
       },
@@ -1505,7 +1505,7 @@
       "description": "Rolling maximum of observed physical temperature readings in the preceding 24 hours. Offline gaps are not reconstructed.",
       "gridPos": {
         "x": 12,
-        "y": 53,
+        "y": 52,
         "w": 12,
         "h": 10
       },
@@ -1572,7 +1572,7 @@
       "collapsed": true,
       "gridPos": {
         "x": 0,
-        "y": 63,
+        "y": 62,
         "w": 24,
         "h": 1
       },
@@ -1863,7 +1863,7 @@
       "collapsed": true,
       "gridPos": {
         "x": 0,
-        "y": 64,
+        "y": 63,
         "w": 24,
         "h": 1
       },
