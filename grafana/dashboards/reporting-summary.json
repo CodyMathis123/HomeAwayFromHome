@@ -1562,6 +1562,299 @@
           }
         }
       ]
+    },
+    {
+      "id": 200,
+      "type": "text",
+      "title": "",
+      "transparent": true,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "targets": [],
+      "gridPos": {
+        "x": 0,
+        "y": 64,
+        "w": 24,
+        "h": 3
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### HIGH FLOW NEXT · COOLANT HEALTH & CIRCULATION\\nRaw physical sensor readings across the selected reporting period (24h / 7d / 30d). Missing intervals remain gaps; the manufacturer water-quality percentage is not an independent chemistry assay."
+      }
+    },
+    {
+      "id": 201,
+      "title": "NEXT · coolant temperature",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "High flow NEXT readings exported by SensorDash and measured directly by hardware. Only recorded samples appear; no interpolated or inferred missing intervals.",
+      "gridPos": {
+        "x": 0,
+        "y": 67,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(name,device) (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",name=\"Water_Temperature\",device=\"high_flow_NEXT\"} == 1)",
+          "legendFormat": "{{name}} · {{host}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
+    },
+    {
+      "id": 202,
+      "title": "NEXT · flow rate",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "High flow NEXT readings exported by SensorDash and measured directly by hardware. Only recorded samples appear; no interpolated or inferred missing intervals.",
+      "gridPos": {
+        "x": 12,
+        "y": 67,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Flow\"} * on(host,sensor) group_left(name,device) (sensordash_sensor_info_value{host=~\"$host\",kind=\"Flow\",name=\"Flow\",device=\"high_flow_NEXT\"} == 1)",
+          "legendFormat": "{{name}} · {{host}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "litreh",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
+    },
+    {
+      "id": 203,
+      "title": "NEXT · conductivity",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "High flow NEXT readings exported by SensorDash and measured directly by hardware. Only recorded samples appear; no interpolated or inferred missing intervals.",
+      "gridPos": {
+        "x": 0,
+        "y": 76,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Conductivity\"} * on(host,sensor) group_left(name,device) (sensordash_sensor_info_value{host=~\"$host\",kind=\"Conductivity\",name=\"Conductivity\",device=\"high_flow_NEXT\"} == 1)",
+          "legendFormat": "{{name}} · {{host}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: µS/cm",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
+    },
+    {
+      "id": 204,
+      "title": "NEXT · water quality estimate",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "High flow NEXT readings exported by SensorDash and measured directly by hardware. Only recorded samples appear; no interpolated or inferred missing intervals.",
+      "gridPos": {
+        "x": 12,
+        "y": 76,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Level\"} * on(host,sensor) group_left(name,device) (sensordash_sensor_info_value{host=~\"$host\",kind=\"Level\",name=\"Water_Quality\",device=\"high_flow_NEXT\"} == 1)",
+          "legendFormat": "{{name}} · {{host}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
     }
   ],
   "timepicker": {
