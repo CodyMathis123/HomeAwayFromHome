@@ -1431,7 +1431,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Rolling maximum of observed physical temperature readings in the preceding 24 hours. Offline gaps are not reconstructed.",
+      "description": "The maximum recorded physical CPU temperature in the preceding 24 hours for each computer. The winning sensor may change from point to point; this curve does not represent one named sensor. Samples and reporting gaps are not reconstructed.",
       "gridPos": {
         "x": 0,
         "y": 52,
@@ -1445,9 +1445,9 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max(max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[24h]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device_type=\"Cpu\",name!~\"(?i).*(warning|critical).*\"} == 1))",
+          "expr": "max by(host) (max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[24h]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device_type=\"Cpu\",name!~\"(?i).*(warning|critical).*\"} == 1))",
           "range": true,
-          "legendFormat": "{{host}} · {{device_type}}",
+          "legendFormat": "{{host}} · CPU hottest temperature",
           "maxDataPoints": 360,
           "interval": "5m"
         }
@@ -1502,7 +1502,7 @@
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Rolling maximum of observed physical temperature readings in the preceding 24 hours. Offline gaps are not reconstructed.",
+      "description": "The maximum recorded physical GPU temperature in the preceding 24 hours for each computer. The winning sensor may change from point to point; this curve does not represent one named sensor. Samples and reporting gaps are not reconstructed.",
       "gridPos": {
         "x": 12,
         "y": 52,
@@ -1516,9 +1516,9 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max(max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[24h]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name!~\"(?i).*(warning|critical).*\"} == 1))",
+          "expr": "max by(host) (max_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[24h]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",kind=\"Temperature\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",name!~\"(?i).*(warning|critical).*\"} == 1))",
           "range": true,
-          "legendFormat": "{{host}} · {{device_type}}",
+          "legendFormat": "{{host}} · GPU hottest temperature",
           "maxDataPoints": 360,
           "interval": "5m"
         }
