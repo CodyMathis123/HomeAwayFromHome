@@ -757,9 +757,17 @@ class DashboardContracts(unittest.TestCase):
             self.assertEqual(panel["targets"][0]["legendFormat"], panel["title"])
         self.assertIn('device_type=~"Gpu(Amd|Nvidia|Intel)?"',
                       panels[31]["targets"][0]["expr"])
-        for panel_id in (34, 35):
-            self.assertIn("[24h]", panels[panel_id]["targets"][0]["expr"])
-            self.assertFalse(panels[panel_id]["fieldConfig"]["defaults"]["custom"]["spanNulls"])
+        for panel_id, category in ((34, "CPU"), (35, "GPU")):
+            panel = panels[panel_id]
+            target = panel["targets"][0]
+            self.assertIn("[24h]", target["expr"])
+            self.assertTrue(target["expr"].startswith("max by(host) (max_over_time("))
+            self.assertIn("on(host,sensor)", target["expr"])
+            self.assertEqual(target["legendFormat"],
+                             "{{host}} · " + category + " hottest temperature")
+            self.assertNotIn("{{device_type}}", target["legendFormat"])
+            self.assertIn("winning sensor may change", panel["description"])
+            self.assertFalse(panel["fieldConfig"]["defaults"]["custom"]["spanNulls"])
         data_presence = panels[36]
         self.assertEqual(len(data_presence["targets"]), 2)
         self.assertTrue(all("count_over_time(" in target["expr"] and "[1h]" in target["expr"]
