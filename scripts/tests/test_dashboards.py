@@ -62,6 +62,107 @@ class DashboardContracts(unittest.TestCase):
                 self.assertNotIn("sensordash_", target["legendFormat"])
                 self.assertLessEqual(len(target["legendFormat"]), 80)
 
+    def test_next_sensor_panels_use_physical_metadata_and_real_units(self):
+        cooling = json.loads((PANELS / "cooling-systems.json").read_text(encoding="utf-8"))
+        reports = json.loads((PANELS / "reporting-summary.json").read_text(encoding="utf-8"))
+        cp = {p["id"]: p for p in all_dash_panels(cooling)}
+        rp = {p["id"]: p for p in all_dash_panels(reports)}
+        self.assertEqual(cp[8]["fieldConfig"]["defaults"]["unit"], "litreh")
+        expected = {
+            117: ("Conductivity", "Conductivity", "suffix: µS/cm"),
+            118: ("Level", "Water_Quality", "percent"),
+            120: ("Voltage", "VCC|VCC_USB", "volt"),
+            121: ("Factor", "_Alarm", "none"),
+            122: ("Power", "Dissipated_Power", "watt"),
+        }
+        for number, (kind, name, unit) in expected.items():
+            panel = cp[number]
+            query = panel["targets"][0]["expr"]
+            self.assertIn('kind="'+kind+'"', query)
+            self.assertIn(name, query)
+            self.assertIn('device="high_flow_NEXT"', query)
+            self.assertIn("on(host,sensor) group_left(name,device)", query)
+            self.assertEqual(panel["fieldConfig"]["defaults"]["unit"], unit)
+            self.assertNotIn('sensor=~"/', query)
+        for number, kind in ((201, "Temperature"), (202, "Flow"),
+                             (203, "Conductivity"), (204, "Level")):
+            self.assertIn('device="high_flow_NEXT"', rp[number]["targets"][0]["expr"])
+            self.assertIn('kind="'+kind+'"', rp[number]["targets"][0]["expr"])
+        self.assertEqual(rp[202]["fieldConfig"]["defaults"]["unit"], "litreh")
+        # Installed coolant and flow are top-level curves, not duplicated
+        # in the advanced NEXT diagnostics section.
+        self.assertNotIn(115, cp)
+        self.assertNotIn(116, cp)
+        self.assertNotIn(119, cp)
+        self.assertFalse(cp[104]["collapsed"])
+        self.assertEqual((cp[7]["gridPos"]["y"], cp[8]["gridPos"]["y"]),(20,20))
+        self.assertTrue(cp[105]["collapsed"])
+        self.assertEqual([p["id"] for p in cp[105]["panels"]],[9])
+        self.assertTrue(cp[114]["collapsed"])
+        self.assertEqual({p["id"] for p in cp[114]["panels"]},{117,118,120,121,122})
+        self.assertIn('role="heat-source"',cp[2]["targets"][0]["expr"])
+
+    def test_portal_metrics_includes_current_next_coolant_and_flow(self):
+        portal = json.loads((PANELS / "portal-metrics.json").read_text(encoding="utf-8"))
+        panels = {p["id"]: p for p in all_dash_panels(portal)}
+        self.assertEqual(portal["refresh"], "30s")
+        self.assertEqual(portal["templating"]["list"], [])
+        self.assertEqual(panels[11]["title"], "Coolant temperature")
+        self.assertEqual(panels[12]["title"], "Coolant flow")
+        self.assertEqual(panels[11]["fieldConfig"]["defaults"]["unit"], "celsius")
+        self.assertEqual(panels[12]["fieldConfig"]["defaults"]["unit"], "litreh")
+        expected = ((11, "Temperature", "Water_Temperature"),
+                    (12, "Flow", "Flow"))
+        for number, kind, sensor_name in expected:
+            p = panels[number]
+            self.assertEqual(p["type"], "stat")
+            target = p["targets"][0]
+            self.assertFalse(target["instant"])
+            self.assertTrue(target["range"])
+            self.assertEqual(p["options"]["graphMode"], "area")
+            expr = target["expr"]
+            self.assertIn('kind="'+kind+'"', expr)
+            self.assertIn('device="high_flow_NEXT"', expr)
+            self.assertIn('name="'+sensor_name+'"', expr)
+            self.assertIn("on(host,sensor) group_left()", expr)
+            self.assertIn("sensordash_sensor_info_value", expr)
+            self.assertNotIn("vector(0)", expr)
+            self.assertNotIn("/usbhid/", expr)
+            self.assertEqual(target["legendFormat"], p["title"])
+            self.assertEqual(p["fieldConfig"]["defaults"]["noValue"], "—")
+        self.assertEqual((panels[11]["gridPos"]["y"],
+                          panels[12]["gridPos"]["y"]), (5, 5))
+        self.assertEqual(panels[9]["gridPos"]["y"], 15)
+        for ref,name in (("B","Water_Temperature"),("C","External_Temperature")):
+            t=next(v for v in panels[9]["targets"] if v["refId"]==ref)
+            self.assertIn('device="high_flow_NEXT"',t["expr"])
+            self.assertIn('name="'+name+'"',t["expr"])
+
+    def test_reporting_summary_features_selected_period_next_averages(self):
+        dashboard = json.loads((PANELS / "reporting-summary.json").read_text(encoding="utf-8"))
+        panels = {p["id"]: p for p in all_dash_panels(dashboard)}
+        expected = ((205, "Temperature", "Water_Temperature", "celsius"),
+                    (206, "Flow", "Flow", "litreh"))
+        for number, kind, name, unit in expected:
+            panel = panels[number]
+            self.assertEqual(panel["gridPos"]["y"], 16)
+            self.assertEqual(panel["type"], "stat")
+            self.assertEqual(panel["fieldConfig"]["defaults"]["unit"], unit)
+            target = panel["targets"][0]
+            self.assertFalse(target["instant"])
+            self.assertTrue(target["range"])
+            self.assertEqual(panel["options"]["graphMode"], "area")
+            self.assertIn("avg_over_time(", target["expr"])
+            self.assertIn("[$__range]", target["expr"])
+            self.assertIn('device="high_flow_NEXT"', target["expr"])
+            self.assertIn('kind="'+kind+'"', target["expr"])
+            self.assertIn('name="'+name+'"', target["expr"])
+            self.assertIn("on(host,sensor) group_left()", target["expr"])
+            self.assertNotIn("vector(0)", target["expr"])
+        self.assertTrue(panels[200]["collapsed"])
+        self.assertIn(201, panels)
+        self.assertIn(202, panels)
+
     def test_cooling_panels_use_binding_metadata_not_copied_raw_series(self):
         d = json.loads((PANELS / "cooling-systems.json").read_text(encoding="utf-8"))
         panels = {p["id"]: p for p in all_dash_panels(d)}
@@ -656,9 +757,17 @@ class DashboardContracts(unittest.TestCase):
             self.assertEqual(panel["targets"][0]["legendFormat"], panel["title"])
         self.assertIn('device_type=~"Gpu(Amd|Nvidia|Intel)?"',
                       panels[31]["targets"][0]["expr"])
-        for panel_id in (34, 35):
-            self.assertIn("[24h]", panels[panel_id]["targets"][0]["expr"])
-            self.assertFalse(panels[panel_id]["fieldConfig"]["defaults"]["custom"]["spanNulls"])
+        for panel_id, category in ((34, "CPU"), (35, "GPU")):
+            panel = panels[panel_id]
+            target = panel["targets"][0]
+            self.assertIn("[24h]", target["expr"])
+            self.assertTrue(target["expr"].startswith("max by(host) (max_over_time("))
+            self.assertIn("on(host,sensor)", target["expr"])
+            self.assertEqual(target["legendFormat"],
+                             "{{host}} · " + category + " hottest temperature")
+            self.assertNotIn("{{device_type}}", target["legendFormat"])
+            self.assertIn("winning sensor may change", panel["description"])
+            self.assertFalse(panel["fieldConfig"]["defaults"]["custom"]["spanNulls"])
         data_presence = panels[36]
         self.assertEqual(len(data_presence["targets"]), 2)
         self.assertTrue(all("count_over_time(" in target["expr"] and "[1h]" in target["expr"]
@@ -717,10 +826,17 @@ class DashboardContracts(unittest.TestCase):
         cp = {p["id"]: p for p in all_dash_panels(cooling)}
         row = cp[104]
         self.assertEqual(row["type"], "row")
-        self.assertTrue(row["collapsed"])
-        self.assertEqual({p["id"] for p in row["panels"]}, {7, 8, 9})
-        self.assertEqual(len([p for p in cooling["panels"] if p["id"] in (7, 8, 9)]), 0)
-        for probe in row["panels"]:
+        self.assertFalse(row["collapsed"])
+        self.assertEqual(row["panels"], [])
+        self.assertIn("COOLANT CIRCULATION", row["title"])
+        self.assertEqual({p["id"] for p in cooling["panels"] if p["id"] in (7, 8, 9)}, {7, 8})
+        self.assertEqual(cp[7]["gridPos"]["y"], 20)
+        self.assertEqual(cp[8]["gridPos"]["y"], 20)
+        air = cp[105]
+        self.assertTrue(air["collapsed"])
+        self.assertEqual({p["id"] for p in air["panels"]}, {9})
+        self.assertIn("Optional ambient", air["title"])
+        for probe in (cp[7], cp[8], cp[9]):
             self.assertIn("sensordash_reading_value", probe["targets"][0]["expr"])
             self.assertFalse(probe["fieldConfig"]["defaults"]["custom"]["spanNulls"])
 
@@ -783,6 +899,13 @@ class DashboardContracts(unittest.TestCase):
             self.assertGreaterEqual(len(headers), 2, filename)
             self.assertTrue(all(p["options"]["mode"] == "markdown"
                                 and p.get("transparent") is True for p in headers))
+            # Collapsed Grafana rows retain child grid positions even while
+            # hidden; their coordinates must not be checked against visible
+            # top-level panels until Grafana expands and reflows that row.
+            collapsed_children = {child["id"]
+                                  for row in d["panels"]
+                                  if row["type"] == "row" and row.get("collapsed")
+                                  for child in row.get("panels", [])}
             for p in all_dash_panels(d):
                 a = p["gridPos"]
                 self.assertGreater(a["h"], 0)
@@ -790,6 +913,8 @@ class DashboardContracts(unittest.TestCase):
                 self.assertGreaterEqual(a["x"], 0)
                 self.assertLessEqual(a["x"] + a["w"], 24)
                 for q in d["panels"]:
+                    if p["id"] in collapsed_children:
+                        continue
                     if p["id"] >= q["id"]:
                         continue
                     b = q["gridPos"]

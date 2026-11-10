@@ -49,6 +49,14 @@ def inspect(root: Path = DASHBOARDS):
                 category = "sample freshness / no sensor attribution needed"
             elif " offset $__range" in expressions and " - " in expressions:
                 category = "period comparison / no single winner"
+            elif (file.name == "portal-metrics.json" and
+                  'device="high_flow_NEXT"' in expressions and
+                  ('name="Water_Temperature"' in expressions or
+                   'name="Flow"' in expressions) and
+                  'sensordash_sensor_info_value' in expressions):
+                # Fixed physical NEXT measurement: only the host aggregation
+                # can change. The source is explicit in the device/name match.
+                category = "fixed NEXT sensor / host summary"
             elif key in AGGREGATE_SPARKLINES:
                 category = "changing maximum sparkline / intentionally aggregated"
             elif named:

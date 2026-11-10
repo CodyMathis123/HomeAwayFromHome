@@ -9,7 +9,7 @@
     "overview",
     "everyday"
   ],
-  "description": "SensorDash read-only overview: distinct latest hottest CPU/GPU readings with aggregate history, plus peak values with an individually selected winning physical sensor, alias-first labels, and sparkline; cooling/energy/sensor inventory.",
+  "description": "SensorDash read-only overview: distinct latest hottest CPU/GPU readings with aggregate history, plus peak values with an individually selected winning physical sensor, alias-first labels, and sparkline; cooling/energy/sensor inventory. CPU total/max-core and GPU core/memory activity trends now align with temperatures and power for workload context; only physical, exported Load sensors are used.",
   "schemaVersion": 40,
   "version": 13,
   "editable": false,
@@ -619,13 +619,13 @@
     },
     {
       "id": 200,
-      "title": "Temperature history · physical sensors",
+      "title": "Temperature history · components and coolant",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
-      "description": "Real temperature readings only. Sleep/resume gaps remain gaps; no hidden interpolation.",
+      "description": "Real temperature readings only. Sleep/resume gaps remain gaps; no hidden interpolation. Also includes high flow NEXT coolant temperature and optional external thermistor, discovered by physical sensor metadata; absent probe values yield no series.",
       "gridPos": {
         "x": 0,
         "y": 16,
@@ -642,6 +642,26 @@
           "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\",sensor=~\".*(cpu|gpu|nvme|storage|hdd|ssd).*/temperature/.*\"} * on(host,sensor) group_left(name,alias,device) (label_replace(sensordash_sensor_info_value{host=~\"$host\",name!~\"(?i).*(warning|critical).*\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",name!~\"(?i).*(warning|critical).*\",alias=\"unassigned\"} == 1)), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"device\", \"$1 $2\", \"device\", \"^(.*)_(.*)$\"), \"device\", \"$1 $2\", \"device\", \"^(.*)_(.*)$\"), \"device\", \"$1 $2\", \"device\", \"^(.*)_(.*)$\")",
           "range": true,
           "legendFormat": "{{device}} · {{name}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "range": true,
+          "legendFormat": "{{device}} · {{name}}",
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(name,device) (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1)"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "range": true,
+          "legendFormat": "{{device}} · {{name}}",
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left(name,device) (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"External_Temperature\"} == 1)"
         }
       ],
       "fieldConfig": {
@@ -756,6 +776,166 @@
       ]
     },
     {
+      "id": 210,
+      "title": "CPU utilization · total & busiest core",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "CPU Total and CPU Core Max from LibreHardwareMonitor, percentage utilization. Core Max is not the sum of individual threads. Missing or sleeping-PC periods remain gaps.",
+      "gridPos": {
+        "x": 0,
+        "y": 26,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Load\"} * on(host,sensor) group_left(name,device) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Cpu\",kind=\"Load\",name=\"CPU_Total\"} == 1)",
+          "range": true,
+          "legendFormat": "{{host}} · CPU total"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Load\"} * on(host,sensor) group_left(name,device) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Cpu\",kind=\"Load\",name=\"CPU_Core_Max\"} == 1)",
+          "range": true,
+          "legendFormat": "{{host}} · Hottest core"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
+    },
+    {
+      "id": 211,
+      "title": "GPU utilization · core & memory activity",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "GPU Core and GPU Memory activity from LibreHardwareMonitor. Activity percentage is not VRAM occupancy and a missing AMD memory-activity sensor stays blank.",
+      "gridPos": {
+        "x": 12,
+        "y": 26,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Load\"} * on(host,sensor) group_left(name,device) (sensordash_sensor_info_value{host=~\"$host\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",kind=\"Load\",name=\"GPU_Core\"} == 1)",
+          "range": true,
+          "legendFormat": "{{host}} · GPU core"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Load\"} * on(host,sensor) group_left(name,device) (sensordash_sensor_info_value{host=~\"$host\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",kind=\"Load\",name=\"GPU_Memory\"} == 1)",
+          "range": true,
+          "legendFormat": "{{host}} · GPU memory activity"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
+    },
+    {
       "id": 102,
       "type": "text",
       "title": "",
@@ -767,7 +947,7 @@
       "targets": [],
       "gridPos": {
         "x": 0,
-        "y": 26,
+        "y": 35,
         "w": 24,
         "h": 3
       },
@@ -787,7 +967,7 @@
       "description": "Each component/revision is charted independently. Do not sum overlapping configuration revisions or integrate across sleep gaps.",
       "gridPos": {
         "x": 0,
-        "y": 29,
+        "y": 38,
         "w": 15,
         "h": 12
       },
@@ -856,7 +1036,7 @@
       "description": "Seconds since the newest raw SensorDash measurement from the selected Windows host in the preceding 24 hours. A large value means the stream is old; sleep, shutdown, network failure and exporter failure cannot be distinguished by this signal alone. An empty result means no samples in 24 hours, not zero seconds. This uses VictoriaMetrics' MetricsQL timestamp(range) operator.",
       "gridPos": {
         "x": 15,
-        "y": 29,
+        "y": 38,
         "w": 9,
         "h": 4
       },
@@ -917,7 +1097,7 @@
       "description": "The non-PWM DDC pump is monitored only; the graph never commands its speed.",
       "gridPos": {
         "x": 15,
-        "y": 33,
+        "y": 42,
         "w": 9,
         "h": 4
       },
@@ -968,6 +1148,67 @@
       }
     },
     {
+      "id": 11,
+      "title": "Radiator PWM duty",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Read-only radiator PWM feedback exported from Windows. This is a monitoring reading, not a control command.",
+      "gridPos": {
+        "x": 15,
+        "y": 46,
+        "w": 9,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "max((sensordash_reading_value{host=~\"$host\",kind=\"Control\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",role=\"fan-group\",kind=\"Control\"} == 1)))",
+          "range": true,
+          "legendFormat": "Radiator PWM duty"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "noValue": "—",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#f2bd6d"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area"
+      }
+    },
+    {
       "id": 103,
       "type": "text",
       "title": "",
@@ -979,7 +1220,7 @@
       "targets": [],
       "gridPos": {
         "x": 0,
-        "y": 41,
+        "y": 50,
         "w": 24,
         "h": 3
       },
@@ -999,7 +1240,7 @@
       "description": "Discovered sensor descriptions by type. Counts describe the SensorDash catalog; they are not all guaranteed to have fresh readings.",
       "gridPos": {
         "x": 0,
-        "y": 44,
+        "y": 53,
         "w": 10,
         "h": 10
       },
@@ -1049,7 +1290,7 @@
       "description": "Recently observed readings, with descriptive names joined from the SensorDash catalog. The original sensor identifiers remain stored and unchanged. Only currently exporting sensors appear.",
       "gridPos": {
         "x": 10,
-        "y": 44,
+        "y": 53,
         "w": 14,
         "h": 10
       },
@@ -1100,67 +1341,6 @@
           }
         }
       ]
-    },
-    {
-      "id": 11,
-      "title": "Radiator PWM duty",
-      "type": "stat",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "homeaway-vm"
-      },
-      "description": "Read-only radiator PWM feedback exported from Windows. This is a monitoring reading, not a control command.",
-      "gridPos": {
-        "x": 15,
-        "y": 37,
-        "w": 9,
-        "h": 4
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "homeaway-vm"
-          },
-          "expr": "max((sensordash_reading_value{host=~\"$host\",kind=\"Control\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",role=\"fan-group\",kind=\"Control\"} == 1)))",
-          "range": true,
-          "legendFormat": "Radiator PWM duty"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent",
-          "noValue": "—",
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "#f2bd6d"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "values": false,
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": ""
-        },
-        "orientation": "auto",
-        "textMode": "auto",
-        "colorMode": "value",
-        "graphMode": "area"
-      }
     }
   ]
 }

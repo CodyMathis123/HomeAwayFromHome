@@ -30,6 +30,9 @@ class GrafanaStatAuditTests(unittest.TestCase):
         for panel_id in (110, 111, 112):
             self.assertEqual(rows[("cooling-systems.json", panel_id)],
                              "attributed / standardized", panel_id)
+        for panel_id in (11, 12):
+            self.assertEqual(rows[("portal-metrics.json", panel_id)],
+                             "fixed NEXT sensor / host summary")
         for filename, panel_id in audit.AGGREGATE_SPARKLINES:
             self.assertEqual(rows[(filename, panel_id)],
                              "changing maximum sparkline / intentionally aggregated")

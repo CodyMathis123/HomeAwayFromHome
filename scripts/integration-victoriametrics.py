@@ -497,6 +497,79 @@ def main() -> None:
     assert query(configured(original[111]))[0]["value"][1] == latest[0]["value"][1]
     assert query(configured(original[112]))[0]["value"][1] == peak[0]["value"][1]
 
+    # Workload/idle report: exercise the *actual Grafana PromQL* against
+    # physical-like CPU Total and GPU Core activity, watts and coolant data.
+    # The isolated CI instance is deliberately separate from a live Pi.
+    workload = {
+        "cpu_util": ("Load", "CPU_Total", "Cpu", "Ryzen", 2),
+        "gpu_util": ("Load", "GPU_Core", "GpuAmd", "Radeon", 3),
+        "cpu_die": ("Temperature", "Core__Tdie_", "Cpu", "Ryzen", 39),
+        "gpu_temp": ("Temperature", "GPU_Core", "GpuAmd", "Radeon", 32),
+        "cpu_watts": ("Power", "Package", "Cpu", "Ryzen", 24),
+        "gpu_watts": ("Power", "GPU_Package", "GpuAmd", "Radeon", 18),
+        "coolant": ("Temperature", "Water_Temperature", "Cooler", "high_flow_NEXT", 26),
+        "vram": ("Data", "GPU_Memory_Used", "GpuAmd", "Radeon", 2147483648),
+    }
+    end_ms = int(time.time() * 1000) - 2000
+    samples = []
+    # Forty-one actual measurements / counter over 16m40s (25s spacing),
+    # so the last 15m window has >30 physical observations per activity source.
+    for i in range(41):
+        t = end_ms - (40-i)*25000
+        for sensor, (kind, _name, _family, _device, val) in workload.items():
+            samples.append(
+                f"sensordash_reading,host=CI-WORK,sensor={sensor},kind={kind} "
+                f"value={val} {t}"
+            )
+            # Metadata is periodically republished in production. Keep the
+            # ephemeral fixture faithful so historical joins have provenance.
+            if i % 8 == 0:
+                samples.append(
+                    f"sensordash_sensor_info,host=CI-WORK,sensor={sensor},"
+                    f"kind={kind},name={_name},device_type={_family},device={_device},"
+                    f"alias=unassigned value=1 {t}"
+                )
+    with urllib.request.urlopen(urllib.request.Request(
+        BASE + "/api/v2/write?precision=ms",
+        data=("\n".join(samples) + "\n").encode("ascii"),
+        headers={"Content-Type": "text/plain"}, method="POST"
+    ), timeout=10) as response:
+        assert 200 <= response.status < 300
+
+    work_report = json.loads((Path(__file__).resolve().parents[1] /
+       "grafana/dashboards/reporting-summary.json").read_text(encoding="utf-8"))
+    work_row = next(p for p in work_report["panels"] if p["id"] == 220)
+    work_stats = {p["id"]: p for p in work_row["panels"]}
+
+    def work_expr(panel):
+        return (panel["targets"][0]["expr"]
+                .replace('host=~"$host"', 'host="CI-WORK"')
+                .replace("$__range", "20m"))
+
+    ready = []
+    for _ in range(25):
+        ready = query(work_expr(work_stats[222]))
+        if ready:
+            break
+        time.sleep(0.5)
+    assert ready, "Physical CPU/GPU data never qualified as idle in VM"
+
+    expected = {222: 39, 223: 32, 224: 24, 225: 18, 226: 26,
+                227: 100, 228: 0, 229: 0}
+    for id, value in expected.items():
+        rows = query(work_expr(work_stats[id]))
+        assert len(rows) == 1, ("Workload result absent", id, rows)
+        actual = float(rows[0]["value"][1])
+        assert abs(actual - value) < 0.1, (
+            "Unexpected workload/idle result", id, actual, value)
+    idle_minutes = query(work_expr(work_stats[221]))
+    assert len(idle_minutes) == 1 and float(idle_minutes[0]["value"][1]) > 0, (
+        "Expected positive count of sampled qualifying idle minutes", idle_minutes)
+    assert query(work_expr(work_stats[222]).replace("CI-WORK", "NO-SUCH-HOST")) == [], (
+        "No CPU/GPU samples must not create a zero-valued idle baseline")
+    print("PASS: physical CPU/GPU load and VRAM catalog joins, qualified "
+          "idle medians, workload shares and missing-host gap safety")
+
     print("PASS: atomic sensor names and temperatures, aliases, filters, "
           "winner changes, numerical equivalence and empty data")
     print("PASS: peak ranges, single physical sensor, user alias priority, "
