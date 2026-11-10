@@ -6,8 +6,12 @@ set -euo pipefail
 usage() {
   echo "Usage: bash scripts/install-homeaway-command.sh --plan|--apply" >&2
 }
+if [[ "$#" -ne 1 ]]; then
+  usage
+  exit 2
+fi
 mode="$1"
-if [[ "$#" != 1 ]] || [[ "$mode" != "--plan" && "$mode" != "--apply" ]]; then
+if [[ "$mode" != "--plan" && "$mode" != "--apply" ]]; then
   usage
   exit 2
 fi
