@@ -1,0 +1,61 @@
+name: Production release and safe branch cleanup
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Choose release or safe branch cleanup
+        type: choice
+        options: [release, prune-merged]
+        default: release
+        required: true
+      version:
+        description: Semantic version tag, such as v0.1.0
+        type: string
+        default: v0.1.0
+        required: true
+permissions:
+  contents: write
+  actions: read
+  pull-requests: read
+concurrency:
+  group: production-maintenance
+  cancel-in-progress: false
+jobs:
+  maintain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: Production
+          persist-credentials: false
+      - name: Remove only merged branches with no open PR
+        if: inputs.operation == 'prune-merged'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api --paginate "repos/$GITHUB_REPOSITORY/branches?per_page=100" --jq '.[].name' |
+          while IFS= read -r branch; do
+            [[ "$branch" == "Production" ]] && continue
+            open=$(gh pr list --head "$branch" --state open --json number --jq 'length')
+            [[ "$open" == "0" ]] || { echo "KEEP $branch: open PR"; continue; }
+            ahead=$(gh api "repos/$GITHUB_REPOSITORY/compare/Production...$branch" --jq '.ahead_by')
+            [[ "$ahead" == "0" ]] || { echo "KEEP $branch: $ahead unique commits"; continue; }
+            echo "Removing merged branch: $branch"
+            gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/heads/$branch" >/dev/null
+          done
+      - name: Publish successful Production source release
+        if: inputs.operation == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+          sha=$(git rev-parse HEAD)
+          passed=$(gh run list --workflow validate.yml --branch Production --commit "$sha" --event push --status success --limit 20 --json databaseId --jq 'length')
+          [[ "$passed" != "0" ]] || { echo "Production CI must pass first"; exit 1; }
+          if gh release view "$VERSION" >/dev/null 2>&1; then echo "Release already exists"; exit 1; fi
+          gh release create "$VERSION" --target "$sha" --title "HomeAwayFromHome $VERSION" --generate-notes
