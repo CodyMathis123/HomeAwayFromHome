@@ -1,0 +1,141 @@
+name: Modular monitoring clean-host recovery
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches:
+      - feature/modular-restore-rehearsal
+      - design/modular-components-cooling-standalone
+      - Production
+    paths:
+      - '.github/workflows/modular-clean-host-recovery.yml'
+      - 'scripts/recover_clean_host_ci.py'
+      - 'scripts/tests/test_clean_host_recovery.py'
+      - 'docs/MODULAR-CLEAN-HOST-RECOVERY.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-source:
+    name: Create synthetic encrypted source fixture
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Start synthetic monitoring and record telemetry
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y age
+          python3 scripts/build-cooling-release.py --version 0.1.0
+          python3 scripts/verify-cooling-package.py --version 0.1.0
+          sudo dpkg -i dist/homeaway-cooling_0.1.0_all.deb
+          printf 'INITIALIZE COOLING\n' |
+            sudo script -q -e -c 'homeaway-cooling init --components cooling-monitoring --bind-ip 127.0.0.1 --https-port 19443' /dev/null
+          printf 'START MONITORING\n' |
+            sudo script -q -e -c 'homeaway-cooling start' /dev/null
+          sudo python3 scripts/integration-cooling-linux.py
+
+      - name: Encrypt synthetic state and hand off short-lived CI fixture
+        run: |
+          age-keygen -o "$RUNNER_TEMP/ci-identity.txt"
+          recipient="$(age-keygen -y "$RUNNER_TEMP/ci-identity.txt")"
+          printf 'BACKUP MONITORING\n' |
+            sudo script -q -e -c "homeaway-cooling backup --recipient $recipient --apply" /dev/null
+          archive="$(sudo find /var/lib/homeaway-cooling/backups -maxdepth 1 -type f -name '*.tar.age' | sort | tail -1)"
+          test -n "$archive"
+          sudo test -s "$archive.json"
+          sudo install -d -m 0700 "$RUNNER_TEMP/synthetic-only"
+          sudo cp -- "$archive" "$archive.json" "$RUNNER_TEMP/synthetic-only/"
+          sudo install -m 0600 "$RUNNER_TEMP/ci-identity.txt" "$RUNNER_TEMP/synthetic-only/identity.txt"
+          sudo chown -R "$(id -u):$(id -g)" "$RUNNER_TEMP/synthetic-only"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: synthetic-monitoring-restore-fixture
+          path: ${{ runner.temp }}/synthetic-only/
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+      - name: Dispose original CI-only stack and key
+        if: always()
+        run: |
+          if sudo test -f /etc/homeaway-cooling/cooling.env && sudo test -f /var/lib/homeaway-cooling/generated/compose.generated.json; then
+            sudo docker compose --env-file /etc/homeaway-cooling/cooling.env \
+              --project-directory /opt/homeaway-cooling \
+              -f /var/lib/homeaway-cooling/generated/compose.generated.json \
+              down -v --remove-orphans || true
+          fi
+          sudo rm -rf -- /etc/homeaway-cooling /var/lib/homeaway-cooling "$RUNNER_TEMP/synthetic-only"
+          rm -f "$RUNNER_TEMP/ci-identity.txt"
+
+  clean-target:
+    name: Recover on new runner (${{ matrix.os }})
+    needs: synthetic-source
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@v4
+        with:
+          name: synthetic-monitoring-restore-fixture
+          path: ${{ runner.temp }}/synthetic-only/
+
+      - name: Check the runner is empty and test strict recovery boundaries
+        run: |
+          test ! -e /etc/homeaway-cooling/cooling.env
+          test ! -e /var/lib/homeaway-cooling
+          test -z "$(docker ps -aq --filter label=com.docker.compose.project=homeaway-cooling)"
+          python3 -m unittest discover -s scripts/tests -p test_clean_host_recovery.py -v
+          python3 -m unittest discover -s scripts/tests -p test_restore_rehearsal.py -v
+          python3 -m compileall -q scripts/recover_clean_host_ci.py scripts/rehearsal_archive.py
+
+      - name: Install code only; no new credentials or metrics containers
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y age
+          python3 scripts/build-cooling-release.py --version 0.1.0
+          python3 scripts/verify-cooling-package.py --version 0.1.0
+          sudo dpkg -i dist/homeaway-cooling_0.1.0_all.deb
+          test ! -e /etc/homeaway-cooling/cooling.env
+          test ! -e /var/lib/homeaway-cooling
+          test -z "$(docker volume ls -q | grep '^homeaway-cooling_' || true)"
+
+      - name: Restore and start a complete backend from the backup
+        run: |
+          archive="$(find "$RUNNER_TEMP/synthetic-only" -maxdepth 1 -type f -name '*.tar.age' | head -1)"
+          test -n "$archive"
+          sudo HOMEAWAY_CLEAN_RESTORE_CI=1 GITHUB_ACTIONS=true \
+            python3 scripts/recover_clean_host_ci.py \
+              --archive "$archive" \
+              --identity "$RUNNER_TEMP/synthetic-only/identity.txt" \
+              > "$RUNNER_TEMP/clean-host-result.json"
+          python3 -c 'import json,sys; j=json.load(open(sys.argv[1])); assert j["clean_host_recovery_passed"] and j["trusted_original_ca"] and j["grafana_login_required"] and j["historical_metric_queryable"] and j["fresh_telemetry_ingested"] and j["grafana_dashboards_available"]' "$RUNNER_TEMP/clean-host-result.json"
+          test -z "$(docker volume ls -q --filter label=homeaway.clean-restore-ci=true)"
+          test -z "$(docker ps -aq --filter label=com.docker.compose.project=homeaway-cooling)"
+          test ! -e /etc/homeaway-cooling/cooling.env
+          test ! -e /var/lib/homeaway-cooling
+          echo 'PASS: new Linux runner recovered the full monitoring backend from a synthetic age backup'
+
+      - name: Scoped debugging on failure
+        if: failure()
+        run: |
+          sudo docker ps -a --filter label=homeaway.clean-restore-ci=true || true
+          sudo docker volume ls --filter label=homeaway.clean-restore-ci=true || true
+
+      - name: Erase transferred synthetic CI fixture
+        if: always()
+        run: |
+          rm -rf -- "$RUNNER_TEMP/synthetic-only"

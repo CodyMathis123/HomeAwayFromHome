@@ -1,0 +1,32 @@
+# Proof-of-concept HTTPS boundary: private CA, no Cloudflare/DNS01 dependency.
+# Browsers and Windows clients must explicitly trust the PUBLIC Caddy root CA.
+{
+  admin off
+  # IP-address clients typically omit SNI. Select the configured certificate
+  # while still enforcing a fully verified HTTPS connection.
+  default_sni {$COOLING_TLS_NAME}
+  skip_install_trust
+}
+
+https://{$COOLING_TLS_NAME}:8443 {
+  tls internal
+
+  # Only the exact write-only path can reach SensorDash telemetry ingestion.
+  handle /ingest {
+    request_body {
+      max_size 256KB
+    }
+    reverse_proxy https://telemetry-ingest:8443 {
+      header_up -Cookie
+      transport http {
+        tls_trust_pool file /run/telemetry-ca.crt
+        tls_server_name {$COOLING_BIND_IP}
+      }
+    }
+  }
+
+  # Grafana still independently requires its own login.
+  handle {
+    reverse_proxy grafana:3000
+  }
+}

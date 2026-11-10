@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>HomeAway · Monitoring Portal</title>
+<link rel="stylesheet" href="modular.css">
+<script defer src="modular.js"></script>
+</head>
+<body>
+<main class="shell">
+<header class="top"><div class="brand"><span class="mark" aria-hidden="true">⌂</span><strong>HomeAway</strong><span class="sub">MONITORING</span></div><span class="tag">PRIVATE HTTPS</span></header>
+<section class="intro">
+<p class="eyebrow">MODULAR MONITORING</p>
+<h1>Your monitoring, <em>nothing extra.</em></h1>
+<p>Only the features you selected are shown here. Hardware fan control stays on the Windows PC. Administration of network and host services is not available from this portal.</p>
+<p class="actions"><a class="primary" href="/">Open Grafana dashboards</a> <button id="refresh" type="button">Refresh status</button></p>
+</section>
+<section>
+<div class="heading"><h2>Installed features</h2><p id="updated" role="status">Loading…</p></div>
+<div class="cards" id="features" aria-live="polite"></div>
+</section>
+<section>
+<div class="heading"><h2>Monitoring diagnostics</h2><span class="hint">Read-only evidence, not a complete health verdict</span></div>
+<div class="checks" id="diagnostics" aria-live="polite"><p>Checking the metrics backend…</p></div>
+</section>
+<footer>HomeAwayFromHome · Local, component-aware portal · No DNS, VPN or remote PC controls installed by this feature.</footer>
+</main>
+</body>
+</html>
