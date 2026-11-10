@@ -5,6 +5,7 @@ import importlib.util
 import io
 from pathlib import Path
 import tempfile
+import subprocess
 import unittest
 from unittest.mock import patch
 
@@ -30,6 +31,16 @@ class OperatorCommandTests(unittest.TestCase):
         login.start()
         self.addCleanup(root.stop)
         self.addCleanup(login.stop)
+
+    def test_launcher_installer_rejects_missing_or_invalid_arguments(self):
+        installer = ROOT / "scripts/install-homeaway-command.sh"
+        for arguments in ([], ["--unknown"], ["--plan", "--apply"]):
+            result = subprocess.run(
+                ["bash", str(installer), *arguments],
+                capture_output=True, text=True, check=False,
+            )
+            self.assertEqual(result.returncode, 2, arguments)
+            self.assertIn("Usage:", result.stderr)
 
     def test_plans_default_to_read_only(self):
         with patch.object(manager, "execute") as run:
