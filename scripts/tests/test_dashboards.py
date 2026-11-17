@@ -31,79 +31,85 @@ class DashboardContracts(unittest.TestCase):
                                 for p in all_dash_panels(d)), name)
 
     def test_cooling_dynamics_explains_current_vs_history_without_fake_air_data(self):
-        """A read-only cooling story, not another controller or 0C placeholder."""
+        """One-screen, per-system analysis; current and history stay distinct."""
         d = json.loads((PANELS / "cooling-dynamics.json").read_text(encoding="utf-8"))
         panels = {p["id"]: p for p in all_dash_panels(d)}
         self.assertEqual(d["uid"], "homeaway-cooling-dynamics")
-        # Cooling Dynamics intentionally has a Windows host selector only.
-        # Historical binding queries copied from Cooling Systems must not
-        # depend on the absent `$system` dropdown (which blanks their plots).
-        defined = {v["name"] for v in d["templating"]["list"]}
-        self.assertEqual(defined, {"host"})
-        for panel in all_dash_panels(d):
-            for target in panel.get("targets", []):
-                self.assertNotIn("$system", target["expr"],
-                                 (panel["id"], panel["title"]))
-        for pid in (10, 14, 15, 17, 22):
-            expression = panels[pid]["targets"][0]["expr"]
-            self.assertIn('sensordash_cooling_binding_value', expression)
-            self.assertIn('role=', expression)
-
         self.assertIn("read-only", d["tags"])
         self.assertEqual(d["time"]["from"], "now-3h")
+
+        # The selected cooling system must exist, not an undefined template.
+        vars = {v["name"]: v for v in d["templating"]["list"]}
+        self.assertEqual(set(vars), {"host", "system"})
+        self.assertIn("sensordash_cooling_binding_value",
+                      vars["system"]["query"]["query"])
+        self.assertIn('host=~"$host"', vars["system"]["query"]["query"])
+        self.assertEqual(vars["system"]["allValue"], ".*")
+        self.assertTrue(vars["system"]["includeAll"])
+
+        # All six snapshot cards are real, fresh instant queries, not peaks.
         self.assertEqual({p["id"] for p in d["panels"] if p["type"] == "stat"},
                          {1, 2, 3, 4, 5, 6})
-        for pid in (1, 2, 3, 4, 5, 6):
-            target = panels[pid]["targets"][0]
+        for pid in range(1, 7):
+            panel = panels[pid]
+            target = panel["targets"][0]
             self.assertTrue(target["instant"], pid)
             self.assertFalse(target["range"], pid)
             self.assertIn("[2m]", target["expr"], pid)
-            self.assertEqual(panels[pid]["fieldConfig"]["defaults"]["noValue"], "—")
-            self.assertTrue(target["legendFormat"].strip())
+            self.assertEqual(panel["fieldConfig"]["defaults"]["noValue"], "—")
+            self.assertEqual(panel["options"]["textMode"], "value")
+            self.assertEqual(target["legendFormat"], panel["title"])
+
+        # The measured NEXT water/flow series are physically bound to the
+        # selected cooling system; air and alarm follow the same NEXT device
+        # only when its water probe is assigned to the selected system.
+        for pid in (1, 3, 4, 11, 12, 13, 20):
+            matching = "\n".join(t["expr"] for t in panels[pid]["targets"])
+            self.assertIn('system=~"$system"', matching, pid)
+            self.assertIn("sensordash_cooling_binding_value", matching, pid)
         for pid in (2, 3, 11, 12, 20):
-            self.assertIn("External_Temperature",
-                          "\\n".join(t["expr"] for t in panels[pid]["targets"]))
-            self.assertIn('device="high_flow_NEXT"',
-                          "\\n".join(t["expr"] for t in panels[pid]["targets"]))
+            matching = "\n".join(t["expr"] for t in panels[pid]["targets"])
+            self.assertIn("External_Temperature", matching, pid)
+            self.assertIn('device="high_flow_NEXT"', matching, pid)
         for pid in (3, 12, 20):
             query = panels[pid]["targets"][0]["expr"]
             self.assertIn("Water_Temperature", query)
             self.assertIn(" - on(host) ", query)
-            self.assertNotIn("vector(0)", query)
+        for pid in (2, 21):
+            self.assertIn('role="coolant-probe"',
+                          panels[pid]["targets"][0]["expr"])
+        for pid, role in ((5, "fan-group"), (6, "fan-group"),
+                          (10, "heat-source"), (14, "fan-group"),
+                          (15, "fan-group"), (17, "heat-source"),
+                          (22, "pump")):
+            expression = panels[pid]["targets"][0]["expr"]
+            self.assertIn('system=~"$system"', expression, pid)
+            self.assertIn("sensordash_cooling_binding_value", expression)
+            self.assertIn('role=', expression)
+        self.assertIn('role="heat-source"', panels[17]["targets"][0]["expr"])
+
         self.assertEqual(panels[4]["fieldConfig"]["defaults"]["unit"], "litreh")
         self.assertEqual(panels[5]["fieldConfig"]["defaults"]["unit"], "percent")
         self.assertEqual(panels[6]["fieldConfig"]["defaults"]["unit"], "rotrpm")
         self.assertEqual(panels[17]["fieldConfig"]["defaults"]["unit"], "celsius")
-        self.assertIn('role="heat-source"', panels[17]["targets"][0]["expr"])
-        self.assertEqual((panels[17]["gridPos"]["x"], panels[16]["gridPos"]["x"]),
-                         (0, 12))
-        self.assertTrue(all(panels[pid]["targets"][0]["legendFormat"] == "{{host}}"
-                            for pid in (1, 2, 3, 4, 5, 6)))
         self.assertEqual(panels[20]["type"], "histogram")
         self.assertEqual(panels[21]["type"], "state-timeline")
         self.assertIn("Flow_Alarm", panels[21]["targets"][0]["expr"])
-        self.assertTrue(panels[200]["collapsed"])
-        for p in all_dash_panels(d):
-            self.assertEqual(p["datasource"]["uid"], "homeaway-vm")
-            for target in p.get("targets", []):
-                self.assertNotIn("vector(0)", target["expr"])
-            if p["type"] == "timeseries":
-                self.assertFalse(p["fieldConfig"]["defaults"]["custom"]["spanNulls"])
-        self.assertIn("past 2 minutes", panels[100]["options"]["content"])
-        # A compact desktop surface: two headers, six current cards,
-        # two paired history rows, one 3-up effort row, then Explore.
+
+        # No instructional/subheading text; three compact history rows.
+        self.assertFalse(any(p["type"] == "text" for p in d["panels"]))
+        self.assertEqual(len(d["panels"]), 14)
         top_level = d["panels"]
         self.assertEqual(max(p["gridPos"]["y"] + p["gridPos"]["h"]
-                             for p in top_level), 30)
+                             for p in top_level), 26)
         expected = {
-            100: (0, 0, 24, 2), 101: (0, 6, 24, 2),
-            10: (0, 8, 12, 7), 11: (12, 8, 12, 7),
-            17: (0, 15, 12, 7), 16: (12, 15, 12, 7),
-            13: (0, 22, 8, 7), 14: (8, 22, 8, 7),
-            15: (16, 22, 8, 7), 200: (0, 29, 24, 1),
+            10: (0, 4, 12, 7), 11: (12, 4, 12, 7),
+            17: (0, 11, 12, 7), 16: (12, 11, 12, 7),
+            13: (0, 18, 8, 7), 14: (8, 18, 8, 7),
+            15: (16, 18, 8, 7), 200: (0, 25, 24, 1),
         }
         for pid in range(1, 7):
-            expected[pid] = ((pid - 1) * 4, 2, 4, 4)
+            expected[pid] = ((pid - 1) * 4, 0, 4, 4)
         for pid, rect in expected.items():
             gp = panels[pid]["gridPos"]
             self.assertEqual((gp["x"], gp["y"], gp["w"], gp["h"]),
@@ -116,14 +122,20 @@ class DashboardContracts(unittest.TestCase):
                     a["x"] < b["x"]+b["w"] and a["x"]+a["w"] > b["x"]
                     and a["y"] < b["y"]+b["h"] and a["y"]+a["h"] > b["y"],
                     (left["id"], right["id"]))
-        # The optional air-derived history is not a large, always-empty
-        # graph until a real NEXT External Temperature probe is connected.
+
+        # Optional ΔT history stays collapsed until its probe arrives.
+        self.assertTrue(panels[200]["collapsed"])
         self.assertEqual([p["id"] for p in panels[200]["panels"]],
                          [12, 20, 21, 22])
         self.assertNotIn(12, {p["id"] for p in top_level})
-        self.assertEqual(panels[12]["type"], "timeseries")
+        for panel in all_dash_panels(d):
+            self.assertEqual(panel["datasource"]["uid"], "homeaway-vm")
+            for target in panel.get("targets", []):
+                self.assertNotIn("vector(0)", target["expr"])
+            if panel["type"] == "timeseries":
+                self.assertFalse(panel["fieldConfig"]["defaults"]["custom"]["spanNulls"])
         self.assertNotIn("sensordash_accessory_power_value",
-                         "\\n".join(t["expr"] for p in all_dash_panels(d)
+                         "\n".join(t["expr"] for p in all_dash_panels(d)
                                    for t in p.get("targets", [])))
 
     def test_stat_tooltips_use_readable_series_names_not_promql(self):
