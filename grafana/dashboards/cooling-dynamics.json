@@ -131,7 +131,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max by(host) ((last_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[2m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1))))",
+          "expr": "max by(host) ((last_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[2m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1)) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1))",
           "legendFormat": "Coolant · now",
           "refId": "A",
           "instant": true,
@@ -201,7 +201,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max by(host) ((last_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[2m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1))))",
+          "expr": "max by(host) ((last_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[2m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"External_Temperature\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1))))",
           "legendFormat": "Intake air · now",
           "refId": "A",
           "instant": true,
@@ -271,7 +271,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "(max by(host) ((last_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[2m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1)))) - on(host) max by(host) ((last_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[2m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1)))))",
+          "expr": "(max by(host) ((last_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[2m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1)) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1)) - on(host) max by(host) ((last_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[2m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"External_Temperature\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1)))))",
           "legendFormat": "Coolant − air · now",
           "refId": "A",
           "instant": true,
@@ -341,7 +341,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max by(host) ((last_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Flow\"}[2m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"sensordash_reading_value{host=~\"$host\",kind=\"Flow\"}\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1))))",
+          "expr": "max by(host) ((last_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Flow\"}[2m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Flow\",name=\"Flow\"} == 1)) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Flow\",role=\"flow-meter\"} == 1))",
           "legendFormat": "Flow · now",
           "refId": "A",
           "instant": true,
@@ -606,7 +606,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max by(host) ((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"undefined\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1))))",
+          "expr": "max by(host) ((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1)) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1))",
           "legendFormat": "{{host}} · Coolant",
           "refId": "A",
           "instant": false,
@@ -617,7 +617,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max by(host) ((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"undefined\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1))))",
+          "expr": "max by(host) ((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"External_Temperature\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1))))",
           "legendFormat": "{{host}} · Intake air",
           "refId": "B",
           "instant": false,
@@ -684,7 +684,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max by(host) ((sensordash_reading_value{host=~\"$host\",kind=\"Flow\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"undefined\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1))))",
+          "expr": "max by(host) ((sensordash_reading_value{host=~\"$host\",kind=\"Flow\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Flow\",name=\"Flow\"} == 1)) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Flow\",role=\"flow-meter\"} == 1))",
           "legendFormat": "{{host}} · Flow",
           "refId": "A",
           "instant": false,
@@ -1042,7 +1042,7 @@
                 "type": "prometheus",
                 "uid": "homeaway-vm"
               },
-              "expr": "(max by(host) ((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"undefined\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1)))) - on(host) max by(host) ((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"undefined\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1)))))",
+              "expr": "(max by(host) ((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1)) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1)) - on(host) max by(host) ((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"External_Temperature\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1)))))",
               "legendFormat": "{{host}} · Coolant − intake",
               "refId": "A",
               "instant": false,
@@ -1108,7 +1108,7 @@
                 "type": "prometheus",
                 "uid": "homeaway-vm"
               },
-              "expr": "(max by(host) ((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"undefined\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1)))) - on(host) max by(host) ((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"undefined\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1)))))",
+              "expr": "(max by(host) ((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1)) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1)) - on(host) max by(host) ((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"External_Temperature\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1)))))",
               "legendFormat": "{{host}} · ΔT",
               "refId": "A",
               "instant": false,
@@ -1197,7 +1197,7 @@
                 "type": "prometheus",
                 "uid": "homeaway-vm"
               },
-              "expr": "max by(host) ((sensordash_reading_value{host=~\"$host\",kind=\"Factor\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"undefined\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1))))",
+              "expr": "max by(host) ((sensordash_reading_value{host=~\"$host\",kind=\"Factor\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Factor\",name=\"Flow_Alarm\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1))))",
               "legendFormat": "{{host}} · NEXT flow alarm",
               "refId": "A",
               "instant": false,
