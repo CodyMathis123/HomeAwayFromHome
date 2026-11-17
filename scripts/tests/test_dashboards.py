@@ -19,7 +19,7 @@ class DashboardContracts(unittest.TestCase):
     def test_both_dashboards_are_provisioned(self):
         dashboards = {
             name: json.loads((PANELS / name).read_text(encoding="utf-8"))
-            for name in ("overview.json", "sensordash.json", "cooling-systems.json", "electrical.json", "dns-vpn.json", "storage.json", "events.json", "system-health.json", "portal-metrics.json", "reporting-summary.json")
+            for name in ("overview.json", "sensordash.json", "cooling-systems.json", "cooling-dynamics.json", "electrical.json", "dns-vpn.json", "storage.json", "events.json", "system-health.json", "portal-metrics.json", "reporting-summary.json")
         }
         self.assertEqual(len({d["uid"] for d in dashboards.values()}), 10)
         for name, d in dashboards.items():
@@ -29,6 +29,50 @@ class DashboardContracts(unittest.TestCase):
                                  len(list(all_dash_panels(d))), name)
             self.assertTrue(all(p["datasource"]["uid"] == "homeaway-vm"
                                 for p in all_dash_panels(d)), name)
+
+    def test_cooling_dynamics_explains_current_vs_history_without_fake_air_data(self):
+        """A read-only cooling story, not another controller or 0C placeholder."""
+        d = json.loads((PANELS / "cooling-dynamics.json").read_text(encoding="utf-8"))
+        panels = {p["id"]: p for p in all_dash_panels(d)}
+        self.assertEqual(d["uid"], "homeaway-cooling-dynamics")
+        self.assertIn("read-only", d["tags"])
+        self.assertEqual(d["time"]["from"], "now-3h")
+        self.assertEqual({p["id"] for p in d["panels"] if p["type"] == "stat"},
+                         {1, 2, 3, 4, 5, 6})
+        for pid in (1, 2, 3, 4, 5, 6):
+            target = panels[pid]["targets"][0]
+            self.assertTrue(target["instant"], pid)
+            self.assertFalse(target["range"], pid)
+            self.assertIn("[2m]", target["expr"], pid)
+            self.assertEqual(panels[pid]["fieldConfig"]["defaults"]["noValue"], "—")
+            self.assertTrue(target["legendFormat"].strip())
+        for pid in (2, 3, 11, 12, 20):
+            self.assertIn("External_Temperature",
+                          "\\n".join(t["expr"] for t in panels[pid]["targets"]))
+            self.assertIn('device="high_flow_NEXT"',
+                          "\\n".join(t["expr"] for t in panels[pid]["targets"]))
+        for pid in (3, 12, 20):
+            query = panels[pid]["targets"][0]["expr"]
+            self.assertIn("Water_Temperature", query)
+            self.assertIn(" - on(host) ", query)
+            self.assertNotIn("vector(0)", query)
+        self.assertEqual(panels[4]["fieldConfig"]["defaults"]["unit"], "litreh")
+        self.assertEqual(panels[5]["fieldConfig"]["defaults"]["unit"], "percent")
+        self.assertEqual(panels[6]["fieldConfig"]["defaults"]["unit"], "rotrpm")
+        self.assertEqual(panels[20]["type"], "histogram")
+        self.assertEqual(panels[21]["type"], "state-timeline")
+        self.assertIn("Flow_Alarm", panels[21]["targets"][0]["expr"])
+        self.assertTrue(panels[200]["collapsed"])
+        for p in all_dash_panels(d):
+            self.assertEqual(p["datasource"]["uid"], "homeaway-vm")
+            for target in p.get("targets", []):
+                self.assertNotIn("vector(0)", target["expr"])
+            if p["type"] == "timeseries":
+                self.assertFalse(p["fieldConfig"]["defaults"]["custom"]["spanNulls"])
+        self.assertIn("last real sample within 2 minutes", panels[100]["options"]["content"])
+        self.assertNotIn("sensordash_accessory_power_value",
+                         "\\n".join(t["expr"] for p in all_dash_panels(d)
+                                   for t in p.get("targets", [])))
 
     def test_stat_tooltips_use_readable_series_names_not_promql(self):
         # Grafana's Stat hover uses the Prometheus legend as the field name.
