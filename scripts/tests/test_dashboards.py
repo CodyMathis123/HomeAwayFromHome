@@ -88,6 +88,28 @@ class DashboardContracts(unittest.TestCase):
             self.assertIn('role=', expression)
         self.assertIn('role="heat-source"', panels[17]["targets"][0]["expr"])
 
+        # Catch accidental interpolated metric text in metadata selectors.
+        expected_next_names = {
+            1: {"Water_Temperature"},
+            2: {"External_Temperature", "Water_Temperature"},
+            3: {"External_Temperature", "Water_Temperature"},
+            4: {"Flow"},
+            11: {"External_Temperature", "Water_Temperature"},
+            12: {"External_Temperature", "Water_Temperature"},
+            13: {"Flow"},
+            20: {"External_Temperature", "Water_Temperature"},
+            21: {"Flow_Alarm", "Water_Temperature"},
+        }
+        for pid, names in expected_next_names.items():
+            expr = "\n".join(t["expr"] for t in panels[pid]["targets"])
+            self.assertNotIn('name="sensordash_', expr, pid)
+            self.assertNotIn('name="max by(', expr, pid)
+            for name in names:
+                self.assertIn('name="' + name + '"', expr, pid)
+            self.assertIn('system=~"$system"', expr, pid)
+        for pid, role in ((1, "coolant-probe"), (4, "flow-meter")):
+            self.assertIn('role="' + role + '"',
+                          panels[pid]["targets"][0]["expr"])
         self.assertEqual(panels[4]["fieldConfig"]["defaults"]["unit"], "litreh")
         self.assertEqual(panels[5]["fieldConfig"]["defaults"]["unit"], "percent")
         self.assertEqual(panels[6]["fieldConfig"]["defaults"]["unit"], "rotrpm")
