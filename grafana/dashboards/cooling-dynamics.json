@@ -7,7 +7,7 @@
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
-  "description": "Compact desktop-first, read-only thermal analysis. Current tiles show 2-minute fresh observations; history charts follow the selected time range. Optional air probe and coolant-to-air ΔT details are in the collapsed Explore section; missing data is not zero.",
+  "description": "Compact, read-only Cooling Dynamics: 'now' tiles use physical samples seen within two minutes, while all charts follow the selected time range. Missing air data and coolant-to-air delta are never replaced with zero. Open the collapsed Explore row for optional air-derived diagnostics and pump/alarm history.",
   "tags": [
     "homeaway",
     "sensordash",
@@ -48,27 +48,6 @@
   },
   "panels": [
     {
-      "id": 100,
-      "title": "",
-      "type": "text",
-      "transparent": true,
-      "datasource": {
-        "type": "prometheus",
-        "uid": "homeaway-vm"
-      },
-      "targets": [],
-      "gridPos": {
-        "x": 0,
-        "y": 0,
-        "w": 24,
-        "h": 2
-      },
-      "options": {
-        "mode": "markdown",
-        "content": "**COOLING DYNAMICS · NOW** · Real readings from the past 2 minutes; **—** means missing or stale. Not selected-period peaks or averages. Read-only."
-      }
-    },
-    {
       "id": 1,
       "title": "Coolant · now",
       "type": "stat",
@@ -79,7 +58,7 @@
       "description": "Measured NEXT water temperature, in °C.",
       "gridPos": {
         "x": 0,
-        "y": 2,
+        "y": 0,
         "w": 4,
         "h": 4
       },
@@ -149,7 +128,7 @@
       "description": "Optional NEXT external probe; counts as radiator-intake air only when physically located at intake.",
       "gridPos": {
         "x": 4,
-        "y": 2,
+        "y": 0,
         "w": 4,
         "h": 4
       },
@@ -219,7 +198,7 @@
       "description": "Same-host coolant minus external air temperature, both observed within two minutes. Not radiator inlet/outlet water delta.",
       "gridPos": {
         "x": 8,
-        "y": 2,
+        "y": 0,
         "w": 4,
         "h": 4
       },
@@ -289,7 +268,7 @@
       "description": "High flow NEXT measured L/h; no inferred flow.",
       "gridPos": {
         "x": 12,
-        "y": 2,
+        "y": 0,
         "w": 4,
         "h": 4
       },
@@ -359,7 +338,7 @@
       "description": "Fan-group duty feedback. No control from this dashboard.",
       "gridPos": {
         "x": 16,
-        "y": 2,
+        "y": 0,
         "w": 4,
         "h": 4
       },
@@ -429,7 +408,7 @@
       "description": "Actual fan tachometer, distinct from PWM percentage.",
       "gridPos": {
         "x": 20,
-        "y": 2,
+        "y": 0,
         "w": 4,
         "h": 4
       },
@@ -489,27 +468,6 @@
       ]
     },
     {
-      "id": 101,
-      "title": "",
-      "type": "text",
-      "transparent": true,
-      "datasource": {
-        "type": "prometheus",
-        "uid": "homeaway-vm"
-      },
-      "targets": [],
-      "gridPos": {
-        "x": 0,
-        "y": 6,
-        "w": 24,
-        "h": 2
-      },
-      "options": {
-        "mode": "markdown",
-        "content": "**THERMAL RESPONSE · SELECTED TIME RANGE** · Heat input → coolant response → component temperatures and utilization → measured flow and fan effort. Curves preserve gaps."
-      }
-    },
-    {
       "id": 10,
       "title": "Heat input · CPU & GPU watts",
       "type": "timeseries",
@@ -519,7 +477,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 8,
+        "y": 4,
         "w": 12,
         "h": 7
       },
@@ -586,7 +544,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 8,
+        "y": 4,
         "w": 12,
         "h": 7
       },
@@ -664,7 +622,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 22,
+        "y": 18,
         "w": 8,
         "h": 7
       },
@@ -731,7 +689,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 22,
+        "y": 18,
         "w": 8,
         "h": 7
       },
@@ -798,7 +756,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 22,
+        "y": 18,
         "w": 8,
         "h": 7
       },
@@ -865,7 +823,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 15,
+        "y": 11,
         "w": 12,
         "h": 7
       },
@@ -932,7 +890,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 15,
+        "y": 11,
         "w": 12,
         "h": 7
       },
@@ -1007,7 +965,7 @@
       "description": "Optional radiator-intake probe unlocks ΔT history and distribution. NEXT device flow alarms and the fixed-speed DDC tachometer are also available.",
       "gridPos": {
         "x": 0,
-        "y": 29,
+        "y": 25,
         "w": 24,
         "h": 1
       },
@@ -1023,7 +981,7 @@
           },
           "gridPos": {
             "x": 0,
-            "y": 30,
+            "y": 26,
             "w": 12,
             "h": 7
           },
@@ -1089,7 +1047,7 @@
           },
           "gridPos": {
             "x": 12,
-            "y": 30,
+            "y": 26,
             "w": 12,
             "h": 7
           },
@@ -1147,7 +1105,7 @@
           },
           "gridPos": {
             "x": 0,
-            "y": 37,
+            "y": 33,
             "w": 12,
             "h": 7
           },
@@ -1236,7 +1194,7 @@
           },
           "gridPos": {
             "x": 12,
-            "y": 37,
+            "y": 33,
             "w": 12,
             "h": 7
           },
