@@ -7,7 +7,7 @@
   "editable": false,
   "timezone": "browser",
   "graphTooltip": 1,
-  "description": "Read-only, correlated thermal analysis. Current means a measured sample within the past two minutes; historical curves use the selected time range. No missing data is replaced with zero. Optional high flow NEXT external probe must be positioned at radiator intake to represent intake air.",
+  "description": "Compact desktop-first, read-only thermal analysis. Current tiles show 2-minute fresh observations; history charts follow the selected time range. Optional air probe and coolant-to-air ΔT details are in the collapsed Explore section; missing data is not zero.",
   "tags": [
     "homeaway",
     "sensordash",
@@ -61,11 +61,11 @@
         "x": 0,
         "y": 0,
         "w": 24,
-        "h": 3
+        "h": 2
       },
       "options": {
         "mode": "markdown",
-        "content": "## COOLING DYNAMICS · current condition\n**Current** = last real sample within 2 minutes, *not* a peak or selected-period average. An em dash means absent or stale. **Trends below** use the dashboard time range; hover at one timestamp to compare power, coolant and fans. All data is read-only."
+        "content": "**COOLING DYNAMICS · NOW** · Real readings from the past 2 minutes; **—** means missing or stale. Not selected-period peaks or averages. Read-only."
       }
     },
     {
@@ -79,9 +79,9 @@
       "description": "Measured NEXT water temperature, in °C.",
       "gridPos": {
         "x": 0,
-        "y": 3,
+        "y": 2,
         "w": 4,
-        "h": 5
+        "h": 4
       },
       "fieldConfig": {
         "defaults": {
@@ -102,8 +102,8 @@
           },
           "custom": {
             "textSize": {
-              "titleSize": 12,
-              "valueSize": 36
+              "titleSize": 11,
+              "valueSize": 32
             }
           }
         },
@@ -149,9 +149,9 @@
       "description": "Optional NEXT external probe; counts as radiator-intake air only when physically located at intake.",
       "gridPos": {
         "x": 4,
-        "y": 3,
+        "y": 2,
         "w": 4,
-        "h": 5
+        "h": 4
       },
       "fieldConfig": {
         "defaults": {
@@ -172,8 +172,8 @@
           },
           "custom": {
             "textSize": {
-              "titleSize": 12,
-              "valueSize": 36
+              "titleSize": 11,
+              "valueSize": 32
             }
           }
         },
@@ -219,9 +219,9 @@
       "description": "Same-host coolant minus external air temperature, both observed within two minutes. Not radiator inlet/outlet water delta.",
       "gridPos": {
         "x": 8,
-        "y": 3,
+        "y": 2,
         "w": 4,
-        "h": 5
+        "h": 4
       },
       "fieldConfig": {
         "defaults": {
@@ -242,8 +242,8 @@
           },
           "custom": {
             "textSize": {
-              "titleSize": 12,
-              "valueSize": 36
+              "titleSize": 11,
+              "valueSize": 32
             }
           }
         },
@@ -289,9 +289,9 @@
       "description": "High flow NEXT measured L/h; no inferred flow.",
       "gridPos": {
         "x": 12,
-        "y": 3,
+        "y": 2,
         "w": 4,
-        "h": 5
+        "h": 4
       },
       "fieldConfig": {
         "defaults": {
@@ -312,8 +312,8 @@
           },
           "custom": {
             "textSize": {
-              "titleSize": 12,
-              "valueSize": 36
+              "titleSize": 11,
+              "valueSize": 32
             }
           }
         },
@@ -359,9 +359,9 @@
       "description": "Fan-group duty feedback. No control from this dashboard.",
       "gridPos": {
         "x": 16,
-        "y": 3,
+        "y": 2,
         "w": 4,
-        "h": 5
+        "h": 4
       },
       "fieldConfig": {
         "defaults": {
@@ -382,8 +382,8 @@
           },
           "custom": {
             "textSize": {
-              "titleSize": 12,
-              "valueSize": 36
+              "titleSize": 11,
+              "valueSize": 32
             }
           }
         },
@@ -429,9 +429,9 @@
       "description": "Actual fan tachometer, distinct from PWM percentage.",
       "gridPos": {
         "x": 20,
-        "y": 3,
+        "y": 2,
         "w": 4,
-        "h": 5
+        "h": 4
       },
       "fieldConfig": {
         "defaults": {
@@ -452,8 +452,8 @@
           },
           "custom": {
             "textSize": {
-              "titleSize": 12,
-              "valueSize": 36
+              "titleSize": 11,
+              "valueSize": 32
             }
           }
         },
@@ -500,13 +500,13 @@
       "targets": [],
       "gridPos": {
         "x": 0,
-        "y": 8,
+        "y": 6,
         "w": 24,
-        "h": 3
+        "h": 2
       },
       "options": {
         "mode": "markdown",
-        "content": "## HEAT INPUT → COOLANT RESPONSE · selected time range\nThe charts share a time axis. Compare actual CPU/GPU power with coolant temperature and, later, measured radiator-intake air. Flow and fan feedback help explain whether the system changed its cooling effort. Missing probe data is never treated as 0°C."
+        "content": "**THERMAL RESPONSE · SELECTED TIME RANGE** · Heat input → coolant response → component temperatures and utilization → measured flow and fan effort. Curves preserve gaps."
       }
     },
     {
@@ -519,9 +519,9 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 11,
+        "y": 8,
         "w": 12,
-        "h": 10
+        "h": 7
       },
       "description": "Physical heat-source watts from cooling assignments; CPU and GPU channels are separate and overlapping rails must not be summed.",
       "fieldConfig": {
@@ -545,7 +545,8 @@
       "options": {
         "legend": {
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -585,9 +586,9 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 11,
+        "y": 8,
         "w": 12,
-        "h": 10
+        "h": 7
       },
       "description": "Direct NEXT water and optional external temperature. Air is intake air only after correct probe placement; no air data until connected.",
       "fieldConfig": {
@@ -611,7 +612,8 @@
       "options": {
         "legend": {
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -653,8 +655,8 @@
       ]
     },
     {
-      "id": 12,
-      "title": "Coolant above intake · ΔT",
+      "id": 13,
+      "title": "Measured flow · L/h",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -662,75 +664,9 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 21,
-        "w": 12,
-        "h": 10
-      },
-      "description": "Calculated from water temperature minus NEXT external temperature at matching same-host instants. Blank until the probe is installed. This does not measure water-side radiator heat rejection.",
-      "fieldConfig": {
-        "defaults": {
-          "unit": "celsius",
-          "color": {
-            "mode": "palette-classic-by-name"
-          },
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "spanNulls": false,
-            "showPoints": "never",
-            "lineWidth": 2,
-            "fillOpacity": 4,
-            "axisBorderShow": false
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "homeaway-vm"
-          },
-          "expr": "(max by(host) (sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1)) - on(host) max by(host) (sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"External_Temperature\"} == 1)))",
-          "legendFormat": "{{host}} · Coolant − intake",
-          "refId": "A",
-          "instant": false,
-          "range": true
-        }
-      ],
-      "transformations": [
-        {
-          "id": "renameByRegex",
-          "options": {
-            "regex": "/_/g",
-            "renamePattern": " "
-          }
-        }
-      ]
-    },
-    {
-      "id": 13,
-      "title": "Circulation · measured flow",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "homeaway-vm"
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 21,
-        "w": 12,
-        "h": 10
+        "y": 22,
+        "w": 8,
+        "h": 7
       },
       "description": "High flow NEXT L/h; auto-scaling makes small normal changes more visible. Compare with fan duty and load.",
       "fieldConfig": {
@@ -754,7 +690,8 @@
       "options": {
         "legend": {
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -786,17 +723,17 @@
     },
     {
       "id": 14,
-      "title": "Cooling effort · radiator PWM",
+      "title": "Radiator effort · PWM %",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
       "gridPos": {
-        "x": 0,
-        "y": 31,
-        "w": 12,
-        "h": 9
+        "x": 8,
+        "y": 22,
+        "w": 8,
+        "h": 7
       },
       "description": "Read-only fan PWM feedback, not a command; compare with response timing.",
       "fieldConfig": {
@@ -820,7 +757,8 @@
       "options": {
         "legend": {
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -852,17 +790,17 @@
     },
     {
       "id": 15,
-      "title": "Cooling response · fan RPM",
+      "title": "Radiator response · RPM",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
         "uid": "homeaway-vm"
       },
       "gridPos": {
-        "x": 12,
-        "y": 31,
-        "w": 12,
-        "h": 9
+        "x": 16,
+        "y": 22,
+        "w": 8,
+        "h": 7
       },
       "description": "Physical radiator fan RPM; kept on its own axis separate from duty.",
       "fieldConfig": {
@@ -886,7 +824,8 @@
       "options": {
         "legend": {
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -918,7 +857,7 @@
     },
     {
       "id": 17,
-      "title": "CPU / GPU component temperatures",
+      "title": "Component temperatures · CPU / GPU",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -926,9 +865,9 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 40,
+        "y": 15,
         "w": 12,
-        "h": 9
+        "h": 7
       },
       "description": "Actual heat-source temperatures from SensorDash cooling assignments (CPU/GPU die, GPU memory and hotspot where configured). Compare with separate coolant response; not water-block metal or coolant temperatures.",
       "fieldConfig": {
@@ -952,7 +891,8 @@
       "options": {
         "legend": {
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -992,9 +932,9 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 40,
+        "y": 15,
         "w": 12,
-        "h": 9
+        "h": 7
       },
       "description": "CPU Total and GPU Core activity. This is percent utilization, not VRAM occupancy; compare to power and coolant lag.",
       "fieldConfig": {
@@ -1018,7 +958,8 @@
       "options": {
         "legend": {
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -1062,16 +1003,82 @@
     {
       "id": 200,
       "type": "row",
-      "title": "EXPLORE · temperature distribution, NEXT alarm and pump tach",
-      "description": "Optional historical analysis: histogram, native alarm state timeline, fixed-speed pump.",
+      "title": "EXPLORE · coolant-to-air ΔT, distribution, alarm & pump",
+      "description": "Optional radiator-intake probe unlocks ΔT history and distribution. NEXT device flow alarms and the fixed-speed DDC tachometer are also available.",
       "gridPos": {
         "x": 0,
-        "y": 49,
+        "y": 29,
         "w": 24,
         "h": 1
       },
       "collapsed": true,
       "panels": [
+        {
+          "id": 12,
+          "title": "Coolant above intake · ΔT",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 30,
+            "w": 12,
+            "h": 7
+          },
+          "description": "Calculated from water temperature minus NEXT external temperature at matching same-host instants. Blank until the probe is installed. This does not measure water-side radiator heat rejection.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "celsius",
+              "color": {
+                "mode": "palette-classic-by-name"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "linear",
+                "spanNulls": false,
+                "showPoints": "never",
+                "lineWidth": 2,
+                "fillOpacity": 4,
+                "axisBorderShow": false
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "homeaway-vm"
+              },
+              "expr": "(max by(host) (sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1)) - on(host) max by(host) (sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"External_Temperature\"} == 1)))",
+              "legendFormat": "{{host}} · Coolant − intake",
+              "refId": "A",
+              "instant": false,
+              "range": true
+            }
+          ],
+          "transformations": [
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "/_/g",
+                "renamePattern": " "
+              }
+            }
+          ]
+        },
         {
           "id": 20,
           "title": "Coolant-to-intake ΔT · distribution",
@@ -1081,10 +1088,10 @@
             "uid": "homeaway-vm"
           },
           "gridPos": {
-            "x": 0,
-            "y": 50,
+            "x": 12,
+            "y": 30,
             "w": 12,
-            "h": 9
+            "h": 7
           },
           "description": "Experimental histogram of sampled ΔT during the selected range. Not a percentage of clock time; gaps and downsampling affect counts. Needs an actual radiator-intake probe.",
           "fieldConfig": {
@@ -1139,10 +1146,10 @@
             "uid": "homeaway-vm"
           },
           "gridPos": {
-            "x": 12,
-            "y": 50,
+            "x": 0,
+            "y": 37,
             "w": 12,
-            "h": 9
+            "h": 7
           },
           "description": "Actual NEXT Flow Alarm channel: 0 inactive, 1 alarm. No sample means unknown; this is not an additional alarm policy.",
           "fieldConfig": {
@@ -1228,10 +1235,10 @@
             "uid": "homeaway-vm"
           },
           "gridPos": {
-            "x": 0,
-            "y": 59,
-            "w": 24,
-            "h": 8
+            "x": 12,
+            "y": 37,
+            "w": 12,
+            "h": 7
           },
           "description": "Monitored fixed-speed DDC tachometer, not PWM command; compare with flow if investigating hydraulic changes.",
           "fieldConfig": {
