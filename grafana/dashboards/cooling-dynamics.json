@@ -43,6 +43,28 @@
           "value": "$__all"
         },
         "options": []
+      },
+      {
+        "name": "system",
+        "label": "Cooling system",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "homeaway-vm"
+        },
+        "query": {
+          "query": "label_values(sensordash_cooling_binding_value{host=~\"$host\"},system)",
+          "refId": "A"
+        },
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": []
       }
     ]
   },
@@ -97,7 +119,7 @@
           "values": false
         },
         "orientation": "vertical",
-        "textMode": "value_and_name",
+        "textMode": "value",
         "colorMode": "value",
         "graphMode": "none",
         "wideLayout": false,
@@ -109,8 +131,8 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max by(host) (last_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[2m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1))",
-          "legendFormat": "{{host}}",
+          "expr": "max by(host) ((last_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[2m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1))))",
+          "legendFormat": "Coolant · now",
           "refId": "A",
           "instant": true,
           "range": false
@@ -167,7 +189,7 @@
           "values": false
         },
         "orientation": "vertical",
-        "textMode": "value_and_name",
+        "textMode": "value",
         "colorMode": "value",
         "graphMode": "none",
         "wideLayout": false,
@@ -179,8 +201,8 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max by(host) (last_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[2m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"External_Temperature\"} == 1))",
-          "legendFormat": "{{host}}",
+          "expr": "max by(host) ((last_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[2m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1))))",
+          "legendFormat": "Intake air · now",
           "refId": "A",
           "instant": true,
           "range": false
@@ -237,7 +259,7 @@
           "values": false
         },
         "orientation": "vertical",
-        "textMode": "value_and_name",
+        "textMode": "value",
         "colorMode": "value",
         "graphMode": "none",
         "wideLayout": false,
@@ -249,8 +271,8 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "(max by(host) (last_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[2m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1)) - on(host) max by(host) (last_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[2m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"External_Temperature\"} == 1)))",
-          "legendFormat": "{{host}}",
+          "expr": "(max by(host) ((last_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[2m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1)))) - on(host) max by(host) ((last_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[2m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1)))))",
+          "legendFormat": "Coolant − air · now",
           "refId": "A",
           "instant": true,
           "range": false
@@ -307,7 +329,7 @@
           "values": false
         },
         "orientation": "vertical",
-        "textMode": "value_and_name",
+        "textMode": "value",
         "colorMode": "value",
         "graphMode": "none",
         "wideLayout": false,
@@ -319,8 +341,8 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max by(host) (last_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Flow\"}[2m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Flow\",name=\"Flow\"} == 1))",
-          "legendFormat": "{{host}}",
+          "expr": "max by(host) ((last_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Flow\"}[2m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"sensordash_reading_value{host=~\"$host\",kind=\"Flow\"}\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1))))",
+          "legendFormat": "Flow · now",
           "refId": "A",
           "instant": true,
           "range": false
@@ -377,7 +399,7 @@
           "values": false
         },
         "orientation": "vertical",
-        "textMode": "value_and_name",
+        "textMode": "value",
         "colorMode": "value",
         "graphMode": "none",
         "wideLayout": false,
@@ -389,8 +411,8 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max by(host) (last_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Control\"}[2m]) * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",role=\"fan-group\",kind=\"Control\"} == 1))",
-          "legendFormat": "{{host}}",
+          "expr": "max by(host) (last_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Control\"}[2m]) * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",role=\"fan-group\",kind=\"Control\"} == 1))",
+          "legendFormat": "Radiator PWM · now",
           "refId": "A",
           "instant": true,
           "range": false
@@ -447,7 +469,7 @@
           "values": false
         },
         "orientation": "vertical",
-        "textMode": "value_and_name",
+        "textMode": "value",
         "colorMode": "value",
         "graphMode": "none",
         "wideLayout": false,
@@ -459,8 +481,8 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max by(host) (last_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Fan\"}[2m]) * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",role=\"fan-group\",kind=\"Fan\"} == 1))",
-          "legendFormat": "{{host}}",
+          "expr": "max by(host) (last_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Fan\"}[2m]) * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",role=\"fan-group\",kind=\"Fan\"} == 1))",
+          "legendFormat": "Radiator RPM · now",
           "refId": "A",
           "instant": true,
           "range": false
@@ -517,7 +539,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace((sensordash_reading_value{host=~\"$host\",kind=\"Power\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",kind=\"Power\",role=~\"heat-source\"} == 1)) * on(host,sensor) group_left(name,alias,device) (label_replace(sensordash_sensor_info_value{host=~\"$host\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",alias=\"unassigned\"} == 1)), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
+          "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace((sensordash_reading_value{host=~\"$host\",kind=\"Power\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Power\",role=~\"heat-source\"} == 1)) * on(host,sensor) group_left(name,alias,device) (label_replace(sensordash_sensor_info_value{host=~\"$host\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",alias=\"unassigned\"} == 1)), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
           "legendFormat": "{{host}} · {{component_name}} · {{name}}",
           "refId": "A",
           "instant": false,
@@ -584,7 +606,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max by(host) (sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1))",
+          "expr": "max by(host) ((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"undefined\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1))))",
           "legendFormat": "{{host}} · Coolant",
           "refId": "A",
           "instant": false,
@@ -595,7 +617,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max by(host) (sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"External_Temperature\"} == 1))",
+          "expr": "max by(host) ((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"undefined\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1))))",
           "legendFormat": "{{host}} · Intake air",
           "refId": "B",
           "instant": false,
@@ -662,7 +684,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "max by(host) (sensordash_reading_value{host=~\"$host\",kind=\"Flow\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Flow\",name=\"Flow\"} == 1))",
+          "expr": "max by(host) ((sensordash_reading_value{host=~\"$host\",kind=\"Flow\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"undefined\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1))))",
           "legendFormat": "{{host}} · Flow",
           "refId": "A",
           "instant": false,
@@ -729,7 +751,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace((sensordash_reading_value{host=~\"$host\",kind=\"Control\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",kind=\"Control\",role=~\"fan-group\"} == 1)) * on(host,sensor) group_left(name,alias,device) (label_replace(sensordash_sensor_info_value{host=~\"$host\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",alias=\"unassigned\"} == 1)), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
+          "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace((sensordash_reading_value{host=~\"$host\",kind=\"Control\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Control\",role=~\"fan-group\"} == 1)) * on(host,sensor) group_left(name,alias,device) (label_replace(sensordash_sensor_info_value{host=~\"$host\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",alias=\"unassigned\"} == 1)), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
           "legendFormat": "{{host}} · {{component_name}} · PWM",
           "refId": "A",
           "instant": false,
@@ -796,7 +818,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace((sensordash_reading_value{host=~\"$host\",kind=\"Fan\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",kind=\"Fan\",role=~\"fan-group\"} == 1)) * on(host,sensor) group_left(name,alias,device) (label_replace(sensordash_sensor_info_value{host=~\"$host\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",alias=\"unassigned\"} == 1)), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
+          "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace((sensordash_reading_value{host=~\"$host\",kind=\"Fan\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Fan\",role=~\"fan-group\"} == 1)) * on(host,sensor) group_left(name,alias,device) (label_replace(sensordash_sensor_info_value{host=~\"$host\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",alias=\"unassigned\"} == 1)), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
           "legendFormat": "{{host}} · {{component_name}} · RPM",
           "refId": "A",
           "instant": false,
@@ -863,7 +885,7 @@
             "type": "prometheus",
             "uid": "homeaway-vm"
           },
-          "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",kind=\"Temperature\",role=\"heat-source\"} == 1)) * on(host,sensor) group_left(name,alias,device) (label_replace(sensordash_sensor_info_value{host=~\"$host\",name!~\"(?i).*(warning|critical).*\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",name!~\"(?i).*(warning|critical).*\",alias=\"unassigned\"} == 1)), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
+          "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"heat-source\"} == 1)) * on(host,sensor) group_left(name,alias,device) (label_replace(sensordash_sensor_info_value{host=~\"$host\",name!~\"(?i).*(warning|critical).*\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",name!~\"(?i).*(warning|critical).*\",alias=\"unassigned\"} == 1)), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
           "legendFormat": "{{host}} · {{component_name}} · {{name}}",
           "refId": "A",
           "instant": false,
@@ -1020,7 +1042,7 @@
                 "type": "prometheus",
                 "uid": "homeaway-vm"
               },
-              "expr": "(max by(host) (sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1)) - on(host) max by(host) (sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"External_Temperature\"} == 1)))",
+              "expr": "(max by(host) ((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"undefined\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1)))) - on(host) max by(host) ((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"undefined\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1)))))",
               "legendFormat": "{{host}} · Coolant − intake",
               "refId": "A",
               "instant": false,
@@ -1086,7 +1108,7 @@
                 "type": "prometheus",
                 "uid": "homeaway-vm"
               },
-              "expr": "(max by(host) (sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1)) - on(host) max by(host) (sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"External_Temperature\"} == 1)))",
+              "expr": "(max by(host) ((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"undefined\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1)))) - on(host) max by(host) ((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"undefined\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1)))))",
               "legendFormat": "{{host}} · ΔT",
               "refId": "A",
               "instant": false,
@@ -1175,7 +1197,7 @@
                 "type": "prometheus",
                 "uid": "homeaway-vm"
               },
-              "expr": "max by(host) (sensordash_reading_value{host=~\"$host\",kind=\"Factor\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Factor\",name=\"Flow_Alarm\"} == 1))",
+              "expr": "max by(host) ((sensordash_reading_value{host=~\"$host\",kind=\"Factor\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"undefined\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1))))",
               "legendFormat": "{{host}} · NEXT flow alarm",
               "refId": "A",
               "instant": false,
@@ -1233,7 +1255,7 @@
                 "type": "prometheus",
                 "uid": "homeaway-vm"
               },
-              "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace((sensordash_reading_value{host=~\"$host\",kind=\"Fan\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",kind=\"Fan\",role=~\"pump\"} == 1)) * on(host,sensor) group_left(name,alias,device) (label_replace(sensordash_sensor_info_value{host=~\"$host\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",alias=\"unassigned\"} == 1)), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
+              "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace((sensordash_reading_value{host=~\"$host\",kind=\"Fan\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Fan\",role=~\"pump\"} == 1)) * on(host,sensor) group_left(name,alias,device) (label_replace(sensordash_sensor_info_value{host=~\"$host\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",alias=\"unassigned\"} == 1)), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
               "legendFormat": "{{host}} · DDC pump",
               "refId": "A",
               "instant": false,
