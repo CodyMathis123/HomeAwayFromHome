@@ -21,7 +21,7 @@ class DashboardContracts(unittest.TestCase):
             name: json.loads((PANELS / name).read_text(encoding="utf-8"))
             for name in ("overview.json", "sensordash.json", "cooling-systems.json", "cooling-dynamics.json", "electrical.json", "dns-vpn.json", "storage.json", "events.json", "system-health.json", "portal-metrics.json", "reporting-summary.json")
         }
-        self.assertEqual(len({d["uid"] for d in dashboards.values()}), 10)
+        self.assertEqual(len({d["uid"] for d in dashboards.values()}), 11)
         for name, d in dashboards.items():
             self.assertFalse(d["editable"], name)
             self.assertIn("read-only", d["tags"], name)
