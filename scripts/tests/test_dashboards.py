@@ -35,6 +35,20 @@ class DashboardContracts(unittest.TestCase):
         d = json.loads((PANELS / "cooling-dynamics.json").read_text(encoding="utf-8"))
         panels = {p["id"]: p for p in all_dash_panels(d)}
         self.assertEqual(d["uid"], "homeaway-cooling-dynamics")
+        # Cooling Dynamics intentionally has a Windows host selector only.
+        # Historical binding queries copied from Cooling Systems must not
+        # depend on the absent `$system` dropdown (which blanks their plots).
+        defined = {v["name"] for v in d["templating"]["list"]}
+        self.assertEqual(defined, {"host"})
+        for panel in all_dash_panels(d):
+            for target in panel.get("targets", []):
+                self.assertNotIn("$system", target["expr"],
+                                 (panel["id"], panel["title"]))
+        for pid in (10, 14, 15, 17, 22):
+            expression = panels[pid]["targets"][0]["expr"]
+            self.assertIn('sensordash_cooling_binding_value', expression)
+            self.assertIn('role=', expression)
+
         self.assertIn("read-only", d["tags"])
         self.assertEqual(d["time"]["from"], "now-3h")
         self.assertEqual({p["id"] for p in d["panels"] if p["type"] == "stat"},
