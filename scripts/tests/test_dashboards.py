@@ -59,6 +59,12 @@ class DashboardContracts(unittest.TestCase):
         self.assertEqual(panels[4]["fieldConfig"]["defaults"]["unit"], "litreh")
         self.assertEqual(panels[5]["fieldConfig"]["defaults"]["unit"], "percent")
         self.assertEqual(panels[6]["fieldConfig"]["defaults"]["unit"], "rotrpm")
+        self.assertEqual(panels[17]["fieldConfig"]["defaults"]["unit"], "celsius")
+        self.assertIn('role="heat-source"', panels[17]["targets"][0]["expr"])
+        self.assertEqual((panels[17]["gridPos"]["x"], panels[16]["gridPos"]["x"]),
+                         (0, 12))
+        self.assertTrue(all(panels[pid]["targets"][0]["legendFormat"] == "{{host}}"
+                            for pid in (1, 2, 3, 4, 5, 6)))
         self.assertEqual(panels[20]["type"], "histogram")
         self.assertEqual(panels[21]["type"], "state-timeline")
         self.assertIn("Flow_Alarm", panels[21]["targets"][0]["expr"])
