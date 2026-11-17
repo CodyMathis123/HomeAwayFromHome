@@ -32,7 +32,8 @@ selector because it has the `homeaway` tag.
 The goal is to read **one thermal event from left to right**:
 CPU/GPU observed heat input (watts) → water and radiator-intake temperature
 (°C) → coolant-to-air ΔT (°C) → physical flow (L/h) and radiator-fan duty/RPM.
-A separate CPU/GPU utilization chart provides context without assuming
+A side-by-side heat-source **component-temperature** chart and
+CPU/GPU utilization chart complete the context, without assuming
 utilization percentages equal heat output. These are aligned historical
 plots with the same dashboard-selected range, not a single mixed-unit y-axis.
 
