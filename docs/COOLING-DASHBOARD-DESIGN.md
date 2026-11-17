@@ -23,58 +23,66 @@ Cooling Systems).
 
 ## Cooling Dynamics · thermal response explorer
 
-This is a separate read-only experiment, not a replacement for Portal Metrics,
-Overview, Cooling Systems or Reporting Summary. Grafana discovers
-`grafana/dashboards/cooling-dynamics.json` automatically from the provisioned
-dashboard directory. It appears in the existing "Other HomeAway views" link
-selector because it has the `homeaway` tag.
+Experimental, read-only single-page view, complementary to the existing
+Portal Metrics, Overview, Cooling Systems and Reporting Summary. Automatically
+provisioned from grafana/dashboards/cooling-dynamics.json.
 
-The goal is to read **one thermal event from left to right**:
-CPU/GPU observed heat input (watts) → water and radiator-intake temperature
-(°C) → coolant-to-air ΔT (°C) → physical flow (L/h) and radiator-fan duty/RPM.
-A side-by-side heat-source **component-temperature** chart and
-CPU/GPU utilization chart complete the context, without assuming
-utilization percentages equal heat output. These are aligned historical
-plots with the same dashboard-selected range, not a single mixed-unit y-axis.
+### Compact desktop layout
 
-- Six **Current** cards use the last real observation **within 2 minutes**
-  (range-vector `last_over_time(...[2m])`, evaluated as instant queries):
-  coolant, external air, coolant-minus-air, flow, radiator PWM and fan RPM.
-  They show "—" if absent or stale. **Current is not a rolling max, period
-  average, high-water mark, or last value over the entire dashboard range.**
-- Curves remain measured samples over the **selected time range**. Hover at
-  one time to correlate watts, temperatures and fan effort; do not connect
-  through sleep/disconnect gaps. Legends do not mislabel these as peaks.
-- The optional NEXT `External_Temperature` is a physically separate reading.
-  It becomes **radiator-intake air only when the user mounts the probe where
-  incoming radiator air actually passes**. A room probe, internal-case probe,
-  or coolant probe measures something else and the delta label must change.
-  Until the probe is installed and reporting, live air/ΔT and historical
-  air/ΔT/distribution remain **no data**, not 0°C.
-- Coolant-to-intake `ΔT = NEXT Water_Temperature - NEXT External_Temperature`.
-  Both values are matched by host, not arbitrary neighboring machines.
-  This is **not** the water-side radiator outlet/inlet temperature drop;
-  without a second water probe, do not claim to know radiator heat watts.
-- The collapsed "Explore" row intentionally demonstrates two other
-  visualizations: an **histogram** of actual recorded ΔT samples, and a
-  **state timeline** of the NEXT physical Flow Alarm (0 inactive; 1 alarm).
-  The histogram counts queried observations, **not guaranteed wall-clock
-  minutes**; irregular sampling and Grafana downsampling affect its
-  distribution. A missing alarm reading is unknown, not a healthy state.
-  The DDC tachometer remains a simple observational chart.
-- Multi-host series are kept separate by `host`, without a global max that
-  disguises a selected PC. RPM and PWM are in different plots and units.
-- No extra Windows collector, SensorDash feature, Pi service, control loop,
-  or VPN/DNS exposure. The entire view reads existing VictoriaMetrics data.
+No explanatory heading panels. The top six current stat cards show coolant,
+optional intake air, coolant-to-air ΔT, measured flow, fan duty and fan RPM.
+They display **values only** instead of repeating the computer name under
+every number; units and 'now' meaning are in the tile titles.
+**Current** cards are instant queries for actual samples observed within
+**two minutes**, not selected-period averages or peaks.
 
-Acceptance after enabling the feature branch's dashboard JSON: before the
-probe arrives, six current cards and all existing heat/flow/fan graphs should
-populate except **Intake** and **Coolant - air**, and the derived historical
-air/ΔT plots should remain empty. Once installed, verify the NEXT external
-temperature has a real sensor identity and plausible value **at the chosen
-radiator-intake position**. The derived tiles should then begin populating
-naturally, without a dashboard edit. Check both while gaming and for at least
-20 minutes after GPU load stops, looking for the water-temperature lag.
+Three concise graph rows: CPU/GPU heat-source watts versus coolant/intake
+temperature, physical component temperatures versus CPU/GPU utilization,
+then measured flow versus fan duty and fan tachometer. All histories use
+the selected time range and preserve missing/sleep samples. The **Explore**
+row is collapsed and contains optional coolant-to-intake ΔT history and
+histogram, actual NEXT flow-alarm timeline and fixed-speed DDC tach.
+
+### Cooling-system selection and physical identity
+
+The dashboard has both **Windows PC** ($host) and **Cooling system**
+($system) selectors. The system list is derived from actual
+sensordash_cooling_binding_value assignments for the chosen host.
+Historical power, component temperatures, radiator duty/RPM and pump tach
+are restricted to bindings matching the selected cooling system.
+
+The physical NEXT water and flow samples are intersected with the
+selected system's coolant-probe and flow-meter sensor bindings,
+respectively. Optional NEXT external-air and device flow-alarm
+diagnostics belong to the chosen system only if that same NEXT water
+probe is assigned to it. An unrelated system must not inherit water
+from a different one. An unbound probe should show no data, never a
+fallback from another system. When multiple PCs are selected, stat
+cards can show several unlabeled values; select one PC for the most
+compact unambiguous view.
+
+NEXT External Temperature represents **radiator intake air** only if
+physically placed at the air intake. A room or case probe requires
+relabeling. Coolant-air ΔT is Water Temperature minus External Temperature
+for the same host; it is NOT the water-side radiator delta and cannot
+determine radiator heat output. Until the probe exists, the air and
+derived delta charts/cards show no data, not zero.
+
+The ΔT histogram represents queried samples, not an exact time-weighted
+distribution; irregular sampling and historical downsampling matter.
+NEXT native Flow Alarm value 0 is inactive and 1 is alarm, while absent
+is unknown. The dashboard remains read-only; it cannot change Windows
+fan commands. No additional collector, container or networking exposure.
+
+### Acceptance
+
+Select one PC and the system containing NEXT, fan hub, pump, CPU and GPU
+assignments. Without the air probe, coolant/flow, power, component
+temperatures, utilization and radiator feedback populate; intake-air
+and derived ΔT do not. Switch the selected cooling system to verify
+bound data changes or disappears rather than silently showing another
+system. After plugging in the intake probe, verify its actual reading
+in SensorDash before expecting derived charts to populate.
 
 ## Current physical NEXT sensor inventory
 
