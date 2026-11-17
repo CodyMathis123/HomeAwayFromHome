@@ -1,0 +1,1298 @@
+{
+  "id": null,
+  "uid": "homeaway-cooling-dynamics",
+  "title": "SensorDash · Cooling Dynamics",
+  "schemaVersion": 40,
+  "version": 1,
+  "editable": false,
+  "timezone": "browser",
+  "graphTooltip": 1,
+  "description": "Compact, read-only Cooling Dynamics: 'now' tiles use physical samples seen within two minutes, while all charts follow the selected time range. Missing air data and coolant-to-air delta are never replaced with zero. Open the collapsed Explore row for optional air-derived diagnostics and pump/alarm history.",
+  "tags": [
+    "homeaway",
+    "sensordash",
+    "cooling",
+    "analysis",
+    "read-only"
+  ],
+  "refresh": "30s",
+  "time": {
+    "from": "now-3h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "host",
+        "label": "Windows PC",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "homeaway-vm"
+        },
+        "query": {
+          "query": "label_values(sensordash_reading_value,host)",
+          "refId": "A"
+        },
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": []
+      },
+      {
+        "name": "system",
+        "label": "Cooling system",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "homeaway-vm"
+        },
+        "query": {
+          "query": "label_values(sensordash_cooling_binding_value{host=~\"$host\"},system)",
+          "refId": "A"
+        },
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": []
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Coolant · now",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Measured NEXT water temperature, in °C.",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#72BBE8"
+          },
+          "noValue": "—",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "textSize": {
+              "titleSize": 11,
+              "valueSize": 32
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "vertical",
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "none",
+        "wideLayout": false,
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "max by(host) ((last_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[2m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1)) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1))",
+          "legendFormat": "Coolant · now",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Intake air · now",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Optional NEXT external probe; counts as radiator-intake air only when physically located at intake.",
+      "gridPos": {
+        "x": 4,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#72BBE8"
+          },
+          "noValue": "—",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "textSize": {
+              "titleSize": 11,
+              "valueSize": 32
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "vertical",
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "none",
+        "wideLayout": false,
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "max by(host) ((last_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[2m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"External_Temperature\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1))))",
+          "legendFormat": "Intake air · now",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Coolant − air · now",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Same-host coolant minus external air temperature, both observed within two minutes. Not radiator inlet/outlet water delta.",
+      "gridPos": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#72BBE8"
+          },
+          "noValue": "—",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "textSize": {
+              "titleSize": 11,
+              "valueSize": 32
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "vertical",
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "none",
+        "wideLayout": false,
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "(max by(host) ((last_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[2m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1)) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1)) - on(host) max by(host) ((last_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"}[2m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"External_Temperature\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1)))))",
+          "legendFormat": "Coolant − air · now",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Flow · now",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "High flow NEXT measured L/h; no inferred flow.",
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "litreh",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#72BBE8"
+          },
+          "noValue": "—",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "textSize": {
+              "titleSize": 11,
+              "valueSize": 32
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "vertical",
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "none",
+        "wideLayout": false,
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "max by(host) ((last_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Flow\"}[2m]) * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Flow\",name=\"Flow\"} == 1)) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Flow\",role=\"flow-meter\"} == 1))",
+          "legendFormat": "Flow · now",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Radiator PWM · now",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Fan-group duty feedback. No control from this dashboard.",
+      "gridPos": {
+        "x": 16,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#72BBE8"
+          },
+          "noValue": "—",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "textSize": {
+              "titleSize": 11,
+              "valueSize": 32
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "vertical",
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "none",
+        "wideLayout": false,
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "max by(host) (last_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Control\"}[2m]) * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",role=\"fan-group\",kind=\"Control\"} == 1))",
+          "legendFormat": "Radiator PWM · now",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Radiator RPM · now",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "description": "Actual fan tachometer, distinct from PWM percentage.",
+      "gridPos": {
+        "x": 20,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "rotrpm",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#72BBE8"
+          },
+          "noValue": "—",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "textSize": {
+              "titleSize": 11,
+              "valueSize": 32
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "vertical",
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "none",
+        "wideLayout": false,
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "max by(host) (last_over_time(sensordash_reading_value{host=~\"$host\",kind=\"Fan\"}[2m]) * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",role=\"fan-group\",kind=\"Fan\"} == 1))",
+          "legendFormat": "Radiator RPM · now",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Heat input · CPU & GPU watts",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 12,
+        "h": 7
+      },
+      "description": "Physical heat-source watts from cooling assignments; CPU and GPU channels are separate and overlapping rails must not be summed.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "spanNulls": false,
+            "showPoints": "never",
+            "lineWidth": 2,
+            "fillOpacity": 4,
+            "axisBorderShow": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace((sensordash_reading_value{host=~\"$host\",kind=\"Power\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Power\",role=~\"heat-source\"} == 1)) * on(host,sensor) group_left(name,alias,device) (label_replace(sensordash_sensor_info_value{host=~\"$host\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",alias=\"unassigned\"} == 1)), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
+          "legendFormat": "{{host}} · {{component_name}} · {{name}}",
+          "refId": "A",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Thermal response · coolant and intake air",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 4,
+        "w": 12,
+        "h": 7
+      },
+      "description": "Direct NEXT water and optional external temperature. Air is intake air only after correct probe placement; no air data until connected.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "spanNulls": false,
+            "showPoints": "never",
+            "lineWidth": 2,
+            "fillOpacity": 4,
+            "axisBorderShow": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "max by(host) ((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1)) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1))",
+          "legendFormat": "{{host}} · Coolant",
+          "refId": "A",
+          "instant": false,
+          "range": true
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "max by(host) ((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"External_Temperature\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1))))",
+          "legendFormat": "{{host}} · Intake air",
+          "refId": "B",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "title": "Measured flow · L/h",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 18,
+        "w": 8,
+        "h": 7
+      },
+      "description": "High flow NEXT L/h; auto-scaling makes small normal changes more visible. Compare with fan duty and load.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "litreh",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "spanNulls": false,
+            "showPoints": "never",
+            "lineWidth": 2,
+            "fillOpacity": 4,
+            "axisBorderShow": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "max by(host) ((sensordash_reading_value{host=~\"$host\",kind=\"Flow\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Flow\",name=\"Flow\"} == 1)) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Flow\",role=\"flow-meter\"} == 1))",
+          "legendFormat": "{{host}} · Flow",
+          "refId": "A",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "title": "Radiator effort · PWM %",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 18,
+        "w": 8,
+        "h": 7
+      },
+      "description": "Read-only fan PWM feedback, not a command; compare with response timing.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "spanNulls": false,
+            "showPoints": "never",
+            "lineWidth": 2,
+            "fillOpacity": 4,
+            "axisBorderShow": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace((sensordash_reading_value{host=~\"$host\",kind=\"Control\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Control\",role=~\"fan-group\"} == 1)) * on(host,sensor) group_left(name,alias,device) (label_replace(sensordash_sensor_info_value{host=~\"$host\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",alias=\"unassigned\"} == 1)), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
+          "legendFormat": "{{host}} · {{component_name}} · PWM",
+          "refId": "A",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "title": "Radiator response · RPM",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 18,
+        "w": 8,
+        "h": 7
+      },
+      "description": "Physical radiator fan RPM; kept on its own axis separate from duty.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "rotrpm",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "spanNulls": false,
+            "showPoints": "never",
+            "lineWidth": 2,
+            "fillOpacity": 4,
+            "axisBorderShow": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace((sensordash_reading_value{host=~\"$host\",kind=\"Fan\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Fan\",role=~\"fan-group\"} == 1)) * on(host,sensor) group_left(name,alias,device) (label_replace(sensordash_sensor_info_value{host=~\"$host\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",alias=\"unassigned\"} == 1)), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
+          "legendFormat": "{{host}} · {{component_name}} · RPM",
+          "refId": "A",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "title": "Component temperatures · CPU / GPU",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 11,
+        "w": 12,
+        "h": 7
+      },
+      "description": "Actual heat-source temperatures from SensorDash cooling assignments (CPU/GPU die, GPU memory and hotspot where configured). Compare with separate coolant response; not water-block metal or coolant temperatures.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "spanNulls": false,
+            "showPoints": "never",
+            "lineWidth": 2,
+            "fillOpacity": 4,
+            "axisBorderShow": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"heat-source\"} == 1)) * on(host,sensor) group_left(name,alias,device) (label_replace(sensordash_sensor_info_value{host=~\"$host\",name!~\"(?i).*(warning|critical).*\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",name!~\"(?i).*(warning|critical).*\",alias=\"unassigned\"} == 1)), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
+          "legendFormat": "{{host}} · {{component_name}} · {{name}}",
+          "refId": "A",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "title": "Workload context · CPU/GPU utilization",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 11,
+        "w": 12,
+        "h": 7
+      },
+      "description": "CPU Total and GPU Core activity. This is percent utilization, not VRAM occupancy; compare to power and coolant lag.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "spanNulls": false,
+            "showPoints": "never",
+            "lineWidth": 2,
+            "fillOpacity": 4,
+            "axisBorderShow": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Load\"} * on(host,sensor) group_left(name) (sensordash_sensor_info_value{host=~\"$host\",device_type=\"Cpu\",kind=\"Load\",name=\"CPU_Total\"} == 1)",
+          "legendFormat": "{{host}} · CPU total",
+          "refId": "A",
+          "instant": false,
+          "range": true
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "expr": "sensordash_reading_value{host=~\"$host\",kind=\"Load\"} * on(host,sensor) group_left(name) (sensordash_sensor_info_value{host=~\"$host\",device_type=~\"Gpu(Amd|Nvidia|Intel)?\",kind=\"Load\",name=\"GPU_Core\"} == 1)",
+          "legendFormat": "{{host}} · GPU core",
+          "refId": "B",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "/_/g",
+            "renamePattern": " "
+          }
+        }
+      ]
+    },
+    {
+      "id": 200,
+      "type": "row",
+      "title": "EXPLORE · coolant-to-air ΔT, distribution, alarm & pump",
+      "description": "Optional radiator-intake probe unlocks ΔT history and distribution. NEXT device flow alarms and the fixed-speed DDC tachometer are also available.",
+      "gridPos": {
+        "x": 0,
+        "y": 25,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": true,
+      "panels": [
+        {
+          "id": 12,
+          "title": "Coolant above intake · ΔT",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 26,
+            "w": 12,
+            "h": 7
+          },
+          "description": "Calculated from water temperature minus NEXT external temperature at matching same-host instants. Blank until the probe is installed. This does not measure water-side radiator heat rejection.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "celsius",
+              "color": {
+                "mode": "palette-classic-by-name"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "linear",
+                "spanNulls": false,
+                "showPoints": "never",
+                "lineWidth": 2,
+                "fillOpacity": 4,
+                "axisBorderShow": false
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "homeaway-vm"
+              },
+              "expr": "(max by(host) ((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1)) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1)) - on(host) max by(host) ((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"External_Temperature\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1)))))",
+              "legendFormat": "{{host}} · Coolant − intake",
+              "refId": "A",
+              "instant": false,
+              "range": true
+            }
+          ],
+          "transformations": [
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "/_/g",
+                "renamePattern": " "
+              }
+            }
+          ]
+        },
+        {
+          "id": 20,
+          "title": "Coolant-to-intake ΔT · distribution",
+          "type": "histogram",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "gridPos": {
+            "x": 12,
+            "y": 26,
+            "w": 12,
+            "h": 7
+          },
+          "description": "Experimental histogram of sampled ΔT during the selected range. Not a percentage of clock time; gaps and downsampling affect counts. Needs an actual radiator-intake probe.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "celsius",
+              "color": {
+                "mode": "palette-classic-by-name"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "linear",
+                "spanNulls": false,
+                "showPoints": "never",
+                "lineWidth": 2,
+                "fillOpacity": 4,
+                "axisBorderShow": false
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "bucketSize": 1,
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "homeaway-vm"
+              },
+              "expr": "(max by(host) ((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1)) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1)) - on(host) max by(host) ((sensordash_reading_value{host=~\"$host\",kind=\"Temperature\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"External_Temperature\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1)))))",
+              "legendFormat": "{{host}} · ΔT",
+              "refId": "A",
+              "instant": false,
+              "range": true
+            }
+          ],
+          "transformations": []
+        },
+        {
+          "id": 21,
+          "title": "NEXT flow alarm · device state",
+          "type": "state-timeline",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 33,
+            "w": 12,
+            "h": 7
+          },
+          "description": "Actual NEXT Flow Alarm channel: 0 inactive, 1 alarm. No sample means unknown; this is not an additional alarm policy.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "none",
+              "color": {
+                "mode": "palette-classic-by-name"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "linear",
+                "spanNulls": false,
+                "showPoints": "never",
+                "lineWidth": 2,
+                "fillOpacity": 4,
+                "axisBorderShow": false
+              },
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": {
+                      "text": "Normal",
+                      "color": "green",
+                      "index": 0
+                    },
+                    "1": {
+                      "text": "Alarm",
+                      "color": "red",
+                      "index": 1
+                    }
+                  }
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "showValue": "auto",
+            "mergeValues": true,
+            "rowHeight": 0.7,
+            "legend": {
+              "showLegend": false
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "homeaway-vm"
+              },
+              "expr": "max by(host) ((sensordash_reading_value{host=~\"$host\",kind=\"Factor\"} * on(host,sensor) group_left() (sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Factor\",name=\"Flow_Alarm\"} == 1)) and on(host) (max by(host) ((sensordash_sensor_info_value{host=~\"$host\",device=\"high_flow_NEXT\",kind=\"Temperature\",name=\"Water_Temperature\"} == 1) and on(host,sensor) (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Temperature\",role=\"coolant-probe\"} == 1))))",
+              "legendFormat": "{{host}} · NEXT flow alarm",
+              "refId": "A",
+              "instant": false,
+              "range": true
+            }
+          ],
+          "transformations": []
+        },
+        {
+          "id": 22,
+          "title": "DDC pump tachometer · fixed-speed",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "homeaway-vm"
+          },
+          "gridPos": {
+            "x": 12,
+            "y": 33,
+            "w": 12,
+            "h": 7
+          },
+          "description": "Monitored fixed-speed DDC tachometer, not PWM command; compare with flow if investigating hydraulic changes.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "rotrpm",
+              "color": {
+                "mode": "palette-classic-by-name"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "linear",
+                "spanNulls": false,
+                "showPoints": "never",
+                "lineWidth": 2,
+                "fillOpacity": 4,
+                "axisBorderShow": false
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "homeaway-vm"
+              },
+              "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace((sensordash_reading_value{host=~\"$host\",kind=\"Fan\"} * on(host,sensor) group_right() (sensordash_cooling_binding_value{host=~\"$host\",system=~\"$system\",kind=\"Fan\",role=~\"pump\"} == 1)) * on(host,sensor) group_left(name,alias,device) (label_replace(sensordash_sensor_info_value{host=~\"$host\",alias!=\"unassigned\"} == 1, \"name\", \"$1\", \"alias\", \"(.+)\") or (sensordash_sensor_info_value{host=~\"$host\",alias=\"unassigned\"} == 1)), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"component_name\", \"$1 $2\", \"component_name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\"), \"name\", \"$1 $2\", \"name\", \"^(.*)_(.*)$\")",
+              "legendFormat": "{{host}} · DDC pump",
+              "refId": "A",
+              "instant": false,
+              "range": true
+            }
+          ],
+          "transformations": [
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "/_/g",
+                "renamePattern": " "
+              }
+            }
+          ]
+        }
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "homeaway-vm"
+      },
+      "targets": []
+    }
+  ],
+  "links": [
+    {
+      "type": "dashboards",
+      "title": "Other HomeAway views",
+      "tags": [
+        "homeaway"
+      ],
+      "asDropdown": true,
+      "includeVars": true,
+      "keepTime": true,
+      "targetBlank": false,
+      "icon": "dashboard",
+      "tooltip": "Jump to another HomeAway monitoring dashboard"
+    }
+  ]
+}

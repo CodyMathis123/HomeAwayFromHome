@@ -11,6 +11,7 @@ independent fan-control implementation.
 | HomeAway Portal Metrics | 30-second glance: is anything wrong? | CPU/GPU temperatures, radiator/pump tach, coolant temperature, flow, Pi/DNS/VPN status; selected temperature comparison | Full catalog, chemistry, electrical model or every storage probe |
 | Grafana Overview | Explain PC thermal state under workload | CPU/GPU/storage temperatures, coolant in the thermal history, reported power and telemetry freshness | Detailed chemistry, hardware settings or multiple copies of cooling charts |
 | Grafana Cooling Systems | Explain liquid-loop performance and flow restrictions | Heat-source temperatures/power, primary coolant and flow charts, radiator/pump/duty feedback, assignment reference; advanced chemistry/alarm details collapsed | Duplicating main coolant and flow charts in an additional NEXT row |
+| Grafana Cooling Dynamics (experimental) | Understand *why* water temperatures rose, how the loop reacted, and whether a cooling problem is ambient- or load-driven | Fresh 2-minute snapshot; synchronized CPU/GPU watts, coolant and optional intake-air trends, derived coolant-to-air ΔT, flow and fan effort; collapsed ΔT histogram, NEXT flow-alarm timeline, DDC pump tach | Mixing current, peak, selected-period mean, or rolling 24h maxima; secondary alerts or fan commands |
 | Grafana Reporting Summary | Compare selected 24h / 7d / 30d periods | CPU/GPU temperature and power peaks/averages, coolant and flow averages with sparklines, coverage statistics, collapsed long-range NEXT chemistry trends | Live detailed sensor catalog or duplicate spool/observation headline cards |
 | Hardware Telemetry | Investigate raw physical samples | Exact sensor values and aliases, device identities | Simulated or aggregate cooling indicators |
 | Storage / Electricity / Events / System Health / DNS & VPN | Investigate their individual specialties | NVMe and SSD telemetry; **modeled** fan and pump electrical power; warning/recovery series; Pi infrastructure | General cooling overview duplicates |
@@ -19,6 +20,69 @@ Intentional repetition is allowed when a reading performs a **different
 function** (e.g. current coolant temperature in the portal, long-range
 temperature changes in Reporting Summary, and coolant-versus-CPU trends in
 Cooling Systems).
+
+## Cooling Dynamics · thermal response explorer
+
+Experimental, read-only single-page view, complementary to the existing
+Portal Metrics, Overview, Cooling Systems and Reporting Summary. Automatically
+provisioned from grafana/dashboards/cooling-dynamics.json.
+
+### Compact desktop layout
+
+No explanatory heading panels. The top six current stat cards show coolant,
+optional intake air, coolant-to-air ΔT, measured flow, fan duty and fan RPM.
+They display **values only** instead of repeating the computer name under
+every number; units and 'now' meaning are in the tile titles.
+**Current** cards are instant queries for actual samples observed within
+**two minutes**, not selected-period averages or peaks.
+
+Three concise graph rows: CPU/GPU heat-source watts versus coolant/intake
+temperature, physical component temperatures versus CPU/GPU utilization,
+then measured flow versus fan duty and fan tachometer. All histories use
+the selected time range and preserve missing/sleep samples. The **Explore**
+row is collapsed and contains optional coolant-to-intake ΔT history and
+histogram, actual NEXT flow-alarm timeline and fixed-speed DDC tach.
+
+### Cooling-system selection and physical identity
+
+The dashboard has both **Windows PC** ($host) and **Cooling system**
+($system) selectors. The system list is derived from actual
+sensordash_cooling_binding_value assignments for the chosen host.
+Historical power, component temperatures, radiator duty/RPM and pump tach
+are restricted to bindings matching the selected cooling system.
+
+The physical NEXT water and flow samples are intersected with the
+selected system's coolant-probe and flow-meter sensor bindings,
+respectively. Optional NEXT external-air and device flow-alarm
+diagnostics belong to the chosen system only if that same NEXT water
+probe is assigned to it. An unrelated system must not inherit water
+from a different one. An unbound probe should show no data, never a
+fallback from another system. When multiple PCs are selected, stat
+cards can show several unlabeled values; select one PC for the most
+compact unambiguous view.
+
+NEXT External Temperature represents **radiator intake air** only if
+physically placed at the air intake. A room or case probe requires
+relabeling. Coolant-air ΔT is Water Temperature minus External Temperature
+for the same host; it is NOT the water-side radiator delta and cannot
+determine radiator heat output. Until the probe exists, the air and
+derived delta charts/cards show no data, not zero.
+
+The ΔT histogram represents queried samples, not an exact time-weighted
+distribution; irregular sampling and historical downsampling matter.
+NEXT native Flow Alarm value 0 is inactive and 1 is alarm, while absent
+is unknown. The dashboard remains read-only; it cannot change Windows
+fan commands. No additional collector, container or networking exposure.
+
+### Acceptance
+
+Select one PC and the system containing NEXT, fan hub, pump, CPU and GPU
+assignments. Without the air probe, coolant/flow, power, component
+temperatures, utilization and radiator feedback populate; intake-air
+and derived ΔT do not. Switch the selected cooling system to verify
+bound data changes or disappears rather than silently showing another
+system. After plugging in the intake probe, verify its actual reading
+in SensorDash before expecting derived charts to populate.
 
 ## Current physical NEXT sensor inventory
 
