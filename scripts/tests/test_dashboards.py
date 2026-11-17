@@ -89,7 +89,39 @@ class DashboardContracts(unittest.TestCase):
                 self.assertNotIn("vector(0)", target["expr"])
             if p["type"] == "timeseries":
                 self.assertFalse(p["fieldConfig"]["defaults"]["custom"]["spanNulls"])
-        self.assertIn("last real sample within 2 minutes", panels[100]["options"]["content"])
+        self.assertIn("past 2 minutes", panels[100]["options"]["content"])
+        # A compact desktop surface: two headers, six current cards,
+        # two paired history rows, one 3-up effort row, then Explore.
+        top_level = d["panels"]
+        self.assertEqual(max(p["gridPos"]["y"] + p["gridPos"]["h"]
+                             for p in top_level), 30)
+        expected = {
+            100: (0, 0, 24, 2), 101: (0, 6, 24, 2),
+            10: (0, 8, 12, 7), 11: (12, 8, 12, 7),
+            17: (0, 15, 12, 7), 16: (12, 15, 12, 7),
+            13: (0, 22, 8, 7), 14: (8, 22, 8, 7),
+            15: (16, 22, 8, 7), 200: (0, 29, 24, 1),
+        }
+        for pid in range(1, 7):
+            expected[pid] = ((pid - 1) * 4, 2, 4, 4)
+        for pid, rect in expected.items():
+            gp = panels[pid]["gridPos"]
+            self.assertEqual((gp["x"], gp["y"], gp["w"], gp["h"]),
+                             rect, pid)
+        for a_index, left in enumerate(top_level):
+            a = left["gridPos"]
+            for right in top_level[a_index+1:]:
+                b = right["gridPos"]
+                self.assertFalse(
+                    a["x"] < b["x"]+b["w"] and a["x"]+a["w"] > b["x"]
+                    and a["y"] < b["y"]+b["h"] and a["y"]+a["h"] > b["y"],
+                    (left["id"], right["id"]))
+        # The optional air-derived history is not a large, always-empty
+        # graph until a real NEXT External Temperature probe is connected.
+        self.assertEqual([p["id"] for p in panels[200]["panels"]],
+                         [12, 20, 21, 22])
+        self.assertNotIn(12, {p["id"] for p in top_level})
+        self.assertEqual(panels[12]["type"], "timeseries")
         self.assertNotIn("sensordash_accessory_power_value",
                          "\\n".join(t["expr"] for p in all_dash_panels(d)
                                    for t in p.get("targets", [])))
